@@ -1,5 +1,7 @@
 import requests
 import re
+import logging
+logger = logging.getLogger(__name__)
 
 # SourceLinkResolver
 
@@ -19,7 +21,7 @@ class PyPiHandler:
         results = {}
         for package in packages_names:
             try:
-                response = requests.get(f"https://pypi.org/pypi/{package}/json")  # noqa: E501
+                response = requests.get(f"https://pypi.org/pypi/{package}/json")  
                 if response.status_code == 200:
                     source_link = None
                     data = response.json()
@@ -41,7 +43,7 @@ class PyPiHandler:
                         'link': None
                     }
             except Exception as e:
-                print(
+                logger.error(
                     f"An error occurred while fetching data for {package}: {e}")
                 results[package] = {
                     'license': 'Unknown',

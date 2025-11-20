@@ -1,4 +1,7 @@
 import re
+import logging
+logger = logging.getLogger(__name__)
+
 from Infrastructure.PyPiClient import PyPiHandler
 from Entities.pipyMetadata import PyPiMetadata
 
@@ -13,7 +16,8 @@ def PyMetadataBuilder(file_path):
         Returns:
             list (str): A list of dependencies specified in the file.
         """
-    # Tiro giù tutto l'albero con pipdeptree e poi verifico per ognuna repo vs pipy.
+    # Tiro giù tutto l'albero con pipdeptree e poi verifico 
+    # per ognuna repo vs pipy.
     # Dopodichè avrò raccolto tutte le licenze e proseguirò a fare un confronto di compatibilità
     # SOLO DEL REPO IN ESAME VS QUELLO
     packagesmetadata: list[PyPiMetadata] = []  # noqa: E501 If we will pass the whole tree this should be global
@@ -29,9 +33,9 @@ def PyMetadataBuilder(file_path):
                     dependencies.append(match.group(1))
 
     except FileNotFoundError:
-        print(f"File not found: {file_path}")
+        logger.error(f"File not found: {file_path}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error(f"An error occurred: {e}")
 
     results = PyPiHandler.getSourceLinks(dependencies)
 
