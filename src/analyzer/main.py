@@ -1,15 +1,15 @@
+"""The main file of the project"""
 import os
 
 # Create program-wide logging facility
 import logging
+from analyzer import package_metadata_fetcher
+from scripts import logger_formatter
+
 logger = logging.getLogger("LicenseSentinel")
 
-from analyzer import packageMetadataFetcher
-from Scripts import logger_formatter
-
-
 def main():
-
+    """The main function of the project."""
     # Establish logging
 
     logger.debug("Working directory: %s" , os.getcwd())
@@ -19,9 +19,9 @@ def main():
     if not os.path.exists(file_path):
         logger.warning("File not found!")
     else:
-        logger.debug("File loaded: ", file_path)
+        logger.debug("File loaded: %s", file_path)
 
-    finder = packageMetadataFetcher.PyMetadataBuilder(file_path)
+    finder = package_metadata_fetcher.py_metadata_builder(file_path)
     for pkg in finder:
         print(f"{pkg.package} | {pkg.license} | {pkg.link}")
 
