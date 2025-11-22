@@ -1,20 +1,26 @@
+"""Definition of the PyPiMetadata object
+"""
 
 class PyPiMetadata:
-    def __init__(self, package, license, link):
+    """Describes the metadata of a PyPI-hosted package"""
+    def __init__(self, package, license_name, link):
         self._package = package
-        self._license = license
+        self._license = license_name
         self._link = link
 
     @property
     def package(self):
+        """The package name"""
         return self._package
 
     @property
     def license(self):
+        """The package license"""
         return self._license
 
     @property
     def link(self):
+        """Link to package in PyPI"""
         return self._link
 
     @package.setter
