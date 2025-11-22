@@ -1,4 +1,4 @@
-"""Entities.pipyMetadata
+"""Entities.pypiMetadata
 
 PyPiMetadata represents metadata downloaded from PyPI for a single package.
 
