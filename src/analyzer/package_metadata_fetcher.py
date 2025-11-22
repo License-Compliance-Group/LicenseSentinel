@@ -32,7 +32,7 @@ def py_metadata_builder(file_path):
     dependencies = []
     pattern = re.compile(r"^\s*([A-Za-z0-9_.-]+)")
     try:
-        with open(file_path, 'r', encoding = 'utf-8') as file:
+        with open(file_path, 'r', encoding='utf-8') as file:
             for line in file:
                 line = line.split("#")[0].strip()
                 match = pattern.match(line)

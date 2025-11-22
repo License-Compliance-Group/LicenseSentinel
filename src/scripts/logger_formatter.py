@@ -27,7 +27,7 @@ class LoggerFormatter(logging.Formatter):
 
     @staticmethod
     def initialize(level):
-        """Initialize logging and apply custof formatter."""
+        """Initialize logging and apply custom formatter."""
         logger = logging.getLogger("LicenseSentinel")
         logger.setLevel(level)
         ch = logging.StreamHandler()

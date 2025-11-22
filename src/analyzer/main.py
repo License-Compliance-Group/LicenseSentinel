@@ -6,13 +6,13 @@ import logging
 from analyzer import package_metadata_fetcher
 from scripts import logger_formatter
 
-logger = logging.getLogger("LicenseSentinel")
+logger = logging.getLogger(__name__)
 
 def main():
     """The main function of the project."""
     # Establish logging
 
-    logger.debug("Working directory: %s" , os.getcwd())
+    logger.debug("Working directory: %s", os.getcwd())
 
     file_path = "requirements.txt"
 
