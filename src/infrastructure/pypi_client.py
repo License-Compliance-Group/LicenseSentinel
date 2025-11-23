@@ -1,60 +1,78 @@
-"""The definition of PyPiHandler class"""
+"""PyPI client utilities.
+
+Provides PyPiHandler which can fetch license and source/homepage/repository links
+for packages from the PyPI JSON API.
+"""
+from __future__ import annotations
+
 import logging
+import re
+from typing import Dict, List, Optional
+
 import requests
+from requests.exceptions import RequestException
+
 logger = logging.getLogger(__name__)
-# SourceLinkResolver
+
+_PACKAGE_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 
 
 class PyPiHandler:
     """A client to interact with PyPI and fetch package information."""
 
     @staticmethod
-    def get_source_links(packages_names):
-        """Fetches source links for a list of package names from PyPI.
+    def get_source_links(pkgs_names: List[str], timeout: int = 10) -> Dict[str, Dict[str, Optional[str]]]:
+        """Fetch source/homepage/repository links and license for a list of package names.
 
         Args:
-            packages_names (list): A list of package names.
+            pkgs_names: list of package names (strings).
+            timeout: HTTP request timeout (seconds).
+
         Returns:
-            dict: A dictionary mapping package names to their source
-            links and license.
+            A dict mapping package name -> {'license': Optional[str], 'link': Optional[str]}.
         """
-        results = {}
-        for package in packages_names:
+        results: Dict[str, Dict[str, Optional[str]]] = {}
+        for package in pkgs_names:
+            if not isinstance(package, str) or not _PACKAGE_NAME_RE.match(package):
+                logger.warning("Skipping invalid package name: %r", package)
+                results[str(package)] = {'license': 'Unknown', 'link': None}
+                continue
+
+            url = f"https://pypi.org/pypi/{package}/json"
             try:
-                response = requests.get(
-                    f"https://pypi.org/pypi/{package}/json",
-                    timeout = 10
-                )
-                if response.status_code == 200:
-                    source_link = None
-                    data = response.json()
-                    info = data.get('info', {})
-                    project_urls = info.get('project_urls') or {}
-                    if isinstance(project_urls, dict):
-                        source_link = project_urls.get('Source') \
-                            or project_urls.get('source') or project_urls.get(
-                            'Source Code') or project_urls.get('Repository') \
-                            or project_urls.get('repository') \
-                            or project_urls.get('Homepage')
+                resp = requests.get(url, timeout=timeout)
+                resp.raise_for_status()
+            except RequestException as exc:
+                logger.warning("Network error fetching %s: %s", package, exc)
+                results[package] = {'license': 'Unknown', 'link': None}
+                continue
 
-                    license_info = info.get('license') or \
-                        info.get('license_expression')
-                    results[package] = {
-                        'license': license_info,
-                        'link': source_link
-                    }
+            try:
+                data = resp.json()
+            except ValueError as exc:  # includes simplejson / json decode errors
+                logger.warning("Invalid JSON for %s: %s", package, exc)
+                results[package] = {'license': 'Unknown', 'link': None}
+                continue
 
-                else:
-                    results[package] = {
-                        'license': 'Unknown',
-                        'link': None
-                    }
-            except requests.exceptions.HTTPError as e:
-                logger.error(
-                    "An error occurred while fetching data for %s: %s"
-                    ,package, e)
-                results[package] = {
-                    'license': 'Unknown',
-                    'link': None
-                }
+            info = data.get('info', {}) or {}
+            project_urls = info.get('project_urls') or {}
+            source_link: Optional[str] = None
+            if isinstance(project_urls, dict):
+                # try several common keys (case variations)
+                for key in ('Source','source','Source Code','source code',
+                            'Repository','repository','Homepage'):
+                    candidate = project_urls.get(key)
+                    if candidate:
+                        source_link = candidate
+                        break
+
+            # prefer license_expression (PEP 639-like) then license field, normalize empty -> None
+            license_info = info.get(
+                'license_expression') or info.get('license') or None
+            if isinstance(license_info, str) and license_info.strip() == "":
+                license_info = None
+
+            results[package] = {
+                'license': license_info or 'Unknown', 'link': source_link}
+
         return results

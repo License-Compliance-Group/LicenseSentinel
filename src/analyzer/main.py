@@ -4,9 +4,9 @@ import os
 # Create program-wide logging facility
 import logging
 from analyzer import package_metadata_fetcher
-from scripts import logger_formatter
+from infrastructure.logger_formatter import LoggerFormatter
 
-logger = logging.getLogger(__name__)
+logger = LoggerFormatter.initialize(__name__, logging.DEBUG)
 
 def main():
     """The main function of the project."""
@@ -21,12 +21,11 @@ def main():
     else:
         logger.debug("File loaded: %s", file_path)
 
-    finder = package_metadata_fetcher.py_metadata_builder(file_path)
+    finder = package_metadata_fetcher.PyMetadataBuilder(file_path)
     for pkg in finder:
-        print(f"{pkg.package} | {pkg.license} | {pkg.link}")
+        print(f"{pkg.package} | {pkg.license_type} | {pkg.link}")
 
 
 
 if __name__ == "__main__":
-    logger_formatter.LoggerFormatter.initialize(logging.DEBUG)
     main()
