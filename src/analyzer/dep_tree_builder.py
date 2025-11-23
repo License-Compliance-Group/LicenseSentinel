@@ -142,6 +142,53 @@ def get_tree_json(venv_bin: str) -> List[Dict]:
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"Invalid JSON from pipdeptree: {exc}") from exc
 
+def build_map(tree_json: List[Dict]) -> Dict[str, List[str]]:
+    """Build a flat dependency graph from the pipdeptree JSON output.
+
+    Args:
+        tree_json: Parsed JSON tree from pipdeptree.
+
+    Returns:
+        A dict mapping package name -> list of direct dependencies.
+    """
+    graph: Dict[str, List[str]] = {}
+
+    def visit(node: Dict) -> None:
+        pkg = node.get("key", "")
+        deps = [d.get("key", "") for d in node.get("dependencies", []) if d.get("key")]
+        graph[pkg] = deps
+
+        for dep_node in node.get("dependencies", []):
+            visit(dep_node)
+
+    for node in tree_json:
+        visit(node)
+
+    return graph
+
+
+def print_subtree(graph:Dict[str, List[str]], pkg:str, indent: int = 0,
+                   visited: Optional[Set[str]]=None) -> None:
+    """Recursively print the dependency subtree for a given package.
+
+    Args:
+        graph: Dependency graph (package -> list of dependencies).
+        pkg: Root package name.
+        indent: Current indentation level.
+        visited: Set of already-visited packages (to avoid infinite recursion).
+    """
+    if visited is None:
+        visited = set()
+
+    print(" " * indent + "└── " + pkg)
+
+    if pkg in visited:
+        return
+
+    visited.add(pkg)
+
+    for dep in graph.get(pkg, []):
+        print_subtree(graph, dep, indent + 4, visited)
 
 
 
@@ -150,7 +197,7 @@ def get_tree_json(venv_bin: str) -> List[Dict]:
 
 
 def main() -> None:
-    """Main entry point: create venv, install packages, build and print dependency tree."""
+    """Pylint shut up"""
     try:
         logger.info("Creating venv…")
         venv_bin = create_venv()
@@ -160,7 +207,15 @@ def main() -> None:
 
         logger.info("Analyzing dependencies…")
         tree_json = get_tree_json(venv_bin)
+        graph = build_map(tree_json)
+        for pkg in graph:
+            print(pkg)
 
+        print("\n=== DEPENDENCY TREE ===\n")
+        for pkg in PACKAGES:
+            print(pkg)
+            print_subtree(graph, pkg, indent=2)
+            print()
     except RuntimeError as exc:
         logger.error("Error: %s", exc)
         sys.exit(1)
