@@ -20,4 +20,4 @@ jobs:
         pip install pylint
     - name: Analysing the code with pylint
       run: |
-        pylint $(git ls-files '*.py' | grep -v '^Entities/' | grep -v '^Infrastructure/' | grep -v '^Analyzer/')
+        pylint $(git ls-files '*.py' | grep -v '^src/entities/' | grep -v '^src/infrastructure/' | grep -v '^src/analyzer/')
