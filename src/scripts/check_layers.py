@@ -8,8 +8,8 @@ import ast
 from pathlib import Path
 import sys
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]   
-SRC_ROOT = PROJECT_ROOT                              
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SRC_ROOT = PROJECT_ROOT                 
 
 # Mappa layer → cartella reale
 LAYER_PATHS = {
@@ -72,7 +72,7 @@ def classify_import(module: str) -> str | None:
     if len(parts) >= 2 and parts[0] == "src":
         layer = parts[1]
     else:
-        layer = parts[0]  
+        layer = parts[0]
 
     return layer if layer in LAYER_RULES else None
 
