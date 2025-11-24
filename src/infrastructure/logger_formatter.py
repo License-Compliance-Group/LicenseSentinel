@@ -2,6 +2,7 @@
 
 import logging
 
+
 class LoggerFormatter(logging.Formatter):
     """Details of the custom formatter"""
     grey = "\x1b[38;5;7m"
@@ -19,6 +20,12 @@ class LoggerFormatter(logging.Formatter):
         logging.ERROR: red + format_string + reset,
         logging.CRITICAL: bold_red + format_string + reset
     }
+    
+    DEBUG = logging.DEBUG
+    INFO = logging.INFO
+    WARNING = logging.WARNING
+    ERROR = logging.ERROR
+    CRITICAL = logging.CRITICAL
 
     def format(self, record):
         log_fmt = self.FORMATS.get(record.levelno)
@@ -26,7 +33,7 @@ class LoggerFormatter(logging.Formatter):
         return formatter.format(record)
 
     @staticmethod
-    def initialize(name, level):
+    def initialize(name, level = INFO):
         """Creates a logger for a class and applies a formatter
 
         Args:
