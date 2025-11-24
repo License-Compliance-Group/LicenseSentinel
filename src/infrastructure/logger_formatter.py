@@ -27,13 +27,18 @@ class LoggerFormatter(logging.Formatter):
     ERROR = logging.ERROR
     CRITICAL = logging.CRITICAL
 
+    DEFAULT = INFO # change when in doubt
+    DEFAULT_NAME = "LicenseSentinel"
+
     def format(self, record):
         log_fmt = self.FORMATS.get(record.levelno)
         formatter = logging.Formatter(log_fmt)
         return formatter.format(record)
 
+
     @staticmethod
-    def initialize(name, level = INFO):
+    def initialize(name = DEFAULT_NAME,
+    level = INFO):
         """Creates a logger for a class and applies a formatter
 
         Args:
@@ -43,6 +48,10 @@ class LoggerFormatter(logging.Formatter):
         Returns:
             Logger: The logger itself.
         """
+        if type(name) != str:
+            name = LoggerFormatter.DEFAULT_NAME
+        if type(level) != int:
+            level = LoggerFormatter.DEFAULT
         logger = logging.getLogger(name)
         logger.setLevel(level)
         ch = logging.StreamHandler()

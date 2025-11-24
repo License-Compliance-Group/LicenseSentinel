@@ -1,6 +1,6 @@
 """Definition of the LicenseCompatibilityAnalyzer class"""
 
-import logging
+from logging
 logger = logging.getLogger(__name__)
 
 class LicenseCompatibilityAnalyzer:
