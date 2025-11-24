@@ -45,8 +45,9 @@ class LoggerFormatter(logging.Formatter):
         """
         logger = logging.getLogger(name)
         logger.setLevel(level)
-        ch = logging.StreamHandler()
-        ch.setLevel(level) # handle level can be different than logging level
-        ch.setFormatter(LoggerFormatter())
-        logger.addHandler(ch)
+        if not logger.handlers:
+            ch = logging.StreamHandler()
+            ch.setLevel(level) # handle level can be different than logging level
+            ch.setFormatter(LoggerFormatter())
+            logger.addHandler(ch)
         return logger
