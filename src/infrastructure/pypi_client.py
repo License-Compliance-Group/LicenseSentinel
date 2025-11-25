@@ -8,7 +8,6 @@ from __future__ import annotations
 import logging
 import re
 from typing import Dict, List, Optional
-
 import requests
 from requests.exceptions import RequestException
 

@@ -1,6 +1,11 @@
 import re
-from infrastructure.pypi_client import PyPiHandler
+import logging
 from entities.pypi_metadata import PyPiMetadata
+import dep_tree_builder
+from infrastructure.pypi_client import PyPiHandler
+from infrastructure.logger_formatter import LoggerFormatter
+
+logger = LoggerFormatter.initialize("package_metadata_fetcher", logging.INFO)
 
 _packagesmetadata: list[PyPiMetadata] = []
 
@@ -13,11 +18,10 @@ def PyMetadataBuilder(file_path):
         Returns:
             list (str): A list of dependencies specified in the file.
         """
-    # packagesmetadata: list[PyPiMetadata] = []  # noqa: E501 If we will pass the whole tree this should be global
-
     dependencies = []
     pattern = re.compile(r"^\s*([A-Za-z0-9_.-]+)")
     try:
+        logger.info("Parsing project dependencies from %s", file_path)
         with open(file_path, 'r', encoding='utf-8') as file:
             for line in file:
                 line = line.split("#")[0].strip()
@@ -26,18 +30,25 @@ def PyMetadataBuilder(file_path):
                     dependencies.append(match.group(1))
 
     except FileNotFoundError:
-        print(f"File not found: {file_path}")
+        logger.error("File not found: %s", file_path)
         return []
     except OSError as e:
-        print(f"Error reading file {file_path}: {e}")
+        logger.error("Error reading file %s: %s", file_path, e)
         return []
     except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"Unexpected error parsing {file_path}: {e}")
+        logger.error("Unexpected error parsing %s: %s", file_path, e)
         return []
 
 
+    # Create or reuse virtual environment and install dependencies
+    temp_venv = dep_tree_builder.create_venv()
+    dep_tree_builder.install_packages(temp_venv, dependencies)
+    tree_json = dep_tree_builder.get_tree_json(temp_venv)
+    graph = dep_tree_builder.build_map(tree_json)
+    s = set(graph.keys()) | {item for sub in graph.values() for item in sub}
+
     # Pass requirement to treebuilder to get full dependency tree
-    results = PyPiHandler.get_source_links(dependencies)
+    results = PyPiHandler.get_source_links(list(s))
 
     for pkg_name, metadata in results.items():
         _packagesmetadata.append(PyPiMetadata(
@@ -45,10 +56,10 @@ def PyMetadataBuilder(file_path):
             license_type=metadata['license'],
             link=metadata['link']
         ))
-        
-    # The process should stop here. The user then could click on a dependency on the interactive tree to see its details.
+    # The process should stop here. The user then could click on a dependency on the interactive
+    # tree to see its details.
     # At this point the user could launch a check license from source code (ScanCode part)
-    # Finally an option "check all tree licenses from source code" outside of the tree 
+    # Finally an option "check all tree licenses from source code" outside of the tree
     # will launch the Downlaod and ScanCode partfor all dependencies.
 
     # calls PyPiClient and retrieves links, constructing a PyPiMetadata object for each package
