@@ -105,7 +105,7 @@ def install_packages(venv_bin: str, packages: List[str]) -> None:
         # For hiding the output of pip install
         # stdout=subprocess.DEVNULL,
         # stderr=subprocess.DEVNULL,
-       
+
     except subprocess.CalledProcessError as exc:
         logger.critical("Failed to install packages with exit code %s", exc.returncode)
         raise RuntimeError(f"Failed to install packages: {exc}") from exc

@@ -10,8 +10,10 @@ import re
 from typing import Dict, List, Optional
 import requests
 from requests.exceptions import RequestException
+from infrastructure.logger_formatter import LoggerFormatter
 
-logger = logging.getLogger(__name__)
+logger = LoggerFormatter.initialize("PyPI Client", logging.INFO)
+
 
 _PACKAGE_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 
@@ -20,7 +22,7 @@ class PyPiHandler:
     """A client to interact with PyPI and fetch package information."""
 
     @staticmethod
-    def get_source_links(pkgs_names: List[str], timeout: int = 10) -> Dict[str, Dict[str, Optional[str]]]:
+    def get_source_links(pkgs_names:List[str],timeout:int=10)->Dict[str,Dict[str,Optional[str]]]:
         """Fetch source/homepage/repository links and license for a list of package names.
 
         Args:
@@ -57,17 +59,19 @@ class PyPiHandler:
             project_urls = info.get('project_urls') or {}
             source_link: Optional[str] = None
             if isinstance(project_urls, dict):
-                # try several common keys (case variations)
+                # Ogni json di un repo mette il in chiavi diverse
                 for key in ('Source','source','Source Code','source code',
+                            'Code', 'code',
                             'Repository','repository','Homepage'):
                     candidate = project_urls.get(key)
                     if candidate:
                         source_link = candidate
                         break
 
-            # prefer license_expression (PEP 639-like) then license field, normalize empty -> None
+            # prefer license_expression (PEP 639-like) then license field, normalize empty -> 
+            #TODO better separate short license id from full text
             license_info = info.get(
-                'license_expression') or info.get('license') or None
+                'license') or info.get('license_expression') or None
             if isinstance(license_info, str) and license_info.strip() == "":
                 license_info = None
 
