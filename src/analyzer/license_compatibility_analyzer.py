@@ -1,6 +1,6 @@
 """Definition of the LicenseCompatibilityAnalyzer class"""
 
-from infrastructure.logger_formatter import LoggerFormatter
+from src.infrastructure.logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__)
 
 class LicenseCompatibilityAnalyzer:
