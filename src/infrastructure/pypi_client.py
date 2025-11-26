@@ -99,7 +99,10 @@ class PyPiHandler:
             # ------------------------------
             # Final license selection
             # ------------------------------
-            license_final = license_from_classifiers or license_simple or license_expression or "Unknown"
+            license_final = license_from_classifiers or \
+                            license_simple or\
+                            license_expression or\
+                            "Unknown"
 
             results[package] = {
                 'license': license_final,
@@ -108,4 +111,4 @@ class PyPiHandler:
             }
 
         return results
-
+    
