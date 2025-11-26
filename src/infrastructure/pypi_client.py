@@ -68,14 +68,44 @@ class PyPiHandler:
                         source_link = candidate
                         break
 
-            # prefer license_expression (PEP 639-like) then license field, normalize empty -> 
-            #TODO better separate short license id from full text
-            license_info = info.get(
-                'license') or info.get('license_expression') or None
-            if isinstance(license_info, str) and license_info.strip() == "":
-                license_info = None
+            # ----------------------------------
+            # Extract license from classifiers  |
+            # ----------------------------------
+            classifiers = info.get("classifiers", []) or []
+            license_from_classifiers = None
+
+            for c in classifiers:
+                if c.startswith("License ::"):
+                    parts = c.split("::")
+                    last_part = parts[-1].strip() if parts else None
+                    if last_part:
+                        license_from_classifiers = last_part
+                    break  # take first valid license classifier
+
+            # ----------------------------------
+            # Extract "license" field (fallback)|
+            # ----------------------------------
+            license_simple = info.get("license")
+            if isinstance(license_simple, str) and not license_simple.strip():
+                license_simple = None
+
+            # ------------------------------
+            # Extract license_expression (separate field) generalmente contiene la licenza intera
+            # ------------------------------
+            license_expression = info.get("license_expression")
+            if isinstance(license_expression, str) and not license_expression.strip():
+                license_expression = None
+
+            # ------------------------------
+            # Final license selection
+            # ------------------------------
+            license_final = license_from_classifiers or license_simple or license_expression or "Unknown"
 
             results[package] = {
-                'license': license_info or 'Unknown', 'link': source_link}
+                'license': license_final,
+             #   'license_expression': license_expression,
+                'link': source_link
+            }
 
         return results
+
