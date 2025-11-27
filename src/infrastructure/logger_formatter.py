@@ -20,7 +20,6 @@ class LoggerFormatter(logging.Formatter):
         logging.ERROR: red + format_string + reset,
         logging.CRITICAL: bold_red + format_string + reset
     }
-
     DEBUG = logging.DEBUG
     INFO = logging.INFO
     WARNING = logging.WARNING
