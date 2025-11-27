@@ -167,8 +167,8 @@ def build_map(tree_json: List[Dict]) -> Dict[str, List[str]]:
     return graph
 
 
-def print_subtree(graph:Dict[str, List[str]], pkg:str, indent: int = 0,
-                   visited: Optional[Set[str]]=None) -> None:
+def print_subtree(graph: Dict[str, List[str]], pkg: str, indent: int = 0,
+                   visited: Optional[Set[str]] = None) -> None:
     """Recursively print the dependency subtree for a given package.
 
     Args:
@@ -197,7 +197,7 @@ def print_subtree(graph:Dict[str, List[str]], pkg:str, indent: int = 0,
 
 
 def main() -> None:
-    """Pylint shut up"""
+    """Main entry point for testing dependency tree building."""
     try:
         logger.info("Creating venv…")
         venv_bin = create_venv()

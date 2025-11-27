@@ -71,9 +71,9 @@ def build_package_metadata(file_path: str) -> List[PyPiMetadata]:
             link=metadata['link']
         ))
     logger.info("Successfully fetched metadata for %d packages", len(metadata_list))
-    #step 5: download sources and scan licenses with scancode
-    #step 6: compare PyPI license vs scancode detected license
-    #Step 7: create for each package objects package_metadata
+    # Step 5: download sources and scan licenses with scancode
+    # Step 6: compare PyPI license vs scancode detected license
+    # Step 7: create for each package objects package_metadata
     #        containing both pypi and scancode license info and check results
     # We had to think more about how to structure this part. From the GUI the user
     # could select a single package (from the tree view) and see all its details like:

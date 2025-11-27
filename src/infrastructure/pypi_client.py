@@ -22,7 +22,7 @@ class PyPiHandler:
     """A client to interact with PyPI and fetch package information."""
 
     @staticmethod
-    def get_source_links(pkgs_names:List[str],timeout:int=10)->Dict[str,Dict[str,Optional[str]]]:
+    def get_source_links(pkgs_names: List[str], timeout: int = 10) -> Dict[str, Dict[str, Optional[str]]]:
         """Fetch source/homepage/repository links and license for a list of package names.
 
         Args:
@@ -100,8 +100,8 @@ class PyPiHandler:
             # Final license selection
             # ------------------------------
             license_final = license_from_classifiers or \
-                            license_simple or\
-                            license_expression or\
+                            license_simple or \
+                            license_expression or \
                             "Unknown"
 
             results[package] = {
