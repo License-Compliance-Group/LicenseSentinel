@@ -20,20 +20,23 @@ class LoggerFormatter(logging.Formatter):
         logging.ERROR: red + format_string + reset,
         logging.CRITICAL: bold_red + format_string + reset
     }
-    
     DEBUG = logging.DEBUG
     INFO = logging.INFO
     WARNING = logging.WARNING
     ERROR = logging.ERROR
     CRITICAL = logging.CRITICAL
 
+    DEFAULT = INFO # change when in doubt
+
     def format(self, record):
         log_fmt = self.FORMATS.get(record.levelno)
         formatter = logging.Formatter(log_fmt)
         return formatter.format(record)
 
+
     @staticmethod
-    def initialize(name, level = INFO):
+    def initialize(name,
+    level = INFO):
         """Creates a logger for a class and applies a formatter
 
         Args:
@@ -43,8 +46,12 @@ class LoggerFormatter(logging.Formatter):
         Returns:
             Logger: The logger itself.
         """
+
         logger = logging.getLogger(name)
         logger.setLevel(level)
+        if not logger or name is None:
+            raise ValueError('Failed to instantiate logger.\
+            Verify the input parameters are valid.')
         if not logger.handlers:
             ch = logging.StreamHandler()
             ch.setLevel(level) # handle level can be different than logging level
