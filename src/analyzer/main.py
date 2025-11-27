@@ -26,6 +26,5 @@ def main():
         print(f"{pkg.package} | {pkg.license_type} | {pkg.link}")
 
 
-
 if __name__ == "__main__":
     main()
