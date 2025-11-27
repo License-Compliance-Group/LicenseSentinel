@@ -8,11 +8,12 @@ from __future__ import annotations
 import logging
 import re
 from typing import Dict, List, Optional
-
 import requests
 from requests.exceptions import RequestException
+from infrastructure.logger_formatter import LoggerFormatter
 
-logger = logging.getLogger(__name__)
+logger = LoggerFormatter.initialize("PyPI Client", logging.INFO)
+
 
 _PACKAGE_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 
@@ -58,21 +59,56 @@ class PyPiHandler:
             project_urls = info.get('project_urls') or {}
             source_link: Optional[str] = None
             if isinstance(project_urls, dict):
-                # try several common keys (case variations)
+                # Ogni json di un repo mette il in chiavi diverse
                 for key in ('Source','source','Source Code','source code',
+                            'Code', 'code',
                             'Repository','repository','Homepage'):
                     candidate = project_urls.get(key)
                     if candidate:
                         source_link = candidate
                         break
 
-            # prefer license_expression (PEP 639-like) then license field, normalize empty -> None
-            license_info = info.get(
-                'license_expression') or info.get('license') or None
-            if isinstance(license_info, str) and license_info.strip() == "":
-                license_info = None
+            # ----------------------------------
+            # Extract license from classifiers  |
+            # ----------------------------------
+            classifiers = info.get("classifiers", []) or []
+            license_from_classifiers = None
+
+            for c in classifiers:
+                if c.startswith("License ::"):
+                    parts = c.split("::")
+                    last_part = parts[-1].strip() if parts else None
+                    if last_part:
+                        license_from_classifiers = last_part
+                    break  # take first valid license classifier
+
+            # ----------------------------------
+            # Extract "license" field (fallback)|
+            # ----------------------------------
+            license_simple = info.get("license")
+            if isinstance(license_simple, str) and not license_simple.strip():
+                license_simple = None
+
+            # ------------------------------
+            # Extract license_expression (separate field) generalmente contiene la licenza intera
+            # ------------------------------
+            license_expression = info.get("license_expression")
+            if isinstance(license_expression, str) and not license_expression.strip():
+                license_expression = None
+
+            # ------------------------------
+            # Final license selection
+            # ------------------------------
+            license_final = license_from_classifiers or \
+                            license_simple or \
+                            license_expression or \
+                            "Unknown"
 
             results[package] = {
-                'license': license_info or 'Unknown', 'link': source_link}
+                'license': license_final,
+             #   'license_expression': license_expression,
+                'link': source_link
+            }
 
         return results
+    
