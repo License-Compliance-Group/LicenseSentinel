@@ -211,3 +211,6 @@ __marimo__/
 
 
 requirements.txt
+
+# Ignore raw data files
+src/data/**
