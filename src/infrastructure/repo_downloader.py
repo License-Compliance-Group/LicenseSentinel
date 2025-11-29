@@ -85,18 +85,23 @@ class _RepoDownloader:
         loop = asyncio.get_event_loop()
         tasks = []
 
-        # Step 1: Resolve output directory relative to project root if it's a relative path
+        # Step 1: Resolve output directory to be inside project root
         output_dir = Path(output_path)
+        path_str = str(output_dir)
+        if path_str.startswith('/') or path_str.startswith('\\'):
+            output_dir = Path(path_str.lstrip('/\\'))
+
         if not output_dir.is_absolute():
-            # Make it relative to project root (1 level up from this file)
             project_root = Path(__file__).resolve().parents[1]
             output_dir = project_root / output_dir
+
+        LOGGER.info("Resolved download directory: %s", output_dir)
 
         if not output_dir.exists():
             output_dir.mkdir(parents=True, exist_ok=True)
             LOGGER.info("Download directory created: %s", output_dir)
         else:
-            LOGGER.info("Download directory exists: %s", output_dir)
+            LOGGER.warning("Download directory exists: %s", output_dir)
 
         for pkg, repo_url in repo_urls.items():
 
@@ -133,14 +138,13 @@ class _RepoDownloader:
                 zip_url = f"{normalized_url}/-/archive/{branch}/{branch}.zip"
             else:
                 raise _RepoDownloadError(f"Unsupported provider: {provider}")
-            print("---------------------->"+zip_url)
+
             # Step 5: Download and save
             LOGGER.info("Downloading %s branch '%s' to %s",
                         normalized_url, branch, output_path)
-            # ERRORE VIENE PASSATO IL PATH MA DOWNLOAD_ZIP LO USA PER APRIRE IL FILE E QUINDI TUTTI I DOWNLOAD
-            # SONO FILE ZIP DI NOME UGUALI ALL'OUTPUT PATH (SI SOVRASCRIVONO)
+
             task = loop.run_in_executor(
-                self.executor, self._download_zip, pkg, zip_url, Path(output_path))
+                self.executor, self._download_zip, pkg, zip_url, Path(output_dir))
             tasks.append((pkg, repo_url, task))
 
         # Wait for all downloads
@@ -159,45 +163,67 @@ class _RepoDownloader:
         """Download a file from URL and save to disk with streaming.
 
         Args:
+            pkg: Package name.
             url: URL to download.
-            output_path: Path object where file will be saved.
+            output_path: Directory path where file will be saved.
 
         Returns:
             True if successful, False otherwise.
         """
-        try:
-            response = requests.get(url, timeout=self.timeout, stream=True)
-            response.raise_for_status()
-            output_path = output_path / f"{pkg}.zip"
+        output_file = output_path / f"{pkg}.zip"
 
-            # Stream download to handle large files efficiently
-            with open(output_path, 'wb') as file:
-                for chunk in response.iter_content(chunk_size=self.chunk_size):
-                    if chunk:  # filter out keep-alive chunks
-                        file.write(chunk)
+        # Prepare list of URLs to try (main branch, then fallback to master)
+        urls_to_try = [url]
+        if "/refs/heads/main" in url:
+            fallback_url = url.replace(
+                "/refs/heads/main", "/refs/heads/master")
+            urls_to_try.append(fallback_url)
 
-            LOGGER.info("Successfully downloaded to %s (%d bytes)",
-                        output_path, output_path.stat().st_size)
-            return True
-
-        except requests.exceptions.Timeout:
-            LOGGER.error("Request timeout after %d seconds for %s",
-                         self.timeout, url)
-        except requests.exceptions.ConnectionError as exc:
-            LOGGER.error("Connection error: %s", exc)
-        except requests.exceptions.HTTPError as exc:
-            LOGGER.error("HTTP error %s: %s", response.status_code, exc)
-        except OSError as exc:
-            LOGGER.error("File I/O error writing to %s: %s", output_path, exc)
-
-        # Clean up partial file on failure
-        if output_path.exists():
+        for attempt_url in urls_to_try:
             try:
-                output_path.unlink()
-                LOGGER.info("Cleaned up partial download: %s", output_path)
-            except OSError:
-                pass
+                response = requests.get(
+                    attempt_url, timeout=self.timeout, stream=True)
+                response.raise_for_status()
 
+                with open(output_file, 'wb') as file:
+                    for chunk in response.iter_content(chunk_size=self.chunk_size):
+                        if chunk:
+                            file.write(chunk)
+
+                LOGGER.info("Successfully downloaded %s to %s (%d bytes)",
+                            pkg, output_file, output_file.stat().st_size)
+                return True
+
+            except requests.exceptions.Timeout:
+                LOGGER.error("Request timeout after %d seconds for %s",
+                             self.timeout, attempt_url)
+            except requests.exceptions.ConnectionError as exc:
+                LOGGER.error("Connection error for %s: %s", attempt_url, exc)
+            except requests.exceptions.HTTPError as exc:
+                status_code = exc.response.status_code if exc.response else "unknown"
+                # 404 -> but we still have URLs to try #no
+                if status_code == 404 and attempt_url != urls_to_try[-1]:
+
+                    LOGGER.warning(
+                        "HTTP 404 for %s, will retry with fallback branch", attempt_url)
+                else:
+                    LOGGER.error("HTTP error %s for %s:\n-> %s",
+                                 status_code, attempt_url, exc)
+            except OSError as exc:
+                LOGGER.error("File I/O error writing to %s: %s",
+                             output_file, exc)
+
+            # Clean up partial file on failure before next attempt
+            if output_file.exists():
+                try:
+                    output_file.unlink()
+                    LOGGER.debug(
+                        "Cleaned up partial download: %s", output_file)
+                except OSError:
+                    pass
+
+        # All attempts failed
+        LOGGER.error("All download attempts failed for package: %s", pkg)
         return False
 
     def __enter__(self):
@@ -210,15 +236,17 @@ class _RepoDownloader:
         return False
 
 
-# Standalone convenience function
+# I didn't know python has not private classes. I don't know if this is messy.
+# Also I realized later that specify the branch is useless
+# We should remain the class as is and remove the branch parameter in this adapter below
 def download_repos(repo_urls: Dict[str, str | None],
-                   branch: str,
                    output: str,
+                   branch: str = "main",
                    timeout: int = 30) -> Dict[str, bool]:
     """Download multiple repositories as ZIP files.
 
     Convenience function that handles RepoDownloader lifecycle automatically.
-    I don't know ho to do private classes. I don't know if this is messy.
+
 
     Args:
         repo_urls: Dictionary mapping repository names to URLs.
