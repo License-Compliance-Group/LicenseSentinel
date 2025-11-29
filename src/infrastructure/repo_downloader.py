@@ -3,15 +3,22 @@
 Downloads source code from Git hosting providers (GitHub, GitLab) as ZIP archives.
 Uses a simple HTTP-based approach without requiring full Git history.
 """
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import logging
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 import requests
 from infrastructure.logger_formatter import LoggerFormatter
 
-logger = LoggerFormatter.initialize("repo_downloader", logging.INFO)
+LOGGER = LoggerFormatter.initialize("repo_downloader", logging.INFO)
+
+
+URL_REGEX = re.compile(
+    r'^(https?://)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/[^\s]*)?$')
+
 
 GITHUB_REPO_REGEX = re.compile(
     r"^https?://github\.com/([^/]+)/([^/]+?)(?:\.git)?(?:/.*)?$",
@@ -24,11 +31,11 @@ GITLAB_REPO_REGEX = re.compile(
 )
 
 
-class RepoDownloadError(Exception):
+class _RepoDownloadError(Exception):
     """Exception raised when repository download fails."""
 
 
-class RepoDownloader:
+class _RepoDownloader:
     """Download Git repositories as ZIP archives from hosting providers.
 
     Supports GitHub and GitLab. Downloads a specific branch without full Git history.
@@ -51,14 +58,15 @@ class RepoDownloader:
         """
         self.timeout = timeout
         self.chunk_size = chunk_size
+        self.executor = ThreadPoolExecutor()
 
-    def download_repo(
+    def download_repos(
         self,
-        repo_url: str,
-        branch: str,
+        repo_urls: Dict[str, str | None],
         output_path: str,
+        branch: str = "main",
         provider: Optional[str] = None
-    ) -> bool:
+    ) -> Dict[str, bool]:
         """Download a repository branch as a ZIP file.
 
         Args:
@@ -73,79 +81,81 @@ class RepoDownloader:
         Raises:
             RepoDownloadError: If validation fails or unrecoverable error occurs.
         """
-        # Validate and detect provider
-        if provider is None:
-            provider = self._detect_provider(repo_url)
+        results: dict[str, bool] = {}
+        loop = asyncio.get_event_loop()
+        tasks = []
 
-        if not provider:
-            raise RepoDownloadError(f"Unsupported repository URL: {repo_url}")
+        # Step 1: Resolve output directory relative to project root if it's a relative path
+        output_dir = Path(output_path)
+        if not output_dir.is_absolute():
+            # Make it relative to project root (1 level up from this file)
+            project_root = Path(__file__).resolve().parents[1]
+            output_dir = project_root / output_dir
 
-        # Normalize URL (remove trailing slash, .git suffix)
-        repo_url = self._normalize_url(repo_url)
+        if not output_dir.exists():
+            output_dir.mkdir(parents=True, exist_ok=True)
+            LOGGER.info("Download directory created: %s", output_dir)
+        else:
+            LOGGER.info("Download directory exists: %s", output_dir)
 
-        # Construct download URL
-        zip_url = self._build_zip_url(repo_url, branch, provider)
+        for pkg, repo_url in repo_urls.items():
 
-        # Ensure output directory exists
-        output_file = Path(output_path)
-        output_file.parent.mkdir(parents=True, exist_ok=True)
+            if repo_url is None or repo_url.strip() == "":
+                LOGGER.warning("Empty repository URL for package: %s", pkg)
+                results[pkg] = False
+                continue
+            if not URL_REGEX.match(repo_url):
+                LOGGER.warning("Invalid repository URL: %s", repo_url)
+                results[pkg] = False
+                continue
 
-        # Download and save
-        logger.info("Downloading %s branch '%s' to %s", repo_url, branch, output_path)
-        return self._download_file(zip_url, output_file)
+            # Step 2: Detect provider if not specified
+            if provider is None:
+                if GITHUB_REPO_REGEX.match(repo_url):
+                    provider = 'github'
+                elif GITLAB_REPO_REGEX.match(repo_url):
+                    provider = 'gitlab'
 
-    def _detect_provider(self, repo_url: str) -> Optional[str]:
-        """Detect the Git hosting provider from URL.
+            if not provider:
+                LOGGER.warning("Unsupported repository URL: %s", repo_url)
+                results[repo_url] = False
+                continue
 
-        Args:
-            repo_url: Repository URL.
+            # Step 3: Normalize URL (remove trailing slash, .git suffix)
+            normalized_url = repo_url.rstrip('/')
+            if normalized_url.endswith('.git'):
+                normalized_url = normalized_url[:-4]
 
-        Returns:
-            'github', 'gitlab', or None if unrecognized.
-        """
-        if GITHUB_REPO_REGEX.match(repo_url):
-            return 'github'
-        if GITLAB_REPO_REGEX.match(repo_url):
-            return 'gitlab'
-        return None
+            # Step 4: Construct download URL based on provider
+            if provider == 'github':
+                zip_url = f"{normalized_url}/archive/refs/heads/{branch}.zip"
+            elif provider == 'gitlab':
+                zip_url = f"{normalized_url}/-/archive/{branch}/{branch}.zip"
+            else:
+                raise _RepoDownloadError(f"Unsupported provider: {provider}")
+            print("---------------------->"+zip_url)
+            # Step 5: Download and save
+            LOGGER.info("Downloading %s branch '%s' to %s",
+                        normalized_url, branch, output_path)
+            # ERRORE VIENE PASSATO IL PATH MA DOWNLOAD_ZIP LO USA PER APRIRE IL FILE E QUINDI TUTTI I DOWNLOAD
+            # SONO FILE ZIP DI NOME UGUALI ALL'OUTPUT PATH (SI SOVRASCRIVONO)
+            task = loop.run_in_executor(
+                self.executor, self._download_zip, pkg, zip_url, Path(output_path))
+            tasks.append((pkg, repo_url, task))
 
-    def _normalize_url(self, repo_url: str) -> str:
-        """Normalize repository URL by removing .git suffix and trailing slashes.
+        # Wait for all downloads
+        for pkg, repo_url, task in tasks:
+            try:
+                results[pkg] = loop.run_until_complete(task)
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                LOGGER.error("Download failed for %s: %s - %s",
+                             pkg, repo_url, exc)
+                results[pkg] = False
 
-        Args:
-            repo_url: Repository URL.
+        loop.close()
+        return results
 
-        Returns:
-            Normalized URL.
-        """
-        url = repo_url.rstrip('/')
-        if url.endswith('.git'):
-            url = url[:-4]
-        return url
-
-    def _build_zip_url(self, repo_url: str, branch: str, provider: str) -> str:
-        """Construct the ZIP download URL for the given provider.
-
-        Args:
-            repo_url: Normalized repository URL.
-            branch: Branch name.
-            provider: 'github' or 'gitlab'.
-
-        Returns:
-            Full URL to download the ZIP archive.
-
-        Raises:
-            RepoDownloadError: If provider is unsupported.
-        """
-        if provider == 'github':
-            return f"{repo_url}/archive/refs/heads/{branch}.zip"
-        if provider == 'gitlab':
-            # GitLab uses project path encoding in URL
-            return f"{repo_url}/-/archive/{branch}/{branch}.zip"
-
-        raise RepoDownloadError(f"Unsupported provider: {provider}")
-
-    def _download_file(self, url: str, output_path: Path) -> bool:
+    def _download_zip(self, pkg: str, url: str, output_path: Path) -> bool:
         """Download a file from URL and save to disk with streaming.
 
         Args:
@@ -158,6 +168,7 @@ class RepoDownloader:
         try:
             response = requests.get(url, timeout=self.timeout, stream=True)
             response.raise_for_status()
+            output_path = output_path / f"{pkg}.zip"
 
             # Stream download to handle large files efficiently
             with open(output_path, 'wb') as file:
@@ -165,47 +176,70 @@ class RepoDownloader:
                     if chunk:  # filter out keep-alive chunks
                         file.write(chunk)
 
-            logger.info("Successfully downloaded to %s (%d bytes)",
-                       output_path, output_path.stat().st_size)
+            LOGGER.info("Successfully downloaded to %s (%d bytes)",
+                        output_path, output_path.stat().st_size)
             return True
 
         except requests.exceptions.Timeout:
-            logger.error("Request timeout after %d seconds for %s", self.timeout, url)
+            LOGGER.error("Request timeout after %d seconds for %s",
+                         self.timeout, url)
         except requests.exceptions.ConnectionError as exc:
-            logger.error("Connection error: %s", exc)
+            LOGGER.error("Connection error: %s", exc)
         except requests.exceptions.HTTPError as exc:
-            logger.error("HTTP error %s: %s", response.status_code, exc)
+            LOGGER.error("HTTP error %s: %s", response.status_code, exc)
         except OSError as exc:
-            logger.error("File I/O error writing to %s: %s", output_path, exc)
+            LOGGER.error("File I/O error writing to %s: %s", output_path, exc)
 
         # Clean up partial file on failure
         if output_path.exists():
             try:
                 output_path.unlink()
-                logger.info("Cleaned up partial download: %s", output_path)
+                LOGGER.info("Cleaned up partial download: %s", output_path)
             except OSError:
                 pass
 
         return False
 
+    def __enter__(self):
+        """Context manager entry."""
+        return self
 
-# Backward compatibility - GitHub-only static method
-def download_github_zip(repo_url: str, branch: str, output: str, timeout: int = 30) -> bool:
-    """Download a GitHub repository as ZIP (legacy function).
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - automatically cleanup executor."""
+        self.executor.shutdown(wait=True)
+        return False
+
+
+# Standalone convenience function
+def download_repos(repo_urls: Dict[str, str | None],
+                   branch: str,
+                   output: str,
+                   timeout: int = 30) -> Dict[str, bool]:
+    """Download multiple repositories as ZIP files.
+
+    Convenience function that handles RepoDownloader lifecycle automatically.
+    I don't know ho to do private classes. I don't know if this is messy.
 
     Args:
-        repo_url: GitHub repository URL.
-        branch: Branch name.
-        output: Output file path.
+        repo_urls: Dictionary mapping repository names to URLs.
+        branch: Branch name to download (e.g., main, master).
+        output: Output directory path where ZIPs will be saved.
         timeout: Request timeout in seconds.
 
     Returns:
-        True if successful, False otherwise.
+        Dictionary mapping pkg_name -> bool (success/failure for each download).
+
+    Example:
+        results = download_repos(
+            repo_urls={"numpy": "https://github.com/numpy/numpy",
+                       "requests": "https://github.com/requests/requests"},
+            branch="main",
+            output="downloads"
+        )
     """
-    logger.warning("download_github_zip is deprecated; use RepoDownloader.download_repo instead")
-    downloader = RepoDownloader(timeout=timeout)
-    try:
-        return downloader.download_repo(repo_url, branch, output, provider='github')
-    except RepoDownloadError as exc:
-        logger.error("Download failed: %s", exc)
-        return False
+    with _RepoDownloader(timeout=timeout) as downloader:
+        return downloader.download_repos(
+            repo_urls=repo_urls,
+            output_path=output,
+            branch=branch
+        )
