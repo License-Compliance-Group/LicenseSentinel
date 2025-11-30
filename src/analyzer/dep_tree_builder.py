@@ -102,7 +102,7 @@ def install_packages(venv_bin: str, packages: List[str]) -> None:
     """
     python_exe = "python.exe" if os.name == "nt" else "python"
     python = Path(venv_bin) / python_exe
-    # TODO: pipdeptree should not be downloaded but shipped with this tool
+    # TO-DO: pipdeptree should not be downloaded but shipped with this tool
     logger.info("Installing packages: %s", ", ".join(packages))
     try:
         subprocess.run([str(python), "-m", "pip", "install",

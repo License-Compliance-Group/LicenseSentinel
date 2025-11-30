@@ -65,7 +65,6 @@ class _RepoDownloader:
         repo_urls: Dict[str, str | None],
         output_path: str,
         branch: str = "main",
-        provider: Optional[str] = None
     ) -> Dict[str, bool]:
         """Download a repository branch as a ZIP file.
 
@@ -86,22 +85,7 @@ class _RepoDownloader:
         tasks = []
 
         # Step 1: Resolve output directory to be inside project root
-        output_dir = Path(output_path)
-        path_str = str(output_dir)
-        if path_str.startswith('/') or path_str.startswith('\\'):
-            output_dir = Path(path_str.lstrip('/\\'))
-
-        if not output_dir.is_absolute():
-            project_root = Path(__file__).resolve().parents[1]
-            output_dir = project_root / output_dir
-
-        LOGGER.info("Resolved download directory: %s", output_dir)
-
-        if not output_dir.exists():
-            output_dir.mkdir(parents=True, exist_ok=True)
-            LOGGER.info("Download directory created: %s", output_dir)
-        else:
-            LOGGER.warning("Download directory exists: %s", output_dir)
+        output_dir = self._resolve_output_dir(output_path)
 
         for pkg, repo_url in repo_urls.items():
 
@@ -115,15 +99,16 @@ class _RepoDownloader:
                 continue
 
             # Step 2: Detect provider if not specified
-            if provider is None:
-                if GITHUB_REPO_REGEX.match(repo_url):
-                    provider = 'github'
-                elif GITLAB_REPO_REGEX.match(repo_url):
-                    provider = 'gitlab'
+            provider: Optional[str] = None
+            if GITHUB_REPO_REGEX.match(repo_url):
+                provider = 'github'
+            elif GITLAB_REPO_REGEX.match(repo_url):
+                provider = 'gitlab'
 
             if not provider:
-                LOGGER.warning("Unsupported repository URL: %s", repo_url)
-                results[repo_url] = False
+                LOGGER.warning(
+                    "Unsupported repository URL (%s) for package %s", repo_url, pkg)
+                results[pkg] = False
                 continue
 
             # Step 3: Normalize URL (remove trailing slash, .git suffix)
@@ -137,14 +122,18 @@ class _RepoDownloader:
             elif provider == 'gitlab':
                 zip_url = f"{normalized_url}/-/archive/{branch}/{branch}.zip"
             else:
+                LOGGER.critical(
+                    "This should never happen - Error in parsing the download URL(%s) "
+                    "for package: %s",
+                    zip_url, pkg
+                )
                 raise _RepoDownloadError(f"Unsupported provider: {provider}")
 
             # Step 5: Download and save
             LOGGER.info("Downloading %s branch '%s' to %s",
                         normalized_url, branch, output_path)
-
-            task = loop.run_in_executor(
-                self.executor, self._download_zip, pkg, zip_url, Path(output_dir))
+            task = loop.run_in_executor(self.executor, self._download_zip,
+                                        pkg, zip_url, Path(output_dir))
             tasks.append((pkg, repo_url, task))
 
         # Wait for all downloads
@@ -152,8 +141,7 @@ class _RepoDownloader:
             try:
                 results[pkg] = loop.run_until_complete(task)
             except Exception as exc:  # pylint: disable=broad-exception-caught
-                LOGGER.error("Download failed for %s: %s - %s",
-                             pkg, repo_url, exc)
+                LOGGER.error("Download failed for %s: %s - %s", pkg, repo_url, exc)  # noqa
                 results[pkg] = False
 
         loop.close()
@@ -200,15 +188,15 @@ class _RepoDownloader:
             except requests.exceptions.ConnectionError as exc:
                 LOGGER.error("Connection error for %s: %s", attempt_url, exc)
             except requests.exceptions.HTTPError as exc:
-                status_code = exc.response.status_code if exc.response else "unknown"
-                # 404 -> but we still have URLs to try #no
+                status_code = exc.response.status_code  # if exc.response else "unknown"
+                # Log the error before deciding what to do
+                LOGGER.error("HTTP %s for %s:\n-> %s", status_code, attempt_url, exc)  # noqa
                 if status_code == 404 and attempt_url != urls_to_try[-1]:
-
                     LOGGER.warning(
-                        "HTTP 404 for %s, will retry with fallback branch", attempt_url)
+                        "HTTP 404 for %s, will retry with fallback branch (master)", attempt_url)
                 else:
-                    LOGGER.error("HTTP error %s for %s:\n-> %s",
-                                 status_code, attempt_url, exc)
+                    LOGGER.error("No fallback for non-404 error, stopping.")
+
             except OSError as exc:
                 LOGGER.error("File I/O error writing to %s: %s",
                              output_file, exc)
@@ -225,6 +213,29 @@ class _RepoDownloader:
         # All attempts failed
         LOGGER.error("All download attempts failed for package: %s", pkg)
         return False
+
+    def _resolve_output_dir(self, output_path: str | Path) -> Path:
+        """Return a Path inside the project root and ensure it exists.
+
+        Accepts both "tmp/repo_downloads" and "/tmp/repo_downloads" and makes
+        them relative to the project root (two levels up from this file).
+        """
+        output_dir = Path(output_path)
+        path_str = str(output_dir)
+        if path_str.startswith('/') or path_str.startswith('\\'):
+            output_dir = Path(path_str.lstrip('/\\'))
+
+        if not output_dir.is_absolute():
+            project_root = Path(__file__).resolve().parents[1]
+            output_dir = project_root / output_dir
+
+        if not output_dir.exists():
+            output_dir.mkdir(parents=True, exist_ok=True)
+            LOGGER.info("Download directory created: %s", output_dir)
+        else:
+            LOGGER.warning("Download directory already exists: %s", output_dir)
+
+        return output_dir
 
     def __enter__(self):
         """Context manager entry."""
