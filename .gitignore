@@ -211,3 +211,6 @@ __marimo__/
 
 
 requirements.txt
+
+src/tmpvenv/**
+src/data/**

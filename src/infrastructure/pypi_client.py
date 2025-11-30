@@ -12,7 +12,7 @@ import requests
 from requests.exceptions import RequestException
 from infrastructure.logger_formatter import LoggerFormatter
 
-logger = LoggerFormatter.initialize("PyPI Client", logging.INFO)
+LOGGER = LoggerFormatter.initialize("PyPI Client", logging.INFO)
 
 
 _PACKAGE_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
@@ -22,7 +22,8 @@ class PyPiHandler:
     """A client to interact with PyPI and fetch package information."""
 
     @staticmethod
-    def get_source_links(pkgs_names: List[str], timeout: int = 10) -> Dict[str, Dict[str, Optional[str]]]:
+    def get_source_links(pkgs_names: List[str],
+                         timeout: int = 10) -> Dict[str, Dict[str, Optional[str]]]:
         """Fetch source/homepage/repository links and license for a list of package names.
 
         Args:
@@ -35,7 +36,7 @@ class PyPiHandler:
         results: Dict[str, Dict[str, Optional[str]]] = {}
         for package in pkgs_names:
             if not isinstance(package, str) or not _PACKAGE_NAME_RE.match(package):
-                logger.warning("Skipping invalid package name: %r", package)
+                LOGGER.warning("Skipping invalid package name: %r", package)
                 results[str(package)] = {'license': 'Unknown', 'link': None}
                 continue
 
@@ -44,14 +45,14 @@ class PyPiHandler:
                 resp = requests.get(url, timeout=timeout)
                 resp.raise_for_status()
             except RequestException as exc:
-                logger.warning("Network error fetching %s: %s", package, exc)
+                LOGGER.warning("Network error fetching %s: %s", package, exc)
                 results[package] = {'license': 'Unknown', 'link': None}
                 continue
 
             try:
                 data = resp.json()
             except ValueError as exc:  # includes simplejson / json decode errors
-                logger.warning("Invalid JSON for %s: %s", package, exc)
+                LOGGER.warning("Invalid JSON for %s: %s", package, exc)
                 results[package] = {'license': 'Unknown', 'link': None}
                 continue
 
@@ -60,9 +61,9 @@ class PyPiHandler:
             source_link: Optional[str] = None
             if isinstance(project_urls, dict):
                 # Ogni json di un repo mette il in chiavi diverse
-                for key in ('Source','source','Source Code','source code',
+                for key in ('Source', 'source', 'Source Code', 'source code',
                             'Code', 'code',
-                            'Repository','repository','Homepage'):
+                            'Repository', 'repository', 'Homepage'):
                     candidate = project_urls.get(key)
                     if candidate:
                         source_link = candidate
@@ -100,15 +101,15 @@ class PyPiHandler:
             # Final license selection
             # ------------------------------
             license_final = license_from_classifiers or \
-                            license_simple or \
-                            license_expression or \
-                            "Unknown"
+                license_simple or \
+                license_expression or \
+                "Unknown"
 
             results[package] = {
                 'license': license_final,
-             #   'license_expression': license_expression,
+                #   'license_expression': license_expression,
                 'link': source_link
             }
+            LOGGER.info("Fetched %s.json", package)
 
         return results
-    

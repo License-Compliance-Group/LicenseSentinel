@@ -21,9 +21,11 @@ def main():
     else:
         logger.debug("File loaded: %s", file_path)
 
-    finder = package_metadata_fetcher.PyMetadataBuilder(file_path)
-    for pkg in finder:
-        print(f"{pkg.package} | {pkg.license_type} | {pkg.link}")
+    finder = package_metadata_fetcher.\
+    build_package_metadata(file_path) # pylint: disable=unused-variable
+                                
+    #for pkg in finder:
+    #    print(f"{pkg.package} | {pkg.license_type} | {pkg.link}")
 
 
 if __name__ == "__main__":
