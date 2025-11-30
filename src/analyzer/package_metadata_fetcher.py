@@ -74,7 +74,7 @@ def build_package_metadata(file_path: str) -> List[PyPiMetadata]:
         ))
         package_urls[pkg_name] = metadata["link"]
 
-    del results
+
     LOGGER.info("Successfully fetched metadata for %d packages",
                 len(_packages_metadata))
 
@@ -85,7 +85,7 @@ def build_package_metadata(file_path: str) -> List[PyPiMetadata]:
         branch=DEFAULT_DOWNLOAD_BRANCH  # This should be removed at all
     )
     for pkg, success in down_results.items():
-        print(f"Download {pkg}: {success}")
+        LOGGER.info("Download %s: %s", pkg, success)
 
     # Step 6: compare PyPI license vs scancode detected license
     # Step 7: create for each package objects package_metadata
