@@ -1,142 +1,88 @@
-#!/usr/bin/env python3
-"""
-Static analysis per verificare che i layer del progetto LicenseSentinel
-rispettino le dipendenze corrette.
-"""
-
 import ast
 from pathlib import Path
-import sys
+import networkx as nx
+
+# Definisco regole di dipendenza tra i layers
+RULES = {
+    "Entities": set(),
+    "Analyzer": {"Entities"},
+    "Infrastructure": {"Analyzer", "Entities"},
+    "Interface": {"Infrastructure", "Analyzer", "Entities"},
+    "script": {"Entities", "Analyzer", "Infrastructure", "Interface"},
+    "test": {"Entities", "Analyzer", "Infrastructure", "Interface", "script"},
+}
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SRC_ROOT = PROJECT_ROOT                 
+EXCLUDE_DIRS = {".venv", "__pycache__", ".git"}
 
-# Mappa layer → cartella reale
-LAYER_PATHS = {
-    "Entities": SRC_ROOT / "Entities",
-    "Infrastructure": SRC_ROOT / "Infrastructure",
-    "Analyzer": SRC_ROOT / "Analyzer",
-    "scripts": SRC_ROOT / "scripts",
-}
-
-# Regole vere del progetto
-LAYER_RULES = {
-    "Entities": set(),  
-    "Infrastructure": {"Entities"},
-    "Analyzer": {"Entities", "Infrastructure"},
-    "scripts": set(), 
-}
-
-
-def detect_layer(file_path: Path) -> str | None:
-    """Determina a quale layer appartiene un file."""
-    for layer, folder in LAYER_PATHS.items():
-        try:
-            file_path.relative_to(folder)
+def get_layer_from_path(path: Path):
+    for layer in RULES.keys():
+        if layer.lower() in str(path).lower():
             return layer
-        except ValueError:
-            continue
     return None
 
-
-def extract_imports(file_path: Path) -> list[tuple[str, int]]:
-    """
-    Estrae tutti gli import di livello 1 dal file.
-    Restituisce: [(modulo, linea), ...]
-    """
-    try:
-        tree = ast.parse(file_path.read_text(encoding="utf-8"))
-    except SyntaxError:
-        return []
+def analyze_imports(file_path: Path):
+    with open(file_path, "r", encoding="utf-8") as f:
+        tree = ast.parse(f.read(), filename=str(file_path))
 
     imports = []
-
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
+            # caso di import modulo
             for alias in node.names:
-                imports.append((alias.name, node.lineno))
-
+                imports.append((alias.name.split(".")[0], node.lineno, f"import {alias.name}"))
         elif isinstance(node, ast.ImportFrom):
+            # caso "from modulo import"
             if node.module:
-                imports.append((node.module, node.lineno))
-
+                imports.append((node.module.split(".")[0], node.lineno, f"from {node.module} import ..."))
     return imports
 
-
-def classify_import(module: str) -> str | None:
-    """
-    Riconosce se un import appartiene a un layer del progetto.
-    """
-    parts = module.split(".")
-
-    if len(parts) >= 2 and parts[0] == "src":
-        layer = parts[1]
-    else:
-        layer = parts[0]
-
-    return layer if layer in LAYER_RULES else None
-
-
-def check_file(file_path: Path, layer: str):
-    """Verifica le regole per un singolo file."""
+# Costruzione del grafo delle dipendenze
+def build_dependency_graph():
+    G = nx.DiGraph()
     violations = []
-    imports = extract_imports(file_path)
-
-    for module, line in imports:
-        imported_layer = classify_import(module)
-
-        # Import proveniente da una libreria esterna → OK
-        if imported_layer is None:
+    for py_file in PROJECT_ROOT.rglob("*.py"):
+        if any(part in EXCLUDE_DIRS for part in py_file.parts):
             continue
-
-        # ENTITIES → nessun import di moduli del progetto
-        if layer == "Entities":
-            violations.append(
-                f"[Entities violation] {file_path} (line {line}) "
-                f"importa {module}, ma Entities deve essere privo di import del progetto."
-            )
-            continue
-
-        # scripts non devono essere importate da nessuno
-        if imported_layer == "scripts":
-            violations.append(
-                f"[Scripts violation] {file_path} (line {line}) "
-                f"importa {module}, ma la cartella 'scripts' non può essere importata."
-            )
-            continue
-
-        # regola generale dei layer
-        allowed = LAYER_RULES[layer]
-        if imported_layer not in allowed and imported_layer != layer:
-            violations.append(
-                f"[Layer violation] {file_path} (line {line}) "
-                f"({layer}) → importa {module} ({imported_layer}) NON PERMESSO"
-            )
-
-    return violations
-
-
-def main():
-    print("Controllo statico dei livelli...")
-
-    all_violations = []
-
-    for file_path in SRC_ROOT.rglob("*.py"):
-        layer = detect_layer(file_path)
+        layer = get_layer_from_path(py_file)
         if not layer:
             continue
-        all_violations.extend(check_file(file_path, layer))
+        imports = analyze_imports(py_file)
+        for imp, lineno, imp_text in imports:
+            for target_layer in RULES.keys():
+                if imp.lower() == target_layer.lower():
+                    G.add_edge(layer, target_layer)
+                    if target_layer not in RULES[layer] and layer != target_layer:
+                        violations.append({
+                            "file": str(py_file),
+                            "line": lineno,
+                            "source": layer,
+                            "target": target_layer,
+                            "import": imp_text
+                        })
+    return G, violations
 
-    if not all_violations:
-        print("Nessuna violazione trovata.")
-        sys.exit(0)
-
-    print("\nViolazioni trovate:\n")
-    for v in all_violations:
-        print(" - " + v)
-
-    sys.exit(1)
-
+def check_cycles(G):
+    return list(nx.simple_cycles(G))
 
 if __name__ == "__main__":
-    main()
+    G, violations = build_dependency_graph()
+
+    print("Mappa delle dipendenze tra layer:")
+    for edge in G.edges():
+        print(f"{edge[0]} → {edge[1]}")
+
+    print("\nViolazioni trovate:")
+    if violations:
+        for v in violations:
+            print(f"{v['file']} (riga {v['line']}): {v['source']} importa {v['target']} [{v['import']}]")
+    else:
+        print("Nessuna violazione")
+
+    cycles = check_cycles(G)
+    if cycles:
+        print("\nCicli di dipendenza trovati:")
+        for c in cycles:
+            print(" -> ".join(c))
+    else:
+        print("\nNessun ciclo di dipendenza")
