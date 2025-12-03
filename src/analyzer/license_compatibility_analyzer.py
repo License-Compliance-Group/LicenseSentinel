@@ -4,13 +4,47 @@ if possible, unless a compliant offline version exists."""
 import os
 import pathlib
 import json
+import itertools
+from abc import abstractmethod
 from datetime import datetime
-from infrastructure.connectivity import Connectivity as io
 
-
+from src.infrastructure.connectivity import Connectivity as io
 from src.infrastructure.logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__,
-LoggerFormatter.WARNING)
+LoggerFormatter.DEBUG)
+
+
+class CompatibilityCalcStrategy:
+    """Abstract Strategy class for compatibility calculation algorithms"""
+    @abstractmethod
+    def calculate_license_compatibility(self, licenses):
+        """_summary_
+
+        Args:
+            licenses: a flat list of license names
+        """
+
+class FullCompatibilityCalc(CompatibilityCalcStrategy):
+    """ Regular mode: just check every possible unique pair"""
+    def calculate_license_compatibility(self, licenses):
+        """The abstract implementation
+
+        Args:
+            licenses (List[str]): A flt list of license names
+
+        Returns:
+            (str, str): (result as "Yes"/"No"/"Same", explanation)
+        """
+        # don't check dupes
+        licenses = set(licenses)
+        for (license_a, license_b) in itertools.combinations(licenses, 2):
+            license_a = license_a.lower()
+            license_b = license_b.lower()
+            result = LicenseCompatibilityAnalyzer.compare_licenses(
+                license_a, license_b)
+            if not result:
+                return result
+        return ("Yes", "n.a.")
 
 class LicenseCompatibilityAnalyzer:
     """Analyzes cross-compatibility of multiple licenses.
@@ -18,7 +52,13 @@ class LicenseCompatibilityAnalyzer:
     https://osadl.org
     """
 
-    def __init__(self, path = str(pathlib.Path.cwd()) + "/src/data/matrix.json"):
+    _license_matrix = ""
+    _compat_calc_strategy = FullCompatibilityCalc()
+    _last_comparison_result = ("None", "You have to perform a comparison first\
+        ! You should use calculate_license_compatibility() for that.")
+
+    def __init__(self, strategy = FullCompatibilityCalc(), path = str(pathlib.Path.cwd())
+                 + "/src/data/matrix.json"):
         """Constructor
         The default path is (project root)/src/data/matrix.json
         """
@@ -27,23 +67,47 @@ class LicenseCompatibilityAnalyzer:
         logger.info("Seeking license file at: %s", self.path)
         if not self.matrix_file_present():
             logger.info("License file not present.")
-        self._json = None
-
+        self.compat_calc_strategy = strategy
 
     @property
-    def json(self):
-        """Private JSON property"""
-        return self._json
+    def compat_calc_strategy(self):
+        """The strategy property
 
-    @json.setter
-    def set_json(self, content):
-        """Sets _json to content"""
-        self._json = content
+        Returns:
+            _type_: _description_
+        """
+        return self._compat_calc_strategy
+    @compat_calc_strategy.setter
+    def compat_calc_strategy(self, content):
+        self._compat_calc_strategy = content
+        
+    @property
+    def last_comparison_result(self):
+        """The last comparison's result.
 
-    @json.getter
-    def get_json(self):
-        """Get _json property's value"""
-        return self._json
+        Returns:
+            (str, str): (result, explanation)
+        """
+        return self._last_comparison_result
+    @last_comparison_result.setter
+    def last_comparison_result(self, value):
+        self._last_comparison_result = value
+
+    @property
+    def license_matrix(self):
+        """Get _license_matrix property's value"""
+        if len(self._license_matrix) == 0:
+            self.update_license_matrix()
+            if len(self._license_matrix) == 0:
+                logger.error("Unable to update license info!")
+                return None
+        return self._license_matrix
+
+
+    @license_matrix.setter
+    def license_matrix(self, content):
+        """Sets _license_matrix to content"""
+        self._license_matrix = content
 
 
     def matrix_file_present(self):
@@ -97,11 +161,11 @@ class LicenseCompatibilityAnalyzer:
             bool: True if the file is good enough OR we're offline, as\
                  verification is then not possible
         """
-        if self.json is None:
+        if self.license_matrix is None or len(self.license_matrix) == 0:
             # We need something to compare against, a load is justified
-            self.update_json()
+            self.update_license_matrix()
 
-        if self.json is None:
+        if self.license_matrix is None or len(self.license_matrix) == 0:
             logger.error("No JSON could be found, aborting")
             return False
 
@@ -122,7 +186,7 @@ class LicenseCompatibilityAnalyzer:
         Returns:
             str: The cached timestamp
         """
-        return datetime.fromisoformat(self.get_json['timestamp'])
+        return datetime.fromisoformat(self.license_matrix['timestamp'])
 
 
     def get_online_timestamp(self, timeout = 30):
@@ -134,8 +198,8 @@ class LicenseCompatibilityAnalyzer:
         return datetime.fromisoformat(timestamp)
 
 
-    def update_json(self):
-        """Updates classes' JSON field, getting the data from offline\
+    def update_license_matrix(self):
+        """Updates classes' license matrix field, getting the data from offline
              or the web. 
             Note: this function will perform I/O - avoid when possible.
 
@@ -151,7 +215,7 @@ class LicenseCompatibilityAnalyzer:
                 logger.warning("Could not read local license file, because an\
                      exception occurred: %s, downloading.", ex)
             else:
-                self.set_json = read_json
+                self.license_matrix = read_json
                 return True
         try: # pylint: disable=no-else-return
              # huh? this is not even an else statement
@@ -162,22 +226,95 @@ class LicenseCompatibilityAnalyzer:
 
             # We have the file, save it for future use
             # By now we are sure that the response contains valid JSON
-            if not io.safe_write(self.path,
-                                                           response.text):
+            if not io.safe_write(self.path,response.text):
                 logger.error("Matrix file not written!")
 
             # Cache the JSON immediately
             # to avoid a redundant disk read
-            self.set_json = read_json
+            self.license_matrix = read_json
 
         except json.JSONDecodeError as ex:
             logger.error("An unexpected error happened when downloading\
                  the online file: %s", ex)
             return False
         else:
-            self.set_json = read_json
+            self.license_matrix = read_json
             return True
 
 
+    def extract_raw_licenses(self, json_path):
+        """
+        This method conflates a scancode JSON file to a raw list of licenses.
+         For now it accepts a path, it might later accept a file descriptor
+         or whatever else necessary
+        
+
+        Args:
+            json_path (str): a string containing the file path
+
+        Returns:
+            list: A list of licenses used.
+        """
+        raw_json = io.safe_read(json_path)
+        if raw_json is None:
+            logger.error("Could not load JSON file at: %s", json_path)
+            return None
+        licenses_json = json.loads(raw_json)
+        licenses = []
+        for file_entry in licenses_json.get('files', []):
+            detections = file_entry.get('license_detections', [])
+            if isinstance(detections, dict) and 'license-expression' \
+                in detections:
+                licenses.append(detections['license-expression'])
+        logger.debug("Detected licenses: %s", licenses)
+        return licenses
+
+    @classmethod
+    def compare_licenses(cls, lic_a, lic_b):
+        """Com
+
+        Args:
+            lic_a (_type_): _description_
+            lic_b (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
+        # OSADL license compatibility arrays seem to be alphabetically sorted
+        # It's nowhere in the docs, so we won't rely on that
+        # if it ever gets confirmed, we can use much more efficient binary
+        # search. For now, linear will have to do.
+        # Twice.
+        classclass = cls(cls)
+        for lic in classclass.license_matrix['licenses']:
+            if lic['name'].lower() == lic_a:
+                for compat in lic['compatibilities']:
+                    if compat['name'].lower() == lic_b.lower():
+                        notice = (compat['compatibility'],
+                                    compat['explanation'])
+                        logger.debug("Notice detected: %s", notice)
+                        return notice
+
+                logger.warning('Unknown license type: %s', lic_a)
+                return (None, None)
+        logger.warning('Unknown license type: %s', lic_b)
+        return (None, None)
+
+    def calculate_license_compatibility(self, licenses):
+        """Calculate license compatibility of the project using currently 
+        selected strategy.
+
+        Args:
+            licenses (List[str]): A flat list of license names
+        """
+        self.last_comparison_result = self.compat_calc_strategy.\
+            calculate_license_compatibility(licenses)
+
 if __name__ == "__main__":
-    lca = LicenseCompatibilityAnalyzer()
+    # note: these are NOT tests in any way or fashion
+    # this is a quick-and-dirty method to check if stuff works
+    lca = LicenseCompatibilityAnalyzer(FullCompatibilityCalc())
+    lca.extract_raw_licenses(str(pathlib.Path.cwd())
+                             + '/src/data/licenses.json')
+    lca.compare_licenses('afl-2.0', 'afl-2.1') # known compatible
+    lca.calculate_license_compatibility(['afl-2.0', 'afl-2.1'])

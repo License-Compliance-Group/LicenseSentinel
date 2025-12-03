@@ -1,5 +1,6 @@
 """Unit tests for LicenseCompatibilityAnalyzer"""
-from src.analyzer.license_compatibility_analyzer import LicenseCompatibilityAnalyzer
+from src.analyzer.license_compatibility_analyzer \
+import LicenseCompatibilityAnalyzer
 
 
 class TestLicenseCompatibilityAnalyzerClass():

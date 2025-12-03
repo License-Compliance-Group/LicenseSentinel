@@ -1,12 +1,12 @@
 """The Connectivity class is responsible for the I/O that the program does."""
 
 import requests
-from infrastructure.logger_formatter import LoggerFormatter
+from src.infrastructure.logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__)
 
 class Connectivity:
     """Implementation of the class"""
-    
+
     @staticmethod
     def safe_write(path, content):
         """Safely write to a file. Does not raise.
@@ -39,10 +39,10 @@ class Connectivity:
         """
         try:
             with open(path, 'r', encoding='utf-8') as f:
-                content = f.readall()
-        except IOError as ex:
+                content = f.read()
+        except (IOError, AttributeError) as ex:
             logger.warning("Could not read from file: %s", ex)
-            return False
+            return None
         return content
     @staticmethod
     def verify_internet_access(host = "https://example.com",timeout = 30):
