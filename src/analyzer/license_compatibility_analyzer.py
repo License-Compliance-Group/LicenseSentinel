@@ -12,9 +12,8 @@ from src.infrastructure.connectivity import Connectivity as io
 from src.infrastructure.logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__,
 LoggerFormatter.DEBUG)
-
-
 class CompatibilityCalcStrategy:
+    # This class is meant for a single purpose.
     """Abstract Strategy class for compatibility calculation algorithms"""
     @abstractmethod
     def calculate_license_compatibility(self, licenses):
@@ -25,6 +24,7 @@ class CompatibilityCalcStrategy:
         """
 
 class FullCompatibilityCalc(CompatibilityCalcStrategy):
+    # This class is meant for a single purpose.
     """ Regular mode: just check every possible unique pair"""
     def calculate_license_compatibility(self, licenses):
         """The abstract implementation
@@ -80,7 +80,7 @@ class LicenseCompatibilityAnalyzer:
     @compat_calc_strategy.setter
     def compat_calc_strategy(self, content):
         self._compat_calc_strategy = content
-        
+
     @property
     def last_comparison_result(self):
         """The last comparison's result.
