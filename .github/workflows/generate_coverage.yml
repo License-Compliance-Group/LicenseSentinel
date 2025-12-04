@@ -1,0 +1,49 @@
+# This workflow will install Python dependencies, run unit tests and create a coverage report
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Create coverage 
+
+on:
+ # push:
+ #   branches: [ "main", "develop" ]
+ # pull_request:
+ #   branches: [ "main", "develop" ]
+ workflow_run:
+   workflows: ["Pylint"]
+   branches: ["main", "develop"]
+   types: 
+     - completed
+  
+
+jobs:
+  on-success:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    if: ${{ github.event.workflow_run.conclusion == 'success' }} # don't run unless pylint succeeded
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install unittest coverage
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Measure coverage with coverage
+      run: |
+        coverage run -m unittest discover
+    - name: Create a report for further analysis
+      run: |
+        coverage xml -o test/reports/coverage.xml
+    - name: Commit a report to the repo
+      uses: EndBug/add-and-commit@v9
+      with:
+        default_author: github_actions
+        add: |
+          - test/reports/coverage.xml
+        message: 'Append a coverage report'
