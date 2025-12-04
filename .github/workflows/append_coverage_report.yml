@@ -1,0 +1,23 @@
+# Appends coverage report summary to any push/PR which uses coverage testing
+# Will only execute if report generation worked
+name: 'Append coverage report'
+on:
+  workflow_run:
+    workflows: ['Create coverage']
+    branches:
+        - master
+        - main
+    types: ['completed']
+    
+jobs:
+    on-success:
+        runs-on: ubuntu-latest
+        # run if both: a report was generated AND the report file exists
+        if: ${{(github.event.workflow_run.conclusion == 'success') && (hashFiles('test/reports/coverage.xml') != '')}}
+        steps:
+          - name:  'Append report'
+            uses: orgoro/coverage@v3.2
+            with:
+                coverageFile: test/reports/coverage.xml
+                token: ${{ secrets.GITHUB_TOKEN }}
+                thresholdAll: 0.8
