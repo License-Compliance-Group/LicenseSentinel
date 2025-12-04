@@ -37,11 +37,11 @@ SCANCOMMAND_ALL = [
     "--license-text",
     "--license-text-diagnostics",
     "--include",
-    r"\*.py",
+    r"\*.py",  # scancode issue
     "--include",
     "\"LICENSE\"",
     "--json-pp",
-    "-"
+    "-"  # print JSON to stdout
 ]
 
 
