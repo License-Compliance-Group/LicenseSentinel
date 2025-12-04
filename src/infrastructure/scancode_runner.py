@@ -5,9 +5,9 @@ Provides simple helpers to run ScanCode on downloaded repositories and to
 extract ZIP archives prior to scanning.
 
 Public functions
-- run_scancode(scan_path, output_path)
-    Run ScanCode with two presets (license-only and Python-only) on `scan_path`
-    and write JSON pretty-printed results to `output_path`. Logs failures.
+- run_scancode(scan_path, pkg)
+    Run ScanCode on `scan_path` (Path) and return parsed JSON results.
+    Logs failures and returns None on error.
 
 - _extract_zip_contents(zip_file_path, extract_to)
     Extract ZIP archive to the given directory. Logs and skips on corrupt archives.
@@ -15,26 +15,21 @@ Public functions
 Notes
 - Requires the `scancode` CLI on PATH.
 - Uses subprocess to invoke ScanCode; caller is responsible for ensuring
-  `scan_path` exists and `output_path` is writable.
+  `scan_path` exists.
 - Logging is performed via infrastructure.logger_formatter.LoggerFormatter.
 """
 from datetime import datetime
 import os
-import multiprocessing
-from multiprocessing.shared_memory import SharedMemory
 import subprocess
 import logging
 import zipfile
-import time
+import json
+from typing import Optional
+from pathlib import Path
 
 from infrastructure.logger_formatter import LoggerFormatter
 
 LOGGER = LoggerFormatter.initialize("SCANCODE WORKER", logging.INFO)
-
-# Search for LICENSE files using ScanCode
-
-# SCANCOMMAND_LICENSE_FILE = ["scancode","-l","-p","--license-text","--license-text-diagnostics","--json-pp","-"]
-# SCANCOMMAND_PY_ONLY = ["scancode","-l",    "--license-text","--license-text-diagnostics",    "--include", "'*.py'",    "--json-pp",    "-"  # stdout output]
 
 SCANCOMMAND_ALL = [
     "scancode",
@@ -42,57 +37,70 @@ SCANCOMMAND_ALL = [
     "--license-text",
     "--license-text-diagnostics",
     "--include",
-    "\"*.py\"",
+    r"\*.py",
     "--include",
     "\"LICENSE\"",
     "--json-pp",
     "-"
 ]
-# Si possono scannerizzare cartelle multiple, ma non si possono avere cartelle diverse con opzioni diverse
 
 
-def run_scancode(scan_path, pkg: str) -> json:
+def run_scancode(scan_path: Path, pkg: str) -> Optional[dict]:
     """
-    Run ScanCode on the specified path and save the results to the output path.
+    Run ScanCode on the specified path and return the JSON results.
 
-    :param scan_path: The ROOT path of the repo to scan.
-    :param output_path: The path to save the scan results.
+    :param scan_path: The ROOT path of the repo to scan (Path object).
+    :param pkg: Package name for logging purposes.
+    :return: Parsed JSON dict from ScanCode output, or None on failure.
     """
-    _extract_zip_contents(scan_path, scan_path + "_extracted")
-    scan_path = scan_path + "_extracted"
+    extracted_path = scan_path.parent / f"{scan_path.stem}_extracted"
 
-    # cmd_license = SCANCOMMAND_LICENSE_FILE + [output_path, scan_path + "\\LICENSE"]  # NOQA
-    # cmd_python = SCANCOMMAND_PY_ONLY + [output_path+"P", scan_path]
-    # cmd_license = SCANCOMMAND_LICENSE_FILE + [scan_path + "\\LICENSE"]  # NOQA Scan only LICENSE file
-    # cmd_python = SCANCOMMAND_PY_ONLY + [scan_path]  # Scan all .py files
-    # Scan LICENSE and all .py files
+    _extract_zip_contents(scan_path, extracted_path)
+
     cwd = os.getcwd()
-    print("Current Working Directory:", cwd)
-    cmd_all = SCANCOMMAND_ALL + [scan_path]
-    print(" ".join(cmd_all))
+    LOGGER.info("Current Working Directory: %s", cwd)
+    cmd_all = SCANCOMMAND_ALL + [str(extracted_path)]
+    LOGGER.info("Running ScanCode command: %s", " ".join(cmd_all))
 
     current_time = datetime.now()
     try:
-
-        result = subprocess.run(cmd_all, shell=True,
-                                check=True, capture_output=True, text=True)
-        capture_output = result.stdout
-        print("Scan License completed: ", capture_output)
+        result = subprocess.run(
+            cmd_all,
+            shell=True,
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        stdout_output = result.stdout
+        LOGGER.info("Scan completed for %s", pkg)
+        # print(stdout_output)
+        # Parse JSON from stdout
+        try:
+            scan_results = json.loads(stdout_output)
+            return scan_results
+        except json.JSONDecodeError as e:
+            LOGGER.error(
+                "Failed to parse ScanCode JSON output for %s: %s", pkg, e)
+            return None
 
     except subprocess.CalledProcessError as e:
-        LOGGER.error("Error scanning %s repository: %s -> %s",
-                     pkg, scan_path, e)
-    current_time2 = datetime.now()
+        LOGGER.error("Error scanning %s repository at %s: %s",
+                     pkg, extracted_path, e)
+        return None
+    finally:
+        current_time2 = datetime.now()
+        time_difference = current_time2 - current_time
+        LOGGER.info("Elapsed time for %s: %s", pkg, time_difference)
 
-    time_difference = current_time2 - current_time
-    print("elapsed time: ", time_difference)
 
-
-def _extract_zip_contents(zip_file_path, extract_to):
+def _extract_zip_contents(zip_file_path: Path, extract_to: Path) -> None:
     """
     Extract ZIP archive to the given directory. Logs and skips on corrupt archives.
+
+    :param zip_file_path: Path to the ZIP file (Path object).
+    :param extract_to: Directory to extract to (Path object).
     """
-    if not os.path.exists(zip_file_path):
+    if not zip_file_path.exists():
         LOGGER.error("The file %s does not exist.", zip_file_path)
         return
 
@@ -104,31 +112,14 @@ def _extract_zip_contents(zip_file_path, extract_to):
 
 
 def main():
-    path = "C:\\Users\\Dabaduck\\Desktop\\VisualStudio a caso\\scan_code\\requests-main"
+    path = Path(
+        "C:/Users/Dabaduck/Desktop/LicensesChecker/src/tmpvenv/repo_downloads/requests.zip")
     # Call the run_scancode function
-    run_scancode(path, "output.json")
+    results = run_scancode(path, "requests")
+    if results:
+        print(f"Scan successful, found {len(results.get('files', []))} files")
 
 
 if __name__ == "__main__":
     # Entry point for script execution
     main()
-
-# scancode -l --license-text --license-text-diagnostics --include "*.py" --json-pp output.json "C:\\Users\\Dabaduck\Desktop\VisualStudio a caso\scan_code\requests-main"
-
-
-# scancode -l --license-text --license-text-diagnostics --include  "*.py" --json-pp, output.json, "C:\\Users\\Dabaduck\\Desktop\\VisualStudio a caso\\scan_code\\requests-main]"
-
-# Scansiona tutto in cerca di LICENSE (possono essere + di uno) e file py in src
-# scancode --license --license-text --license-text-diagnostics --json-pp output.json --include '*.py' 'LICENSE' src
-
-
-# --------------*------X--------
-#     \--------/      /
-#        \-----------/
-
-# PROVA QUESTA PROVA QUESTA PROVA QUESTA PROVA QUESTA PROVA QUESTA
-# scancode -l --license-text --license-text-diagnostics --include "*.py" --include "LICENSE" --json-pp - "C:\\Users\\Dabaduck\Desktop\VisualStudio a caso\scan_code\requests-main"
-# scancode -l --license-text --license-text-diagnostics --include "*.py" --json-pp output.json "C:\Users\Dabaduck\Desktop\VisualStudio a caso\scan_code\requests-main"
-# scancode -lp --info   --license-score 0 --json-pp - --include "LICENSE" --include "README.md" --include "*.py" .
-
-# scancode -l --license-text --license-text-diagnostics --include "*.py" --include "LICENSE" --json-pp - "C:\Users\Dabaduck\Desktop\VisualStudio a caso\scan_code\requests-main"
