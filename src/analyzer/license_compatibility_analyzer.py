@@ -5,14 +5,14 @@ import os
 import pathlib
 import json
 import itertools
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from datetime import datetime
 
 from src.infrastructure.connectivity import Connectivity as io
 from src.infrastructure.logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__,
 LoggerFormatter.DEBUG)
-class CompatibilityCalcStrategy:
+class CompatibilityCalcStrategy(ABC):
     # This class is meant for a single purpose.
     """Abstract Strategy class for compatibility calculation algorithms"""
     @abstractmethod
@@ -42,7 +42,7 @@ class FullCompatibilityCalc(CompatibilityCalcStrategy):
             license_b = license_b.lower()
             result = LicenseCompatibilityAnalyzer.compare_licenses(
                 license_a, license_b)
-            if not result:
+            if result is None or result[0] != "Yes":
                 return result
         return ("Yes", "n.a.")
 
@@ -100,7 +100,7 @@ class LicenseCompatibilityAnalyzer:
             self.update_license_matrix()
             if len(self._license_matrix) == 0:
                 logger.error("Unable to update license info!")
-                return None
+                return ""
         return self._license_matrix
 
 
@@ -194,7 +194,10 @@ class LicenseCompatibilityAnalyzer:
         Downloads a small string from a specified URL"""
 
         url = 'https://www.osadl.org/fileadmin/checklists/timestamp'
-        timestamp = io.download_file(url, timeout, 512).text.strip()
+        response = io.download_file(url, timeout, 512)
+        if response is None:
+            return None
+        timestamp = response.text.strip()
         return datetime.fromisoformat(timestamp)
 
 
@@ -217,6 +220,10 @@ class LicenseCompatibilityAnalyzer:
             else:
                 self.license_matrix = read_json
                 return True
+        # Don't attempt downloading when offline.
+        if not io.verify_internet_access():
+            self.license_matrix = ''
+            return False
         try: # pylint: disable=no-else-return
              # huh? this is not even an else statement
             response = self.download_wrapper()
