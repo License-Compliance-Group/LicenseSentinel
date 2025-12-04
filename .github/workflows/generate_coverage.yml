@@ -4,25 +4,18 @@
 name: Create coverage 
 
 on:
- # push:
- #   branches: [ "main", "develop" ]
- # pull_request:
- #   branches: [ "main", "develop" ]
- workflow_run:
-   workflows: ["Pylint"]
-   branches: ["main", "develop"]
-   types: 
-     - completed
-  
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
 
 jobs:
-  on-success:
+  build:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.12"]
-    if: ${{ github.event.workflow_run.conclusion == 'success' }} # don't run unless pylint succeeded
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
