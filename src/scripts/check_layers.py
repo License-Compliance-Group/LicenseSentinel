@@ -1,7 +1,7 @@
 import ast
 from pathlib import Path
 
-# Definisco le regole dell'architettura
+# Definizione delle regole dell'architettura
 RULES = {
     "Entities": set(),
     "Analyzer": {"Entities"},
