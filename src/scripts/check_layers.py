@@ -18,7 +18,7 @@ def is_package(path: Path) -> bool:
     return (path / "__init__.py").exists()
 
 # Ottiene il layer a cui appartiene un file relazionando con il suo percorso
-def get_layer_from_path(path: Path):
+def get_layer_from_path(path: Path) -> str | None:
     for layer in RULES.keys():
         if layer.lower() in str(path).lower():
             return layer
