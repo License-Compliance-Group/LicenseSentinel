@@ -17,7 +17,7 @@ EXCLUDE_DIRS = {".venv", "__pycache__", ".git"}
 def is_package(path: Path) -> bool:
     return (path / "__init__.py").exists()
 
-# Ottengo il layer a cui appartiene un file relazionando con il suo percorso
+# Ottiene il layer a cui appartiene un file relazionando con il suo percorso
 def get_layer_from_path(path: Path):
     for layer in RULES.keys():
         if layer.lower() in str(path).lower():
