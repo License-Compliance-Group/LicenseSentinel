@@ -56,7 +56,7 @@ def analyze_imports(file_path: Path) -> list[tuple[str, int, str]]:
 
 
 # Controlla se i file rispettano le regole dell'architettura
-def check_architecture():
+def check_architecture() -> list[dict[str, str | int]]:
     violations = []
 
     for py_file in PROJECT_ROOT.rglob("*.py"):
