@@ -13,7 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 EXCLUDE_DIRS = {".venv", "__pycache__", ".git"}
 
 
-# Verifico se una directory è un package
+# Verifica se una directory è un package
 def is_package(path: Path) -> bool:
     return (path / "__init__.py").exists()
 
