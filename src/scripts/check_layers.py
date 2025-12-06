@@ -71,8 +71,8 @@ def check_architecture():
 
         imports = analyze_imports(py_file)
 
-        for imp, lineno, imp_text in imports:
-            target_layer = get_layer_from_import(imp)
+        for import_module, lineno, imp_text in imports:
+            target_layer = get_layer_from_import(import_module)
             if not target_layer:
                 continue
             
