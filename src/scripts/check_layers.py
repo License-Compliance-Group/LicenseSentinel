@@ -78,7 +78,6 @@ def check_architecture():
             target_layer = get_layer_from_import(import_module)
             if not target_layer:
                 continue
-            
             # Verifica se il layer corrente è autorizzato a importare il target
             if target_layer not in RULES[layer] and layer != target_layer:
                 violations.append({
