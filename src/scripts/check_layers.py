@@ -25,7 +25,7 @@ def get_layer_from_path(path: Path) -> str | None:
     return None
 
 # Determina il layer a cui appartiene un import
-def get_layer_from_import(import_name: str):
+def get_layer_from_import(import_name: str) -> str | None:
     import_name = import_name.lower()
     for layer in RULES.keys():
         if layer.lower() in import_name:
