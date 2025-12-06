@@ -33,7 +33,7 @@ def get_layer_from_import(import_name: str):
     return None
 
 # Estrae tutti gli import presenti in un file Python usando AST
-def analyze_imports(file_path: Path):
+def analyze_imports(file_path: Path) -> list[tuple[str, int, str]]:
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             tree = ast.parse(f.read(), filename=str(file_path))
