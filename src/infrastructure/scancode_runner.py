@@ -112,8 +112,11 @@ def _extract_zip_contents(zip_file_path: Path, extract_to: Path) -> None:
 
 
 def main():
+    """
+    example main function to demonstrate usage
+    """
     path = Path(
-        "C:/Users/Dabaduck/Desktop/LicensesChecker/src/tmpvenv/repo_downloads/requests.zip")
+        "C:/YourPath/LicensesChecker/src/tmpvenv/repo_downloads/requests.zip")
     # Call the run_scancode function
     results = run_scancode(path, "requests")
     if results:
