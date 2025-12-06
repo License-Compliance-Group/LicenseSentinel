@@ -5,7 +5,7 @@ from pathlib import Path
 RULES = {
     "Entities": set(),
     "Analyzer": {"Entities"},
-    "Infrastructure": {"Analyzer", "Entities"},
+    "Infrastructure": {"Entities"},
     "Interface": {"Infrastructure", "Analyzer", "Entities"},
 }
 
