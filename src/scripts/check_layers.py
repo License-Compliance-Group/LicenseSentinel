@@ -4,27 +4,30 @@ Static analysis per verificare che i layer del progetto LicenseSentinel
 rispettino le dipendenze corrette.
 """
 
+import sys
 import ast
 from pathlib import Path
-import sys
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SRC_ROOT = PROJECT_ROOT                 
+SRC_ROOT = PROJECT_ROOT
+EXCLUDED_DIRS = {"tmpvenv", "__pycache__"}
 
 # Mappa layer → cartella reale
 LAYER_PATHS = {
-    "Entities": SRC_ROOT / "Entities",
-    "Infrastructure": SRC_ROOT / "Infrastructure",
-    "Analyzer": SRC_ROOT / "Analyzer",
+    "entities": SRC_ROOT / "entities",
+    "infrastructure": SRC_ROOT / "infrastructure",
+    "analyzer": SRC_ROOT / "analyzer",
+    "interface": SRC_ROOT / "interface",
     "scripts": SRC_ROOT / "scripts",
 }
 
 # Regole vere del progetto
 LAYER_RULES = {
-    "Entities": set(),  
-    "Infrastructure": {"Entities"},
-    "Analyzer": {"Entities", "Infrastructure"},
-    "scripts": set(), 
+    "entities": set(),
+    "infrastructure": {"entities"},
+    "analyzer": {"entities", "infrastructure"},
+    "interface": {"entities", "infrastructure", "analyzer"},
+    "scripts": set(),
 }
 
 
@@ -122,6 +125,9 @@ def main():
     all_violations = []
 
     for file_path in SRC_ROOT.rglob("*.py"):
+        if any(part in EXCLUDED_DIRS for part in file_path.parts):
+            continue
+
         layer = detect_layer(file_path)
         if not layer:
             continue
