@@ -9,8 +9,6 @@ Public functions
     Run ScanCode on `scan_path` (Path) and return parsed JSON results.
     Logs failures and returns None on error.
 
-- _extract_zip_contents(zip_file_path, extract_to)
-    Extract ZIP archive to the given directory. Logs and skips on corrupt archives.
 
 Notes
 - Requires the `scancode` CLI on PATH.
@@ -19,7 +17,6 @@ Notes
 - Logging is performed via infrastructure.logger_formatter.LoggerFormatter.
 """
 from datetime import datetime
-import os
 import subprocess
 import logging
 import zipfile
@@ -29,7 +26,8 @@ from pathlib import Path
 
 from infrastructure.logger_formatter import LoggerFormatter
 
-LOGGER = LoggerFormatter.initialize("SCANCODE WORKER", logging.INFO)
+
+LOGGER = LoggerFormatter.initialize("scancode_runner", logging.INFO)
 
 SCANCOMMAND_ALL = [
     "scancode",
@@ -57,8 +55,7 @@ def run_scancode(scan_path: Path, pkg: str) -> Optional[dict]:
 
     _extract_zip_contents(scan_path, extracted_path)
 
-    cwd = os.getcwd()
-    LOGGER.info("Current Working Directory: %s", cwd)
+
     cmd_all = SCANCOMMAND_ALL + [str(extracted_path)]
     LOGGER.info("Running ScanCode command: %s", " ".join(cmd_all))
 
@@ -66,14 +63,12 @@ def run_scancode(scan_path: Path, pkg: str) -> Optional[dict]:
     try:
         result = subprocess.run(
             cmd_all,
-            shell=True,
             check=True,
             capture_output=True,
             text=True
         )
         stdout_output = result.stdout
         LOGGER.info("Scan completed for %s", pkg)
-        # print(stdout_output)
         # Parse JSON from stdout
         try:
             scan_results = json.loads(stdout_output)
@@ -116,7 +111,7 @@ def main():
     example main function to demonstrate usage
     """
     path = Path(
-        "C:/YourPath/LicensesChecker/src/tmpvenv/repo_downloads/requests.zip")
+        "/home/kamil/szkola/SE/projekt/licenses/LicenseSentinel/src/downloads/numpy-main.zip/numpy.zip")
     # Call the run_scancode function
     results = run_scancode(path, "requests")
     if results:
