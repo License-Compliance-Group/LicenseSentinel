@@ -1,4 +1,5 @@
 """Unit tests for LicenseCompatibilityAnalyzer"""
+<<<<<<< HEAD
 import os
 import tempfile
 import unittest
@@ -49,6 +50,12 @@ class TestFullCompatibilityCalc(unittest.TestCase):
         self.assertEqual(result[0], "No")
 
 
+=======
+import unittest
+from src.analyzer.license_compatibility_analyzer import LicenseCompatibilityAnalyzer
+
+
+>>>>>>> e00bdcc (Create a coverage report Bash script)
 class TestLicenseCompatibilityAnalyzerClass(unittest.TestCase):
     """Unit tests for LicenseCompatibilityAnalyzer class."""
 
