@@ -44,7 +44,7 @@ htmlcov/
 .coverage.*
 .cache
 nosetests.xml
-coverage.xml
+# coverage.xml
 *.cover
 *.py.cover
 .hypothesis/
@@ -212,5 +212,6 @@ __marimo__/
 
 requirements.txt
 
-src/tmpvenv/**
+# Ignore raw data files
 src/data/**
+src/tmpvenv/**
