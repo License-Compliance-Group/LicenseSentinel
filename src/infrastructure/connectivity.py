@@ -49,7 +49,7 @@ class Connectivity:
         """We need internet access to download the matrix file."""
         # Connect to a known-up server
         try:
-            logger.info("Veryfing internet access. This will take up to %d" +
+            logger.info("Verifying internet access. This will take up to %d" +
             "seconds, depending on your network quality.", timeout)
             req = requests.head(host, timeout=timeout)
             req.raise_for_status()
@@ -62,7 +62,7 @@ class Connectivity:
         return False
 
     @staticmethod
-    def download_file(url ,timeout = 30, max_size = 5 * 1024 * 1024):
+    def download_file(url, timeout = 30, max_size = 5 * 1024 * 1024):
         """Download any file from anywhere. Basically a discount curl.
 
         Args:
@@ -87,11 +87,12 @@ class Connectivity:
             logger.debug('Downloading from %s...', url)
             response = requests.get(url, timeout = timeout)
             response.raise_for_status()
-            if int(response.headers.get('Content-Length')) > max_size:
+            content_length = response.headers.get('Content-Length')
+            if content_length and int(content_length) > max_size:
                 raise ValueError('Response too large')
 
         except (requests.exceptions.Timeout, ValueError) as ex:
             logger.error("Could not download a file from %s, because an "+
-            "exception occured: %s", url, ex)
+            "exception occurred: %s", url, ex)
             return None
         return response

@@ -17,10 +17,13 @@ class CompatibilityCalcStrategy(ABC):
     """Abstract Strategy class for compatibility calculation algorithms"""
     @abstractmethod
     def calculate_license_compatibility(self, licenses):
-        """_summary_
+        """Calculate the compatibility between a list of licenses.
 
         Args:
-            licenses: a flat list of license names
+            licenses (List[str]): A flat list of license names to check for compatibility.
+
+        Returns:
+            tuple: (result as "Yes"/"No"/"Same", explanation)
         """
 
 class FullCompatibilityCalc(CompatibilityCalcStrategy):
@@ -30,7 +33,7 @@ class FullCompatibilityCalc(CompatibilityCalcStrategy):
         """The abstract implementation
 
         Args:
-            licenses (List[str]): A flt list of license names
+            licenses (List[str]): A flat list of license names
 
         Returns:
             (str, str): (result as "Yes"/"No"/"Same", explanation)
@@ -57,12 +60,12 @@ class LicenseCompatibilityAnalyzer:
     _last_comparison_result = ("None", "You have to perform a comparison first\
         ! You should use calculate_license_compatibility() for that.")
 
-    def __init__(self, strategy = FullCompatibilityCalc(), path = str(pathlib.Path.cwd())
-                 + "/src/data/matrix.json"):
+    def __init__(self, strategy=None, path=str(pathlib.Path.cwd()) + "/src/data/matrix.json"):
         """Constructor
         The default path is (project root)/src/data/matrix.json
         """
-
+        if strategy is None:
+            strategy = FullCompatibilityCalc()
         self.path = path
         logger.info("Seeking license file at: %s", self.path)
         if not self.matrix_file_present():
@@ -71,10 +74,10 @@ class LicenseCompatibilityAnalyzer:
 
     @property
     def compat_calc_strategy(self):
-        """The strategy property
+        """The strategy property.
 
         Returns:
-            _type_: _description_
+            CompatibilityCalcStrategy: The current strategy used for license compatibility calculation.
         """
         return self._compat_calc_strategy
     @compat_calc_strategy.setter
@@ -142,14 +145,17 @@ class LicenseCompatibilityAnalyzer:
             if i > 1:
                 logger.warning("Download failed, trying again...")
             logger.info("Downloading the file (attempt %d/%d). This"+
-            " will take up to %d seconds, depending on your newtork quality.",
+            " will take up to %d seconds, depending on your network quality.",
             i, attempts, timeout)
             response = io.download_file(url,
             timeout)
             if response is not None:
                 break
 
-        logger.debug("Download successful.")
+        if response is not None:
+            logger.debug("Download successful.")
+        else:
+            logger.warning("All download attempts failed.")
         return response
 
 
@@ -278,14 +284,14 @@ class LicenseCompatibilityAnalyzer:
 
     @classmethod
     def compare_licenses(cls, lic_a, lic_b):
-        """Com
+        """Compare two licenses for compatibility and return the result.
 
         Args:
-            lic_a (_type_): _description_
-            lic_b (_type_): _description_
+            lic_a (_type_): The name of the first license.
+            lic_b (_type_): The name of the second license.
 
         Returns:
-            _type_: _description_
+            tuple: (compatibility, explanation) if found, otherwise (None, None).
         """
         # OSADL license compatibility arrays seem to be alphabetically sorted
         # It's nowhere in the docs, so we won't rely on that
@@ -302,7 +308,7 @@ class LicenseCompatibilityAnalyzer:
                         logger.debug("Notice detected: %s", notice)
                         return notice
 
-                logger.warning('Unknown license type: %s', lic_a)
+                logger.warning('Unknown license type: %s', lic_b)
                 return (None, None)
         logger.warning('Unknown license type: %s', lic_b)
         return (None, None)
