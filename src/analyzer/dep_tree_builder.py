@@ -15,13 +15,14 @@ from infrastructure.logger_formatter import LoggerFormatter
 
 logger = LoggerFormatter.initialize("Dependency tree builder", logging.INFO)
 
-PACKAGES = ["flask"]
-
+PACKAGES = [""]  # to remove
+PATH = "tmpvenv"
 # Deve gestire la creazione dell'enviroment stile singleton
 # (create e destroy ecc ma per ora non uso il pattern)
 # Deve essere l'unica classe a poter modificare o interagire con il tempvenv
 
-def venv_exists(path: str = "tmpvenv") -> bool:
+
+def venv_exists(path: str = PATH) -> bool:
     """Check if a virtual environment exists at the given path.
 
     Args:
@@ -34,7 +35,7 @@ def venv_exists(path: str = "tmpvenv") -> bool:
     return venv_path.exists() and venv_path.is_dir()
 
 
-def create_venv(path: str = "tmpvenv", force_recreate: bool = False) -> str:
+def create_venv(path: str = PATH, force_recreate: bool = False) -> str:
     """Create a virtual environment if it doesn't exist.
 
     Args:
@@ -65,7 +66,8 @@ def create_venv(path: str = "tmpvenv", force_recreate: bool = False) -> str:
     bin_dir = "Scripts" if os.name == "nt" else "bin"
     return str(venv_path / bin_dir)
 
-def delete_venv(path: str = "tmpvenv") -> None:
+
+def delete_venv(path: str = PATH) -> None:
     """Delete the virtual environment directory if it exists.
 
     Args:
@@ -82,9 +84,12 @@ def delete_venv(path: str = "tmpvenv") -> None:
         except OSError as exc:
             raise RuntimeError(f"Failed to delete venv: {exc}") from exc
     else:
-        logger.warning("Virtual environment at %s does not exist, nothing to delete.", path)
+        logger.warning(
+            "Virtual environment at %s does not exist, nothing to delete.", path)
 
-#Pipdeptree deve essere per forza installato nel venv
+# Pipdeptree deve essere per forza installato nel venv
+
+
 def install_packages(venv_bin: str, packages: List[str]) -> None:
     """Install packages and pipdeptree into the virtual environment.
 
@@ -97,18 +102,22 @@ def install_packages(venv_bin: str, packages: List[str]) -> None:
     """
     python_exe = "python.exe" if os.name == "nt" else "python"
     python = Path(venv_bin) / python_exe
-    #TODO: pipdeptree should not be downloaded but shipped with this tool
+    # TO-DO: pipdeptree should not be downloaded but shipped with this tool
     logger.info("Installing packages: %s", ", ".join(packages))
     try:
-        subprocess.run([str(python), "-m", "pip", "install", "--quiet"] + packages, check=True)
-        subprocess.run([str(python), "-m", "pip", "install", "--quiet", "pipdeptree"], check=True)
+        subprocess.run([str(python), "-m", "pip", "install",
+                       "--quiet"] + packages, check=True)
+        subprocess.run([str(python), "-m", "pip", "install",
+                       "--quiet", "pipdeptree"], check=True)
         # For hiding the output of pip install
         # stdout=subprocess.DEVNULL,
         # stderr=subprocess.DEVNULL,
 
     except subprocess.CalledProcessError as exc:
-        logger.critical("Failed to install packages with exit code %s", exc.returncode)
+        logger.critical(
+            "Failed to install packages with exit code %s", exc.returncode)
         raise RuntimeError(f"Failed to install packages: {exc}") from exc
+
 
 def get_tree_json(venv_bin: str) -> List[Dict]:
     """Run pipdeptree and return the JSON dependency tree.
@@ -142,6 +151,7 @@ def get_tree_json(venv_bin: str) -> List[Dict]:
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"Invalid JSON from pipdeptree: {exc}") from exc
 
+
 def build_map(tree_json: List[Dict]) -> Dict[str, List[str]]:
     """Build a flat dependency graph from the pipdeptree JSON output.
 
@@ -155,7 +165,8 @@ def build_map(tree_json: List[Dict]) -> Dict[str, List[str]]:
 
     def visit(node: Dict) -> None:
         pkg = node.get("key", "")
-        deps = [d.get("key", "") for d in node.get("dependencies", []) if d.get("key")]
+        deps = [d.get("key", "")
+                for d in node.get("dependencies", []) if d.get("key")]
         graph[pkg] = deps
 
         for dep_node in node.get("dependencies", []):
@@ -168,7 +179,7 @@ def build_map(tree_json: List[Dict]) -> Dict[str, List[str]]:
 
 
 def print_subtree(graph: Dict[str, List[str]], pkg: str, indent: int = 0,
-                   visited: Optional[Set[str]] = None) -> None:
+                  visited: Optional[Set[str]] = None) -> None:
     """Recursively print the dependency subtree for a given package.
 
     Args:
@@ -190,10 +201,7 @@ def print_subtree(graph: Dict[str, List[str]], pkg: str, indent: int = 0,
     for dep in graph.get(pkg, []):
         print_subtree(graph, dep, indent + 4, visited)
 
-
-
-
-
+# to remove
 
 
 def main() -> None:
