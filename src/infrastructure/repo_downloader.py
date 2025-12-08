@@ -13,7 +13,7 @@ from typing import Dict, Optional
 import requests
 from infrastructure.logger_formatter import LoggerFormatter
 
-LOGGER = LoggerFormatter.initialize("repo_downloader", logging.INFO)
+LOGGER = LoggerFormatter.initialize("repo_downloader", logging.WARNING)
 
 
 URL_REGEX = re.compile(
@@ -65,6 +65,7 @@ class _RepoDownloader:
         repo_urls: Dict[str, str | None],
         output_path: str,
         branch: str = "main",
+        force: bool = False
     ) -> Dict[str, bool]:
         """Download multiple repository branches as ZIP files.
 
@@ -74,6 +75,8 @@ class _RepoDownloader:
             output_path: Directory path where the ZIP files will be saved.
             branch: Branch name to download for each repository 
             (e.g., "main", "master", "develop").
+            force: If True, download files again, even if they exist.
+            If False, keep existing files intact.
 
         Returns:
             Dict mapping package names to booleans indicating if the download 
@@ -87,6 +90,9 @@ class _RepoDownloader:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         tasks = []
+        
+        if force:
+            LOGGER.info('Force mode enabled - redownloading existing files.')
 
         # Step 1: Resolve output directory to be inside project root
         output_dir = self._resolve_output_dir(output_path)
@@ -150,18 +156,24 @@ class _RepoDownloader:
         loop.close()
         return results
 
-    def _download_zip(self, pkg: str, url: str, output_path: Path) -> bool:
+    def _download_zip(self, pkg: str, url: str, output_path: Path,
+                      force=False) -> bool:
         """Download a file from URL and save to disk with streaming.
 
         Args:
             pkg: Package name.
             url: URL to download.
             output_path: Directory path where file will be saved.
+            force: Redownload already existing files when True.
 
         Returns:
             True if successful, False otherwise.
         """
         output_file = output_path / f"{pkg}.zip"
+        
+        if (not force) and Path.is_file(output_file):
+            LOGGER.info('Skipping existing file %s.zip - to override, pass\
+                 force=True.', pkg)
 
         # Prepare list of URLs to try (main branch, then fallback to master)
         urls_to_try = [url]
@@ -261,7 +273,8 @@ class _RepoDownloader:
 def download_repos(repo_urls: Dict[str, Optional[str]],
                    output: str,
                    branch: str = "main",
-                   timeout: int = 30) -> Dict[str, bool]:
+                   timeout: int = 30,
+                   force:bool = False) -> Dict[str, bool]:
     """Download multiple repositories as ZIP files.
 
     Convenience function that handles RepoDownloader lifecycle automatically.
@@ -272,6 +285,7 @@ def download_repos(repo_urls: Dict[str, Optional[str]],
         branch: Branch name to download (e.g., main, master).
         output: Output directory path where ZIPs will be saved.
         timeout: Request timeout in seconds.
+        force: Redownload existing files.
 
     Returns:
         Dictionary mapping pkg_name -> bool (success/failure for each download).
@@ -288,5 +302,6 @@ def download_repos(repo_urls: Dict[str, Optional[str]],
         return downloader.download_repos(
             repo_urls=repo_urls,
             output_path=output,
-            branch=branch
+            branch=branch,
+            force=force
         )

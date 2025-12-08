@@ -17,6 +17,7 @@ from infrastructure.repo_downloader import download_repos
 LOGGER = LoggerFormatter.initialize("package_metadata_fetcher", logging.INFO)
 DOWNLOAD_DIRECTORY = "tmpvenv/repo_downloads"
 DEFAULT_DOWNLOAD_BRANCH = "main"
+DEFAULT_FORCE = False # We could inline this as a parameter.
 # Module-level cache for package metadata
 _packages_metadata: List[PyPiMetadata] = []
 
@@ -82,7 +83,8 @@ def build_package_metadata(file_path: str) -> List[PyPiMetadata]:
     down_results = download_repos(
         repo_urls=package_urls,
         output=DOWNLOAD_DIRECTORY,
-        branch=DEFAULT_DOWNLOAD_BRANCH  # This should be removed at all
+        branch=DEFAULT_DOWNLOAD_BRANCH,  # This should be removed at all,
+        force=DEFAULT_FORCE
     )
     for pkg, success in down_results.items():
         LOGGER.info("Download %s: %s", pkg, success)

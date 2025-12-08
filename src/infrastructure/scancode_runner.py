@@ -28,10 +28,10 @@ import os
 from infrastructure.logger_formatter import LoggerFormatter
 
 
-LOGGER = LoggerFormatter.initialize("scancode_runner", logging.DEBUG)
+LOGGER = LoggerFormatter.initialize("scancode_runner", logging.WARNING)
 
 SCANCOMMAND_ALL = [
-    "-lv",
+    "-l",
     "--license-text",
     "--license-text-diagnostics",
     "--include",
@@ -43,7 +43,7 @@ SCANCOMMAND_ALL = [
 ]
 
 
-def run_scancode(scan_path: Path, pkg: str, *args) -> Optional[dict]:
+def run_scancode(scan_path: Path, pkg: str, args = None) -> Optional[dict]:
     """
     Run ScanCode on the specified path and return the JSON results.
 
@@ -78,12 +78,12 @@ def run_scancode(scan_path: Path, pkg: str, *args) -> Optional[dict]:
         return None
 
     scancode_paths = scancode_paths.decode('utf-8').strip().split('\n')
-    if len(scancode_paths) >1:
+    if len(scancode_paths) > 1:
         LOGGER.warning('More than one Scancode installation detected.' +
                        'Using the default: %s', scancode_paths[0])
-        LOGGER.debug('Detected installations: %s', scancode_paths)
+        LOGGER.debug('Detected installations: %s', '\n'.join(scancode_paths))
 
-    if args is None:
+    if not args:
         LOGGER.info("No custom arguments detected, using the defaults.")
         args = SCANCOMMAND_ALL
 
@@ -96,8 +96,7 @@ def run_scancode(scan_path: Path, pkg: str, *args) -> Optional[dict]:
         result = subprocess.run(
             cmd_all,
             check=True,
-            #capture_output=True,
-            stdout=subprocess.PIPE,
+            capture_output=True,
             text=True
         )
         stdout_output = result.stdout
@@ -142,10 +141,11 @@ def _extract_zip_contents(zip_file_path: Path, extract_to: Path) -> None:
 
 def main():
     """
+        "/home/kamil/szkola/SE/projekt/licenses/LicenseSentinel
     example main function to demonstrate usage
     """
-    path = Path(
-        "/home/kamil/szkola/SE/projekt/licenses/LicenseSentinel/src/downloads/numpy-main.zip/numpy.zip")
+    path = Path.joinpath(Path.cwd(), 'src',
+                        'downloads','numpy-main.zip','numpy.zip')
     # Call the run_scancode function
     results = run_scancode(path, "requests")
     if results:
