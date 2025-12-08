@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 import requests
+from entities.abstract_repo_downloader import AbstractRepoDownloader
 from infrastructure.logger_formatter import LoggerFormatter
 
 LOGGER = LoggerFormatter.initialize("repo_downloader", logging.INFO)
@@ -35,7 +36,7 @@ class _RepoDownloadError(Exception):
     """Exception raised when repository download fails."""
 
 
-class _RepoDownloader:
+class RepoDownloader(AbstractRepoDownloader):
     """Download Git repositories as ZIP archives from hosting providers.
 
     Supports GitHub and GitLab. Downloads a specific branch without full Git history.
@@ -127,7 +128,8 @@ class _RepoDownloader:
                 zip_url = f"{normalized_url}/-/archive/{branch}/{branch}.zip"
             else:
                 LOGGER.critical(
-                    "This should never happen - Error in parsing the download URL for package: %s (provider: %s, repo_url: %s)",
+                    "This should never happen - Error in parsing the download URL\
+                    for package: %s (provider: %s, repo_url: %s)",
                     pkg, provider, repo_url
                 )
                 raise _RepoDownloadError(f"Unsupported provider: {provider}")
@@ -197,13 +199,13 @@ class _RepoDownloader:
                 if status_code == 404:
                     if attempt_url != urls_to_try[-1]:
                         LOGGER.warning(
-                            "HTTP 404 for %s, will retry with fallback branch (master)", attempt_url)
+                            "HTTP 404 for %s, retry with fallback branch(master)", attempt_url)
                         continue  # Explicitly continue to next attempt
-                    else:
-                        LOGGER.error(
-                            "HTTP 404 for %s, all fallback attempts failed.", attempt_url)
+                    LOGGER.error(
+                        "HTTP 404 for %s, all fallback attempts failed.", attempt_url)
                 else:
-                    LOGGER.error("HTTP error %s for %s, stopping attempts.", status_code, attempt_url)
+                    LOGGER.error(
+                        "HTTP error %s for %s, stopping attempts.", status_code, attempt_url)
 
             except OSError as exc:
                 LOGGER.error("File I/O error writing to %s: %s",
@@ -216,7 +218,8 @@ class _RepoDownloader:
                     LOGGER.debug(
                         "Cleaned up partial download: %s", output_file)
                 except OSError as exc:
-                    LOGGER.warning("Failed to clean up partial download: %s (%s)", output_file, exc)
+                    LOGGER.warning(
+                        "Failed to clean up partial download: %s (%s)", output_file, exc)
 
         # All attempts failed
         LOGGER.error("All download attempts failed for package: %s", pkg)
@@ -252,41 +255,43 @@ class _RepoDownloader:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit - automatically cleanup executor."""
         self.executor.shutdown(wait=True)
-        return False
+        return
+
+    def download_repo(self, repo_url: str, branch: str, output_path: Path) -> bool:
+        return True
+        # I didn't know python has not private classes. I don't know if this is messy.
+        # Also I realized later that specify the branch is useless
+        # We should remain the class as is and remove the branch parameter in this adapter below
+
+        # def download_repos(repo_urls: Dict[str, Optional[str]],
+        #               output: str,
+        #              branch: str = "main",
+        #               timeout: int = 30) -> Dict[str, bool]:
+        """Download multiple repositories as ZIP files.
+
+        Convenience function that handles RepoDownloader lifecycle automatically.
 
 
-# I didn't know python has not private classes. I don't know if this is messy.
-# Also I realized later that specify the branch is useless
-# We should remain the class as is and remove the branch parameter in this adapter below
-def download_repos(repo_urls: Dict[str, Optional[str]],
-                   output: str,
-                   branch: str = "main",
-                   timeout: int = 30) -> Dict[str, bool]:
-    """Download multiple repositories as ZIP files.
+        Args:
+            repo_urls: Dictionary mapping repository names to URLs.
+            branch: Branch name to download (e.g., main, master).
+            output: Output directory path where ZIPs will be saved.
+            timeout: Request timeout in seconds.
 
-    Convenience function that handles RepoDownloader lifecycle automatically.
+        Returns:
+            Dictionary mapping pkg_name -> bool (success/failure for each download).
 
-
-    Args:
-        repo_urls: Dictionary mapping repository names to URLs.
-        branch: Branch name to download (e.g., main, master).
-        output: Output directory path where ZIPs will be saved.
-        timeout: Request timeout in seconds.
-
-    Returns:
-        Dictionary mapping pkg_name -> bool (success/failure for each download).
-
-    Example:
-        results = download_repos(
-            repo_urls={"numpy": "https://github.com/numpy/numpy",
-                       "requests": "https://github.com/requests/requests"},
-            branch="main",
-            output="downloads"
-        )
-    """
-    with _RepoDownloader(timeout=timeout) as downloader:
-        return downloader.download_repos(
-            repo_urls=repo_urls,
-            output_path=output,
-            branch=branch
-        )
+        Example:
+            results = download_repos(
+                repo_urls={"numpy": "https://github.com/numpy/numpy",
+                        "requests": "https://github.com/requests/requests"},
+                branch="main",
+                output="downloads"
+            )
+        """
+        # with _RepoDownloader(timeout=timeout) as downloader:
+        # return downloader.download_repos(
+        #    repo_urls=repo_urls,
+        #    output_path=output,
+        #    branch=branch
+        # )

@@ -53,8 +53,10 @@ def run_scancode(scan_path: Path, pkg: str) -> Optional[dict]:
     """
     extracted_path = scan_path.parent / f"{scan_path.stem}_extracted"
 
-    _extract_zip_contents(scan_path, extracted_path)
-
+    if not _extract_zip_contents(scan_path, extracted_path):
+        LOGGER.error(
+            "Skipping ScanCode for %s due to extraction failure.", pkg)
+        return None
 
     cmd_all = SCANCOMMAND_ALL + [str(extracted_path)]
     LOGGER.info("Running ScanCode command: %s", " ".join(cmd_all))
@@ -88,7 +90,7 @@ def run_scancode(scan_path: Path, pkg: str) -> Optional[dict]:
         LOGGER.info("Elapsed time for %s: %s", pkg, time_difference)
 
 
-def _extract_zip_contents(zip_file_path: Path, extract_to: Path) -> None:
+def _extract_zip_contents(zip_file_path: Path, extract_to: Path) -> bool:
     """
     Extract ZIP archive to the given directory. Logs and skips on corrupt archives.
 
@@ -97,13 +99,15 @@ def _extract_zip_contents(zip_file_path: Path, extract_to: Path) -> None:
     """
     if not zip_file_path.exists():
         LOGGER.error("The file %s does not exist.", zip_file_path)
-        return
+        return True
 
     try:
         with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
             zip_ref.extractall(extract_to)
     except zipfile.BadZipFile as e:
         LOGGER.error("Failed to extract zip file %s: %s", zip_file_path, e)
+        return False
+    return True
 
 
 def main():
