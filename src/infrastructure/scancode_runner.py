@@ -23,15 +23,15 @@ import zipfile
 import json
 from typing import Optional
 from pathlib import Path
+import os
 
 from infrastructure.logger_formatter import LoggerFormatter
 
 
-LOGGER = LoggerFormatter.initialize("scancode_runner", logging.INFO)
+LOGGER = LoggerFormatter.initialize("scancode_runner", logging.DEBUG)
 
 SCANCOMMAND_ALL = [
-    "scancode",
-    "-l",
+    "-lv",
     "--license-text",
     "--license-text-diagnostics",
     "--include",
@@ -43,7 +43,7 @@ SCANCOMMAND_ALL = [
 ]
 
 
-def run_scancode(scan_path: Path, pkg: str) -> Optional[dict]:
+def run_scancode(scan_path: Path, pkg: str, *args) -> Optional[dict]:
     """
     Run ScanCode on the specified path and return the JSON results.
 
@@ -55,16 +55,49 @@ def run_scancode(scan_path: Path, pkg: str) -> Optional[dict]:
 
     _extract_zip_contents(scan_path, extracted_path)
 
+    if os.name == 'nt':
+        scancode_paths = subprocess.run(
+            ['where',
+             'scancode'],
+            shell=False,
+            check=True,
+            stdout=subprocess.PIPE
+        ).stdout
+    else:
+        scancode_paths=subprocess.run(
+            ['which',
+             'scancode'],
+            shell=False,
+            check=True,
+            stdout=subprocess.PIPE
+        ).stdout
 
-    cmd_all = SCANCOMMAND_ALL + [str(extracted_path)]
+    if not scancode_paths:
+        LOGGER.error("Unable to locate a Scancode installation. " +
+                     "Please make sure Scancode executable is in your PATH.")
+        return None
+
+    scancode_paths = scancode_paths.decode('utf-8').strip().split('\n')
+    if len(scancode_paths) >1:
+        LOGGER.warning('More than one Scancode installation detected.' +
+                       'Using the default: %s', scancode_paths[0])
+        LOGGER.debug('Detected installations: %s', scancode_paths)
+
+    if args is None:
+        LOGGER.info("No custom arguments detected, using the defaults.")
+        args = SCANCOMMAND_ALL
+
+    cmd_all = [scancode_paths[0], *args, str(extracted_path)]
     LOGGER.info("Running ScanCode command: %s", " ".join(cmd_all))
+
 
     current_time = datetime.now()
     try:
         result = subprocess.run(
             cmd_all,
             check=True,
-            capture_output=True,
+            #capture_output=True,
+            stdout=subprocess.PIPE,
             text=True
         )
         stdout_output = result.stdout
@@ -72,6 +105,7 @@ def run_scancode(scan_path: Path, pkg: str) -> Optional[dict]:
         # Parse JSON from stdout
         try:
             scan_results = json.loads(stdout_output)
+            LOGGER.debug(scan_results)
             return scan_results
         except json.JSONDecodeError as e:
             LOGGER.error(
