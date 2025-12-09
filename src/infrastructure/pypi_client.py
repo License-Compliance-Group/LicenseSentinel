@@ -10,7 +10,7 @@ import re
 from typing import Dict, List, Optional
 import requests
 from requests.exceptions import RequestException
-from entities.abstract_pypi_client import AbstractPyPiClient
+from entities.package_manager_fetcher import AbstractPackageManagerFetcher
 from infrastructure.logger_formatter import LoggerFormatter
 
 LOGGER = LoggerFormatter.initialize("PyPI Client", logging.INFO)
@@ -19,7 +19,7 @@ LOGGER = LoggerFormatter.initialize("PyPI Client", logging.INFO)
 _PACKAGE_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 
 
-class PyPiHandler(AbstractPyPiClient):
+class PyPiHandler(AbstractPackageManagerFetcher):
     """A client to interact with PyPI and fetch package information."""
 
     def get_source_links(self, packages_names: List[str],

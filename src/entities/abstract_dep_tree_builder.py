@@ -4,29 +4,29 @@ from typing import Dict, List
 
 
 class AbstractDepTreeBuilder(ABC):
-    """Interfaccia per la costruzione dell'albero di dipendenze."""
+    """Interface for building the dependency tree of a package. (Dependency tree builder)"""
 
     @abstractmethod
     def create_venv(self, path: str = "tmpvenv", force_recreate: bool = False) -> str:
-        """Crea (o riusa) una venv e ritorna il path della 'bin' o 'Scripts'."""
+        """Create (or reuse) a virtual environment and return the path to 'bin' or 'Scripts'."""
         raise NotImplementedError
 
     @abstractmethod
     def install_packages(self, venv_bin: str, packages: List[str]) -> None:
-        """Installa pacchetti nella venv fornita."""
+        """Install packages in the provided virtual environment."""
         raise NotImplementedError
 
     @abstractmethod
     def get_tree_json(self, venv_bin: str) -> List[Dict]:
-        """Esegue pipdeptree e ritorna il JSON dell'albero."""
+        """Run pipdeptree and return the JSON representation of the dependency tree."""
         raise NotImplementedError
 
     @abstractmethod
     def build_map(self, tree_json: List[Dict]) -> Dict[str, List[str]]:
-        """Converte il JSON in una mappa package -> [dependencies]."""
+        """Convert the JSON into a map package -> [dependencies]."""
         raise NotImplementedError
 
     @abstractmethod
     def delete_venv(self, path: str) -> None:
-        """Elimina il venv (cleanup)."""
+        """Delete the virtual environment (cleanup)."""
         raise NotImplementedError

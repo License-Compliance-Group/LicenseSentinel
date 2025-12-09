@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Optional
 
 
-class AbstractPyPiClient(ABC):
+class AbstractPackageManagerFetcher(ABC):
     """Interfaccia per ottenere metadata/package info da PyPI."""
 
     @abstractmethod

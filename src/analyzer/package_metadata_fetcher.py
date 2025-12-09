@@ -9,7 +9,7 @@ import re
 from typing import Dict, List
 
 
-from entities.abstract_pypi_client import AbstractPyPiClient
+from entities.package_manager_fetcher import AbstractPackageManagerFetcher
 from entities.abstract_dep_tree_builder import AbstractDepTreeBuilder
 from entities.abstract_repo_downloader import AbstractRepoDownloader
 
@@ -27,7 +27,7 @@ _packages_metadata: List[PyPiMetadata] = []
 class PackageMetadataFetcher:
 
     def __init__(self,
-                 pypi_client: AbstractPyPiClient,
+                 pypi_client: AbstractPackageManagerFetcher,
                  dep_builder: AbstractDepTreeBuilder,
                  repo_downloader: AbstractRepoDownloader):
         self.pypi_client = pypi_client

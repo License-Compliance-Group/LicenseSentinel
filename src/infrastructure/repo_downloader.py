@@ -70,11 +70,10 @@ class RepoDownloader(AbstractRepoDownloader):
         """Download multiple repository branches as ZIP files.
 
         Args:
-            repo_urls: Dictionary mapping package names to repository URLs 
+            repo_urls: Dictionary mapping package names to repository URLs
             (e.g., {"numpy": "https://github.com/numpy/numpy"}).
             output_path: Directory path where the ZIP files will be saved.
-            branch: Branch name to download for each repository 
-            (e.g., "main", "master", "develop").
+            branch: Branch name to download for each repository (e.g., "main", "master", "develop").
 
         Returns:
             Dict mapping package names to booleans indicating if the download 
@@ -152,6 +151,7 @@ class RepoDownloader(AbstractRepoDownloader):
         loop.close()
         return results
 
+    # pylint: disable=R0912
     def _download_zip(self, pkg: str, url: str, output_path: Path) -> bool:
         """Download a file from URL and save to disk with streaming.
 
@@ -255,43 +255,16 @@ class RepoDownloader(AbstractRepoDownloader):
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit - automatically cleanup executor."""
         self.executor.shutdown(wait=True)
-        return
 
-    def download_repo(self, repo_url: str, branch: str, output_path: Path) -> bool:
-        return True
-        # I didn't know python has not private classes. I don't know if this is messy.
-        # Also I realized later that specify the branch is useless
-        # We should remain the class as is and remove the branch parameter in this adapter below
-
-        # def download_repos(repo_urls: Dict[str, Optional[str]],
-        #               output: str,
-        #              branch: str = "main",
-        #               timeout: int = 30) -> Dict[str, bool]:
-        """Download multiple repositories as ZIP files.
-
-        Convenience function that handles RepoDownloader lifecycle automatically.
-
-
-        Args:
-            repo_urls: Dictionary mapping repository names to URLs.
-            branch: Branch name to download (e.g., main, master).
-            output: Output directory path where ZIPs will be saved.
-            timeout: Request timeout in seconds.
-
-        Returns:
-            Dictionary mapping pkg_name -> bool (success/failure for each download).
-
-        Example:
-            results = download_repos(
-                repo_urls={"numpy": "https://github.com/numpy/numpy",
-                        "requests": "https://github.com/requests/requests"},
-                branch="main",
-                output="downloads"
-            )
+    def download_repo(self, repo_url: str, pkg_name, branch: str, output_path: str) -> bool:
+        """Download a single repository branch as a ZIP file.
         """
-        # with _RepoDownloader(timeout=timeout) as downloader:
-        # return downloader.download_repos(
-        #    repo_urls=repo_urls,
-        #    output_path=output,
-        #    branch=branch
-        # )
+
+        # Delegate to the batch downloader; it will create directories as needed.
+        results = self.download_repos(
+            repo_urls={pkg_name: repo_url},
+            output_path=output_path,
+            branch=branch
+        )
+
+        return bool(results.get(pkg_name))
