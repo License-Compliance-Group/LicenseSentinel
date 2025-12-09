@@ -3,11 +3,14 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 from copy import deepcopy
-import json
+
 
 import src.analyzer.dep_tree_builder as deptree
 import src.analyzer.package_metadata_fetcher as fetcher
+from src.analyzer.license_compatibility_analyzer \
+    import LicenseCompatibilityAnalyzer as LCA
 import src.infrastructure.scancode_runner as runner
+
 
 from src.infrastructure.logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__,
@@ -77,27 +80,32 @@ class ScancodeTreeStrategy(LicenseTreeStrategy):
                         licenses_dict[key] = tally['value']
 
         # we have got all the licenses
-        # for easy comparison we will substitute a package name
-        # with a tuple: (pkg_name, license): (str, str)
+        # for easy comparison we will create PyPIMetadata objects
+        # no links, because we don't need them
         license_tree = deepcopy(tree)
         for key, values in tree.items():
             if isinstance(values, list):
                 for i, value in enumerate(values):
-                    license_tree[key][i] = (value, licenses_dict[value])
+                    license_tree[key][i] = fetcher.\
+                        PyPiMetadata(value, licenses_dict[value], None)
             else:
-                license_tree[key] = (values, licenses_dict[values])
-            license_tree[(key, licenses_dict[key])] = license_tree.pop(key)
+                license_tree[key] = fetcher.\
+                    PyPiMetadata(values, licenses_dict[values], None)
+                    
+            license_tree[fetcher.PyPiMetadata(key, licenses_dict[key], None)]\
+                = license_tree.pop(key)
         print(license_tree)
         return license_tree
-    
 
 class RepoTreeStrategy(LicenseTreeStrategy):
     """Generate a tree based on licenses the dependencies claim themselves."""
     def generate_license_tree(self, requirements_path):
+        # This generates a PyPIMetadata tree by default.
         data = fetcher.build_package_metadata(requirements_path)
         return data
 
-class LicenseComparator:
+# Analyzing trees is the next logical step after analyzing individual licenses
+class LicenseComparator(LCA):
     """
     Analyzes deptrees from diferent placertainces and reports 
     whether their licenses match.
@@ -138,31 +146,105 @@ class LicenseComparator:
         self._license_tree_strategy = content
 
     def __init__(self, path='requirements.txt', tree_a = None, tree_b = None):
+        super().__init__()
         if not path:
             path = 'requirements.txt'
             logger.warning('Invalid path set, setting a sensible default: %s',
                         path)
         self.path = path
+        self.tree_a = tree_a
+        self.tree_b = tree_b
+    
+    def ensure_trees_exist(self):
+        """Ensures that the two license trees are present.
+        If not, generates them using sensible defaults.
 
-        if tree_a is None:
+        Returns:
+            bool: Do the trees exist (possibly after a generation attempt)?
+        """
+        if self.tree_a is None:
             # default: get scancode tree
             logger.warning("Primary tree not passed, using default Scancode..")
             self.license_tree_strategy = ScancodeTreeStrategy()
-            tree_a = self.get_license_tree()
-        if tree_b is None:
+            self.tree_a = self.get_license_tree()
+        if self.tree_b is None:
             # default: get github tree
             logger.warning("Secondary tree not found, using default GitXXX...")
             self.license_tree_strategy = RepoTreeStrategy()
-            tree_b = self.get_license_tree()       
-    def get_license_tree(self):
-        return self._license_tree_strategy.generate_license_tree(self.path)
-    
+            self.tree_b = self.get_license_tree()
+            
+        if (self.tree_a is None) or (self.tree_b is None):
+            logger.error('Unable to generate license tree(s), aborting.')
+            return False
+        return True
+
     @staticmethod
     def flatten(x: list) -> list:
         res = []
         for i in x:
             res.extend(LicenseComparator.flatten(i) if isinstance(i, list) else [i])
         return res
+    def get_license_tree(self):
+        return self._license_tree_strategy.generate_license_tree(self.path)
+
+    def compare_license_trees(self):
+        """
+        Compares two license trees for exact equality.
+        Returns True if the trees are structurally identical and have identical licenses, False otherwise.
+        """
+        if not self.ensure_trees_exist():
+            return False
+
+        return self._trees_equal(self.tree_a, self.tree_b)
+
+    def _trees_equal(self, tree_a, tree_b):
+        """
+        Recursively checks if two trees are equal.
+        """
+        if len(tree_a) != len(tree_b):
+            return False
+
+        for key in tree_a:
+            if key not in tree_b:
+                return False
+
+            value_a = tree_a[key]
+            value_b = tree_b[key]
+
+            # Check if key licenses are equal
+            if key.license_type != tree_b[key].license_type:
+                logger.warning('Base license mismatch %s vs. %s', key, tree_b[key])
+                return False
+
+            # Check if children are equal
+            children_a = value_a if isinstance(value_a, list) else [value_a]
+            children_b = value_b if isinstance(value_b, list) else [value_b]
+
+            # Treat as sets for unordered comparison
+            set_a = set(children_a)
+            set_b = set(children_b)
+
+            if len(set_a) != len(set_b):
+                logger.warning('Dependency count mismatch: %d, %d',len(set_a),
+                               len(set_b))
+                return False
+
+            for child in set_a:
+                if child not in set_b:
+                    logger.warning('Package %s not found in tree_b', child)
+                    return False
+                # Check license of child
+                if child.license_type != tree_b[child].license_type if child in tree_b else None:
+                    logger.warning('Child license mismatch: %s vs. %s', child, tree_b[child])
+                    return False
+                # Recursively check subtree
+                if child in tree_a and child in tree_b:
+                    if not self._trees_equal({child: tree_a[child]}, {child: tree_b[child]}):
+                        
+                        return False
+
+        return True
 
 if __name__ == "__main__":
     LC = LicenseComparator()
+    LC.compare_license_trees()

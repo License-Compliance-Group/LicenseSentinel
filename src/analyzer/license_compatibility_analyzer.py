@@ -322,6 +322,29 @@ class LicenseCompatibilityAnalyzer:
         """
         self.last_comparison_result = self.compat_calc_strategy.\
             calculate_license_compatibility(licenses)
+     
+    def license_name_mapping(self, name):
+        """Map less known license names into better known ones.
+        This is motivated by the fact that MIT comes under like 40 
+        different names, for reference see
+        https://fedoraproject.org/wiki/Licensing:MIT
+        
+        The whole issue is that Scancode uses SPDX and OSADL uses their own
+        thing - they capture slightly different license scopes.
+        
+        While the most common ones overlap, the SPDX is larger and will
+        confuse the matrix eventually.
+        
+        Mappings like "mit-feh" -> "mit" should mitigate the better part 
+        of that.
+        
+
+        Args:
+            str: The license name to simplify
+        Returns:
+            _type_: _description_
+        """
+
 
 if __name__ == "__main__":
     # note: these are NOT tests in any way or fashion
