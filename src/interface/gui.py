@@ -15,7 +15,6 @@ class LicenseSentinelUI(App):
             yield Input(placeholder="https://api.example.com/endpoint", id="url", classes="url-input")
             yield Button("Invia", id="send", classes="url-button")
 
-
         # Container principale sotto la barra URL
         with Vertical(classes="main-container", id="main-container"):
 
@@ -33,19 +32,19 @@ class LicenseSentinelUI(App):
                 # Colonna destra (Vertical)
                 with Vertical(classes="right-column"):
 
-                    # PyPI: occuperà tutto lo spazio disponibile (stessa altezza del Tree)
+                    # PyPI block
                     with Vertical(classes="section-box pypi-block"):
-                        yield Static("Risultati PyPI", classes="header")
                         with TabbedContent():
                             yield TabPane("Pacchetti", self._pypi_table())
                             yield TabPane("Info", Static("Info pacchetti PyPI..."))
+                        yield Static("Risultati PyPI", classes="footer-title")
 
-                    # ScanCode: sotto PyPI, altezza minima
+                    # ScanCode block
                     with Vertical(classes="section-box scancode-block"):
-                        yield Static("Risultati ScanCode", classes="header")
                         with TabbedContent():
                             yield TabPane("File", self._scancode_table())
                             yield TabPane("Dettagli", Static("Dettagli analisi ScanCode..."))
+                        yield Static("Risultati ScanCode", classes="footer-title")
 
     def _pypi_table(self) -> DataTable:
         table = DataTable()

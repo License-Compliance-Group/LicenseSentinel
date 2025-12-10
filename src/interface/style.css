@@ -7,23 +7,23 @@
     padding: 0;
     margin: 0;
     layout: horizontal;
-    background: #2c2c2e;              /* macOS dark panel */
-    border-bottom: heavy #3a3a3c;     /* macOS dark border */
+    background: #2c2c2e;
+    border-bottom: heavy #3a3a3c;
 }
 
 /* Input */
 .url-input {
     width: 1fr;
-    background: #1e1e1e;              /* macOS dark background */
-    color: #f5f5f7;                   /* macOS light text */
-    border: heavy round #3a3a3c;      /* dark border */
+    background: #1e1e1e;
+    color: #f5f5f7;
+    border: heavy round #3a3a3c;
     padding: 0 1;
 }
 
 /* Pulsante */
 .url-button {
     width: 12;
-    background: #0a84ff;              /* macOS blue accent */
+    background: #0a84ff;
     color: #ffffff;
     border: heavy round #0a84ff;
     text-style: bold;
@@ -37,7 +37,7 @@
     layout: vertical;
     padding: 0;
     margin: 0;
-    background: #1e1e1e;              /* macOS dark */
+    background: #1e1e1e;
 }
 
 /* Row principale */
@@ -52,10 +52,10 @@
 Tree {
     width: 40;
     height: 1fr;
-    border: heavy round #3a3a3c;      /* dark border */
+    border: heavy round #3a3a3c;
     margin: 0;
-    background: #2c2c2e;              /* macOS panel */
-    color: #f5f5f7;                   /* light text */
+    background: #2c2c2e;
+    color: #f5f5f7;
     padding: 1;
 }
 
@@ -77,6 +77,7 @@ Tree {
     padding: 1;
     margin-bottom: 1;
     background: #2c2c2e;
+    position: relative; /* NECESSARIO */
 }
 
 /* ========================= */
@@ -87,6 +88,7 @@ Tree {
     border: heavy round #3a3a3c;
     padding: 1;
     background: #2c2c2e;
+    position: relative; /* NECESSARIO */
 }
 
 /* ========================= */
@@ -111,13 +113,13 @@ DataTable {
 }
 
 /* ========================= */
-/* Titoli delle sezioni      */
+/* Footer dei blocchi        */
 /* ========================= */
-.header {
-    background: #2c2c2e;              /* macOS panel */
-    color: #f5f5f7;                   /* macOS text */
-    padding: 1 1;
-    text-style: bold;
-    border-bottom: heavy #3a3a3c;
-    text-align: center;
+.footer-title {
+    color: #636366;        /* grigio macOS */
+    text-style: italic;
+    padding: 0 1;
+    text-align: right;     /* ALLINEA A DESTRA */
+    opacity: 0.8;
 }
+
