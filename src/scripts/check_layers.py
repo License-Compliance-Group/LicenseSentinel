@@ -1,102 +1,208 @@
+#!/usr/bin/env python3
+"""
+Controllo statico dei layer del progetto LicenseSentinel.
+
+Regole implementate:
+
+- entities:
+    - non può importare nessun altro layer del progetto
+    - può importare solo librerie esterne
+
+- infrastructure:
+    - può importare solo entities
+
+- analyzer:
+    - può importare entities e infrastructure
+
+- interface:
+    - può importare entities, infrastructure e analyzer
+
+- scripts:
+    - non deve essere importato da nessun altro layer
+
+Il controllo:
+- considera solo file Python dentro package (cartelle con __init__.py),
+- esclude directory temporanee come .venv, __pycache__, .git, tmpvenv,
+- fallisce con exit code 1 se trova violazioni (utile per CI).
+"""
+
 import ast
+import sys
 from pathlib import Path
 
-# Definizione delle regole dell'architettura
-RULES = {
-    "Entities": set(),
-    "Analyzer": {"Entities"},
-    "Infrastructure": {"Entities"},
-    "Interface": {"Infrastructure", "Analyzer", "Entities"},
+# Root del progetto: regola parents[n] in base a dove sta questo file
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SRC_ROOT = PROJECT_ROOT
+
+# Directory da escludere dalla scansione
+EXCLUDED_DIRS = {".venv", "tmpvenv", "__pycache__", ".git"}
+
+# Mappa layer → cartella reale (relativa alla root del progetto)
+LAYER_PATHS = {
+    "entities": SRC_ROOT / "entities",
+    "infrastructure": SRC_ROOT / "infrastructure",
+    "analyzer": SRC_ROOT / "analyzer",
+    "interface": SRC_ROOT / "interface",
+    "scripts": SRC_ROOT / "scripts",
 }
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-EXCLUDE_DIRS = {".venv", "__pycache__", ".git"}
+# Regole dei layer (nomi coerenti e tutti in minuscolo)
+LAYER_RULES = {
+    "entities": set(),
+    "infrastructure": {"entities"},
+    "analyzer": {"entities", "infrastructure"},
+    "interface": {"entities", "infrastructure", "analyzer"},
+    "scripts": set(),  # non devono essere importati da nessuno
+}
 
 
-# Verifica se una directory è un package
 def is_package(path: Path) -> bool:
+    """Verifica se una directory è un package Python."""
     return (path / "__init__.py").exists()
 
-# Ottiene il layer a cui appartiene un file relazionando con il suo percorso
-def get_layer_from_path(path: Path) -> str | None:
-    for layer in RULES.keys():
-        if layer.lower() in str(path).lower():
-            return layer
+
+def detect_layer(file_path: Path) -> str | None:
+    """
+    Determina a quale layer appartiene un file in base alla sua posizione
+    nelle cartelle definite in LAYER_PATHS.
+    """
+    for layer, folder in LAYER_PATHS.items():
+        try:
+            file_path.relative_to(folder)
+            return layer  # es: "entities", "analyzer", ...
+        except ValueError:
+            continue
     return None
 
-# Determina il layer a cui appartiene un import
-def get_layer_from_import(import_name: str) -> str | None:
-    import_name = import_name.lower()
-    for layer in RULES.keys():
-        if layer.lower() in import_name:
-            return layer
-    return None
 
-# Estrae tutti gli import presenti in un file Python usando AST
-def analyze_imports(file_path: Path) -> list[tuple[str, int, str]]:
+def extract_imports(file_path: Path) -> list[tuple[str, int, str]]:
+    """
+    Estrae tutti gli import da un file Python usando AST.
+
+    Restituisce una lista di tuple:
+        (nome_modulo, numero_linea, testo_import)
+    """
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            tree = ast.parse(f.read(), filename=str(file_path))
+        source = file_path.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(file_path))
     except SyntaxError:
+        # Se il file non è sintatticamente valido, lo saltiamo
         return []
 
-    imports = []
+    imports: list[tuple[str, int, str]] = []
 
-    # Scansiona l'albero sintattico alla ricerca di import
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                imports.append((alias.name.split(".")[0], node.lineno, f"import {alias.name}"))
-
+                # alias.name può essere "src.entities.user" ecc.
+                module_name = alias.name
+                imports.append((module_name, node.lineno, f"import {alias.name}"))
         elif isinstance(node, ast.ImportFrom):
             if node.module:
-                imports.append((node.module.split(".")[0], node.lineno, f"from {node.module} import ..."))
+                module_name = node.module
+                imports.append(
+                    (module_name, node.lineno, f"from {node.module} import ...")
+                )
 
     return imports
 
 
-# Controlla se i file rispettano le regole dell'architettura
-def check_architecture() -> list[dict[str, str | int]]:
-    violations = []
+def classify_import(module: str) -> str | None:
+    """
+    Cerca di capire se un import appartiene a un layer del progetto.
 
-    for py_file in PROJECT_ROOT.rglob("*.py"):
+    Regole:
+    - Se il modulo inizia con "src.<layer>...", prende <layer>.
+    - Altrimenti prende la prima parte prima del punto.
+    - Restituisce il nome del layer in minuscolo se è uno dei layer noti, altrimenti None.
+    """
+    parts = module.split(".")
 
-        # Salta file dentro cartelle da ignorare
-        if any(part in EXCLUDE_DIRS for part in py_file.parts):
+    if len(parts) >= 2 and parts[0] == "src":
+        candidate = parts[1]
+    else:
+        candidate = parts[0]
+
+    candidate = candidate.lower()
+    return candidate if candidate in LAYER_RULES else None
+
+
+def check_file(file_path: Path, layer: str) -> list[str]:
+    """
+    Verifica le regole per un singolo file appartenente a un certo layer.
+
+    Restituisce la lista di stringhe di violazione.
+    """
+    violations: list[str] = []
+    imports = extract_imports(file_path)
+
+    for module, line, imp_text in imports:
+        imported_layer = classify_import(module)
+
+        # Import proveniente da una libreria esterna → OK
+        if imported_layer is None:
             continue
 
-        if not is_package(py_file.parent):
+        # Regola speciale: ENTITIES non deve importare moduli del progetto
+        if layer == "entities":
+            violations.append(
+                f"[Entities violation] {file_path} (line {line}) "
+                f"importa {module} tramite '{imp_text}', "
+                f"ma 'entities' deve essere privo di import di altri layer del progetto."
+            )
             continue
 
-        layer = get_layer_from_path(py_file)
-        if not layer:
+        # Regola speciale: scripts non deve essere importato da nessuno
+        if imported_layer == "scripts":
+            violations.append(
+                f"[Scripts violation] {file_path} (line {line}) "
+                f"importa {module} tramite '{imp_text}', "
+                "ma la cartella 'scripts' non può essere importata da nessun layer."
+            )
             continue
 
-        imports = analyze_imports(py_file)
-
-        for import_module, lineno, imp_text in imports:
-            target_layer = get_layer_from_import(import_module)
-            if not target_layer:
-                continue
-            # Verifica se il layer corrente è autorizzato a importare il target
-            if target_layer not in RULES[layer] and layer != target_layer:
-                violations.append({
-                    "file": str(py_file),
-                    "line": lineno,
-                    "source": layer,
-                    "target": target_layer,
-                    "import": imp_text
-                })
+        # Regola generale dei layer:
+        # un layer può importare solo sé stesso e quelli ammessi in LAYER_RULES[layer]
+        allowed = LAYER_RULES[layer]
+        if imported_layer not in allowed and imported_layer != layer:
+            violations.append(
+                f"[Layer violation] {file_path} (line {line}) "
+                f"({layer}) → importa {module} ({imported_layer}) tramite '{imp_text}' → NON PERMESSO"
+            )
 
     return violations
 
 
-if __name__ == "__main__":
-    violations = check_architecture()
+def main() -> None:
+    print("Controllo statico dei livelli...")
 
-    if violations:
-        print("Violazioni trovate:")
-        for v in violations:
-            print(f"{v['file']} (riga {v['line']}): {v['source']} → {v['target']} [{v['import']}]")
-    else:
-        print("Nessuna violazione architetturale")
+    all_violations: list[str] = []
+
+    for file_path in SRC_ROOT.rglob("*.py"):
+        # Salta file dentro cartelle escluse
+        if any(part in EXCLUDED_DIRS for part in file_path.parts):
+            continue
+
+        # Considera solo file dentro package Python
+        if not is_package(file_path.parent):
+            continue
+
+        layer = detect_layer(file_path)
+        if not layer:
+            continue
+
+        all_violations.extend(check_file(file_path, layer))
+
+    if not all_violations:
+        print("Nessuna violazione trovata.")
+        sys.exit(0)
+
+    print("\nViolazioni trovate:\n")
+    for v in all_violations:
+        print(" - " + v)
+
+    sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
