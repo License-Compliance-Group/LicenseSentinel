@@ -12,7 +12,6 @@ from typing import Dict, List
 from entities.package_manager_fetcher import AbstractPackageManagerFetcher
 from entities.abstract_dep_tree_builder import AbstractDepTreeBuilder
 from entities.abstract_repo_downloader import AbstractRepoDownloader
-
 from entities.pypi_metadata import PyPiMetadata
 
 from infrastructure.logger_formatter import LoggerFormatter
@@ -20,8 +19,12 @@ from infrastructure.logger_formatter import LoggerFormatter
 LOGGER = LoggerFormatter.initialize("package_metadata_fetcher", logging.INFO)
 DOWNLOAD_DIRECTORY = "tmpvenv/repo_downloads"
 DEFAULT_DOWNLOAD_BRANCH = "main"
+
 # Module-level cache for package metadata
-_packages_metadata: List[PyPiMetadata] = []
+# Tree having only packages names
+__graph: Dict[str, List[str]] = {}
+# Same tree but with objects containing metadata
+_packages_metadata: Dict[str, PyPiMetadata] = {}
 
 
 class PackageMetadataFetcher:
@@ -37,7 +40,7 @@ class PackageMetadataFetcher:
     def build_package_metadata(self,
                                file_path: str,
 
-                               ) -> List[PyPiMetadata]:
+                               ) -> Dict[str, PyPiMetadata]:
         """Build package metadata from a requirements.txt file.
 
         This is the main orchestrator that:
@@ -55,7 +58,7 @@ class PackageMetadataFetcher:
         # Step 1: Parse requirements file
         dependencies = self._parse_requirements_file(file_path)
         if not dependencies:
-            return []
+            return {}
 
         # Step 2: Build dependency tree (single pass - no intermediate function)
         LOGGER.info("Building dependency tree for %d root packages",
@@ -64,44 +67,45 @@ class PackageMetadataFetcher:
             temp_venv = self.dep_builder.create_venv()
             self.dep_builder.install_packages(temp_venv, dependencies)
             tree_json = self.dep_builder.get_tree_json(temp_venv)
-            graph = self.dep_builder.build_map(tree_json)
+            _graph = self.dep_builder.build_map(tree_json)
 
             # Extract all unique packages (keys + all values)
-            all_packages = set(graph.keys())
-            for deps in graph.values():
+            all_packages = set(_graph.keys())  # posso eliminare
+            for deps in _graph.values():
                 all_packages.update(deps)
 
             LOGGER.info("Discovered %d total packages", len(all_packages))
         except RuntimeError as exc:
             LOGGER.error("Failed to build dependency tree: %s", exc)
-            return []
+            return {}
 
         # Step 3: Fetch PyPI metadata (batch operation)
         LOGGER.info("Fetching PyPI metadata for %d packages",
                     len(all_packages))
         results = self.pypi_client.get_source_links(list(all_packages))
-        package_urls: Dict[str, str | None] = {}
+
         # Step 4: Build PyPiMetadata objects and prepare
-        _packages_metadata = []
+        package_urls: Dict[str, str | None] = {}
+        # _packages_metadata = {}
         for pkg_name, metadata in results.items():
-            _packages_metadata.append(PyPiMetadata(
+            _packages_metadata[pkg_name] = PyPiMetadata(
                 package=pkg_name,
                 license_type=metadata['license'],
                 link=metadata['link']
-            ))
+            )
             package_urls[pkg_name] = metadata["link"]
 
         LOGGER.info("Successfully fetched metadata for %d packages",
                     len(_packages_metadata))
 
         # Step 5: download sources
-        down_results = self.repo_downloader.download_repos(
-            repo_urls=package_urls,
-            output_path=DOWNLOAD_DIRECTORY,
-            branch=DEFAULT_DOWNLOAD_BRANCH,
-        )
-        for pkg, success in down_results.items():
-            LOGGER.info("Download %s: %s", pkg, success)
+        # down_results = self.repo_downloader.download_repos(
+        #    repo_urls=package_urls,
+        #    output_path=DOWNLOAD_DIRECTORY,
+        #    branch=DEFAULT_DOWNLOAD_BRANCH,
+        # )
+        # for pkg, success in down_results.items():
+        #    LOGGER.info("Download %s: %s", pkg, success)
 
         # Step 6: compare PyPI license vs scancode detected license
         # Step 7: create for each package objects package_metadata
@@ -153,6 +157,15 @@ class PackageMetadataFetcher:
             LOGGER.error("Unexpected error parsing %s: %s", file_path, exc)
 
         return dependencies
+
+    def get_graph(self) -> Dict[str, List[str]]:
+        """Return a copy of the last-built dependency graph.
+
+        Returns:
+            A dict mapping package names to lists of dependency package names.
+            Returns an empty dict if no graph was built yet.
+        """
+        return {pkg: list(deps) for pkg, deps in __graph.items()}
 
     def pypi_license_checker(self):
         """Placeholder for future license compatibility checker."""
