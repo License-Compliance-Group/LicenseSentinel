@@ -10,6 +10,7 @@ import re
 from typing import Dict, List, Optional
 import requests
 from requests.exceptions import RequestException
+from entities.package_manager_fetcher import AbstractPackageManagerFetcher
 from infrastructure.logger_formatter import LoggerFormatter
 
 LOGGER = LoggerFormatter.initialize("PyPI Client", logging.INFO)
@@ -18,23 +19,22 @@ LOGGER = LoggerFormatter.initialize("PyPI Client", logging.INFO)
 _PACKAGE_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 
 
-class PyPiHandler:
+class PyPiHandler(AbstractPackageManagerFetcher):
     """A client to interact with PyPI and fetch package information."""
 
-    @staticmethod
-    def get_source_links(pkgs_names: List[str],
+    def get_source_links(self, packages_names: List[str],
                          timeout: int = 10) -> Dict[str, Dict[str, Optional[str]]]:
         """Fetch source/homepage/repository links and license for a list of package names.
 
         Args:
-            pkgs_names: list of package names (strings).
+            packages_names: list of package names (strings).
             timeout: HTTP request timeout (seconds).
 
         Returns:
             A dict mapping package name -> {'license': Optional[str], 'link': Optional[str]}.
         """
         results: Dict[str, Dict[str, Optional[str]]] = {}
-        for package in pkgs_names:
+        for package in packages_names:
             if not isinstance(package, str) or not _PACKAGE_NAME_RE.match(package):
                 LOGGER.warning("Skipping invalid package name: %r", package)
                 results[str(package)] = {'license': 'Unknown', 'link': None}
