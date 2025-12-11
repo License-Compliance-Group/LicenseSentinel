@@ -8,8 +8,8 @@ import itertools
 from abc import abstractmethod, ABC
 from datetime import datetime
 
-from src.infrastructure.connectivity import Connectivity as io
-from src.infrastructure.logger_formatter import LoggerFormatter
+from infrastructure.connectivity import Connectivity as io
+from infrastructure.logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__,
 LoggerFormatter.DEBUG)
 class CompatibilityCalcStrategy(ABC):
@@ -60,13 +60,15 @@ class LicenseCompatibilityAnalyzer:
     _last_comparison_result = ("None", "You have to perform a comparison first\
         ! You should use calculate_license_compatibility() for that.")
 
-    def __init__(self, strategy=None, path=str(pathlib.Path.cwd()) + "/src/data/matrix.json"):
+    def __init__(self, strategy=None, path=None):
         """Constructor
         The default path is (project root)/src/data/matrix.json
         """
         if strategy is None:
             strategy = FullCompatibilityCalc()
-        self.path = path
+        if path is None:
+            path = pathlib.Path(__file__).resolve().parents[1] / "data" / "matrix.json"
+        self.path = str(path)
         logger.info("Seeking license file at: %s", self.path)
         if not self.matrix_file_present():
             logger.info("License file not present.")

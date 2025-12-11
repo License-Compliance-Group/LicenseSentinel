@@ -37,7 +37,7 @@ class PackageMetadataFetcher:
     def build_package_metadata(self,
                                file_path: str,
 
-                               ) -> List[PyPiMetadata]:
+                               ) -> tuple[List[PyPiMetadata], dict[str, list[str]]]:
         """Build package metadata from a requirements.txt file.
 
         This is the main orchestrator that:
@@ -49,13 +49,15 @@ class PackageMetadataFetcher:
             file_path: Path to the requirements.txt file.
 
         Returns:
-            A list of PyPiMetadata objects containing package name, license, and link.
-            Returns an empty list if file parsing fails.
+            (metadata_list, dependency_graph)
+            metadata_list: A list of PyPiMetadata objects containing package name, license, and link.
+            dependency_graph: dict pkg -> list of direct dependencies.
+            Returns ([], {}) if parsing/build fails.
         """
         # Step 1: Parse requirements file
         dependencies = self._parse_requirements_file(file_path)
         if not dependencies:
-            return []
+            return [], {}
 
         # Step 2: Build dependency tree (single pass - no intermediate function)
         LOGGER.info("Building dependency tree for %d root packages",
@@ -74,7 +76,7 @@ class PackageMetadataFetcher:
             LOGGER.info("Discovered %d total packages", len(all_packages))
         except RuntimeError as exc:
             LOGGER.error("Failed to build dependency tree: %s", exc)
-            return []
+            return [], {}
 
         # Step 3: Fetch PyPI metadata (batch operation)
         LOGGER.info("Fetching PyPI metadata for %d packages",
@@ -118,7 +120,7 @@ class PackageMetadataFetcher:
         # Possibly let the option "scan all packages" be a separate button that the user
         # can press if he wants to scan everything at once.
 
-        return _packages_metadata
+        return _packages_metadata, graph
 
     def _parse_requirements_file(self, file_path: str) -> List[str]:
         """Parse a requirements.txt file and extract package names.
