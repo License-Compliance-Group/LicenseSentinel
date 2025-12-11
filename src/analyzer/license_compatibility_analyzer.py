@@ -8,6 +8,8 @@ import itertools
 from abc import abstractmethod, ABC
 from datetime import datetime
 
+
+
 from src.infrastructure.connectivity import Connectivity as io
 from src.infrastructure.logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__,
@@ -344,7 +346,7 @@ class LicenseCompatibilityAnalyzer:
         Returns:
             _type_: _description_
         """
-
+        
 
 if __name__ == "__main__":
     # note: these are NOT tests in any way or fashion

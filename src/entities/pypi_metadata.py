@@ -12,9 +12,10 @@ Intended usage:
     print(meta.package, meta.license_type, meta.link)
 """
 from typing import Optional
+import json
 
 
-class PyPiMetadata:
+class PyPiMetadata():
     """
     Container for PyPI package metadata.
 
@@ -28,6 +29,13 @@ class PyPiMetadata:
         license_type (Optional[str]): License reported by PyPI (may be None).
         link (Optional[str]): URL to package source/homepage/repository (may be None).
     """
+
+    def _default(self, obj):
+        return getattr(obj.__class__, "to_json", _default.default)(obj) # pylint:disable=E0602
+                                                                        # Works as-is.
+
+    _default.default = json.JSONEncoder().default
+    json.JSONEncoder.default = _default 
 
     def __init__(self, package: str, license_type: Optional[str], link: Optional[str]):
         if not package:
@@ -66,4 +74,34 @@ class PyPiMetadata:
         self._link = value
 
     def __repr__(self) -> str:
-        return f"PyPiMetadata(package={self._package!r}, license_type={self._license_type!r}, link={self._link!r})"
+        return self.to_json()
+        #return f"PyPiMetadata(package={self._package!r}, license_type={self._license_type!r}, link={self._link!r})"
+    def to_json(self):
+        """Dump PyPiMetadata object to JSON string
+
+        Returns:
+            str: The JSON string
+        """
+        return json.dumps(
+            self,
+            default=lambda o: o.__dict__,
+            sort_keys=True,
+            indent=4)
+    @staticmethod
+    def from_json(json_str):
+        """Load PyPiMetadata from JSON string
+
+        Args:
+            json_str (str): the JSON representation
+
+        Returns:
+            PyPiMetadata: The deserialized object
+        """
+        return json.loads(json_str)
+
+
+if __name__ == "__main__":
+    test = PyPiMetadata('pkg', 'bsd', None)
+    json_test = test.to_json()
+    test2 = PyPiMetadata.from_json(json_test)
+    print(test2['_license_type'])
