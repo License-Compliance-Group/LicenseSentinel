@@ -19,10 +19,11 @@ from infrastructure.logger_formatter import LoggerFormatter
 LOGGER = LoggerFormatter.initialize("package_metadata_fetcher", logging.INFO)
 DOWNLOAD_DIRECTORY = "tmpvenv/repo_downloads"
 DEFAULT_DOWNLOAD_BRANCH = "main"
+PACKAGES_TO_SKIP = ("pip", "pipdeptree")
 
 # Module-level cache for package metadata
 # Tree having only packages names
-__graph: Dict[str, List[str]] = {}
+_graph: Dict[str, List[str]] = {}
 # Same tree but with objects containing metadata
 _packages_metadata: Dict[str, PyPiMetadata] = {}
 
@@ -55,6 +56,8 @@ class PackageMetadataFetcher:
             A list of PyPiMetadata objects containing package name, license, and link.
             Returns an empty list if file parsing fails.
         """
+        global _graph  # <-- ADD THIS LINE
+
         # Step 1: Parse requirements file
         dependencies = self._parse_requirements_file(file_path)
         if not dependencies:
@@ -88,6 +91,8 @@ class PackageMetadataFetcher:
         package_urls: Dict[str, str | None] = {}
         # _packages_metadata = {}
         for pkg_name, metadata in results.items():
+            if pkg_name in PACKAGES_TO_SKIP:
+                continue
             _packages_metadata[pkg_name] = PyPiMetadata(
                 package=pkg_name,
                 license_type=metadata['license'],
@@ -165,7 +170,7 @@ class PackageMetadataFetcher:
             A dict mapping package names to lists of dependency package names.
             Returns an empty dict if no graph was built yet.
         """
-        return {pkg: list(deps) for pkg, deps in __graph.items()}
+        return {pkg: list(deps) for pkg, deps in _graph.items()}
 
     def pypi_license_checker(self):
         """Placeholder for future license compatibility checker."""

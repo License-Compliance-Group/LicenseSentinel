@@ -202,6 +202,17 @@ class DepTreeBuilder(AbstractDepTreeBuilder):
             self.print_subtree(graph, dep, indent + 4, visited)
 
     # to remove
+    def find_roots(self, graph: Dict[str, List[str]]) -> List[str]:
+        all_packages = set(graph.keys())
+        deps = {dep for deps_list in graph.values() for dep in deps_list}
+        return list(all_packages - deps)
+
+    def print_full_tree(self, graph: Dict[str, List[str]]) -> None:
+        roots = self.find_roots(graph)
+        visited = set()
+        for root in roots:
+            self.print_subtree(graph, root, visited=visited)
+            print()
 
 
 def main() -> None:
