@@ -203,17 +203,29 @@ class DepTreeBuilder(AbstractDepTreeBuilder):
 
     # to remove
     def find_roots(self, graph: Dict[str, List[str]]) -> List[str]:
+        """Finds roots of the dependency tree
+
+        Args:
+            graph (Dict[str, List[str]]): Association graph of dependencies.
+
+        Returns:
+            List[str]: The roots.
+        """
         all_packages = set(graph.keys())
         deps = {dep for deps_list in graph.values() for dep in deps_list}
         return list(all_packages - deps)
 
     def print_full_tree(self, graph: Dict[str, List[str]]) -> None:
+        """Prints the full tree.
+
+        Args:
+            graph (Dict[str, List[str]]): Association graph of dependencies.
+        """
         roots = self.find_roots(graph)
         visited = set()
         for root in roots:
             self.print_subtree(graph, root, visited=visited)
             print()
-
 
 def main() -> None:
     """Main entry point for testing dependency tree building."""

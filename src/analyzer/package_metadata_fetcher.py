@@ -29,7 +29,7 @@ _packages_metadata: Dict[str, PyPiMetadata] = {}
 
 
 class PackageMetadataFetcher:
-
+    """Fetches package metadata."""
     def __init__(self,
                  pypi_client: AbstractPackageManagerFetcher,
                  dep_builder: AbstractDepTreeBuilder,

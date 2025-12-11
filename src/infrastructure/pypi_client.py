@@ -1,3 +1,8 @@
+"""PyPI client utilities.
+
+Provides PyPiHandler which can fetch license and source/homepage/repository links
+for packages from the PyPI JSON API.
+"""
 from __future__ import annotations
 
 import asyncio
@@ -12,7 +17,7 @@ from requests.exceptions import RequestException
 from entities.package_manager_fetcher import AbstractPackageManagerFetcher
 from infrastructure.logger_formatter import LoggerFormatter
 
-LOGGER = LoggerFormatter.initialize("PyPI Client", logging.INFO)
+LOGGER = LoggerFormatter.initialize("pypi_client", logging.INFO)
 
 
 _PACKAGE_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
@@ -149,6 +154,7 @@ class PyPiHandler(AbstractPackageManagerFetcher):
             return resp.json()
         except RequestException as exc:
             LOGGER.warning("Network error fetching %s: %s", package, exc)
+            return None
         except ValueError as exc:
             LOGGER.warning("Invalid JSON for %s: %s", package, exc)
             return None

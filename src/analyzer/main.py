@@ -36,10 +36,10 @@ def main():
         repo_downloader_instance
     )
 
-    metadata_list = package_metadata_fetcher_instance.build_package_metadata(
+    metadata_items = package_metadata_fetcher_instance.build_package_metadata(
         file_path)
 
-    if not metadata_list:
+    if not metadata_items:
         logger.warning("No package metadata found for %s", file_path)
         return
 
@@ -48,7 +48,7 @@ def main():
     print(header)
     print("-" * (len(header) + 40))
 
-    for name, metadata in metadata_list.items():
+    for _, metadata in metadata_items.items():
         print(f" {metadata.package:<20} {metadata.license_type:<40} {metadata.link}")
 
     dep_tree_builder_instance.print_full_tree(
