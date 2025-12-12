@@ -2,32 +2,38 @@
 /* Barra URL in cima          */
 /* ========================= */
 .urlbar {
-    height: auto;
     width: 100%;
+    height: auto; 
     padding: 0;
     margin: 0;
-    layout: horizontal;
-    background: #2c2c2e;
+    background: #1e1e1e;
     border-bottom: heavy #3a3a3c;
+    border: heavy round #4a361d;
+}
+
+.urlbar:focus-within {
+    border: heavy round #cc8a36;
 }
 
 /* Input */
 .url-input {
     width: 1fr;
+    height: auto; 
     background: #1e1e1e;
     color: #f5f5f7;
-    border: heavy round #ffc400;
+    border: none;
     padding: 0 1;
 }
 
 /* Pulsante */
 .url-button {
-    width: 4;
-    height: 3; 
-    background: #2c2c2e;
-    color: #ffffff;
-    border: heavy round #ffc400;
-    text-style: bold;
+    width: 10;
+    height: 100%; 
+    background: #cc8a36;
+    color: #1e1e1e;
+    border: none;
+    padding: 0 1;
+    margin: 0;
 }
 
 /* ========================= */
@@ -35,15 +41,13 @@
 /* ========================= */
 .main-container {
     height: 1fr;
-    layout: vertical;
     padding: 0;
     margin: 0;
-    background: #2c2c2e;
+    background: #1e1e1e;
 }
 
 /* Row principale */
 .main-row {
-    layout: horizontal;
     height: 1fr;
 }
 
@@ -52,19 +56,20 @@
 /* ========================= */
 
 .dependency {
-    border: heavy round #ffc400;
+    border: heavy round #4a361d;
     width: 40;
     height: 1fr;
     padding: 1;
-    background: #2c2c2e;
+    background: #1e1e1e;
 }
-
+.dependency:focus-within {
+    border: heavy round #cc8a36;
+}
 
 /* ========================= */
 /* Colonna destra            */
 /* ========================= */
 .right-column {
-    layout: vertical;
     width: 1fr;
     height: 1fr;
 }
@@ -74,11 +79,14 @@
 /* ========================= */
 .pypi-block {
     height: 1fr;
-    border: heavy round #ffc400;
+    border: heavy round #4a361d;
     padding: 1;
     margin-bottom: 1;
-    background: #2c2c2e;
+    background: #1e1e1e;
     position: relative; /* NECESSARIO */
+}
+.pypi-block:focus-within {
+    border: heavy round #cc8a36;
 }
 
 /* ========================= */
@@ -86,11 +94,18 @@
 /* ========================= */
 .scancode-block {
     height: 1fr;
-    border: heavy round #ffc400;
+    border: heavy round #4a361d;
     padding: 1;
-    background: #2c2c2e;
+    background: #1e1e1e;
     position: relative; /* NECESSARIO */
 }
+
+.scancode-block:focus-within {
+    border: heavy round #cc8a36;
+}
+
+
+
 
 /* ========================= */
 /* Wrapper per DataTable     */
@@ -118,7 +133,6 @@ DataTable {
 /* ========================= */
 .footer-title {
     color: #636366;        /* grigio macOS */
-    text-style: italic;
     padding: 0 1;
     text-align: right;     /* ALLINEA A DESTRA */
     opacity: 0.8;

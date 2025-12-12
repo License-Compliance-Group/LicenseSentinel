@@ -13,7 +13,7 @@ from textual.widgets import (
 )
 
 # Import del backend
-from analyzer.dep_tree_builder import build_dependency_tree_for
+# from analyzer.dep_tree_builder import build_dependency_tree_for
 
 
 class LicenseSentinelUI(App):
@@ -27,17 +27,18 @@ class LicenseSentinelUI(App):
 
         with Vertical(classes="main-container", id="main-container"):
             with Horizontal(classes="main-row"):
-                
+
                 with Vertical(classes="dependency") as dependency_block:
                     dependency_block.border_title = "Dependency Tree"
                     dependency_block.styles.border_title_align = "right"
-                    
+
                     # Tree dinamico
                     self.dep_tree = Tree("Dipendenze")
                     yield self.dep_tree
 
                     # Spinner (inizialmente nascosto)
-                    self.spinner = LoadingIndicator(id="spinner", classes="hidden")
+                    self.spinner = LoadingIndicator(
+                        id="spinner", classes="hidden")
                     yield self.spinner
 
                 with Vertical(classes="right-column"):
@@ -47,7 +48,7 @@ class LicenseSentinelUI(App):
                         with TabbedContent():
                             yield TabPane("Pacchetti", self._pypi_table())
                             yield TabPane("Info", Static("Info pacchetti PyPI..."))
-                        #yield Static("Risultati PyPI", classes="footer-title")
+                        # yield Static("Risultati PyPI", classes="footer-title")
 
                     with Vertical(classes="section-box scancode-block") as scancode_block:
                         scancode_block.border_title = "ScanCode Results"
@@ -55,7 +56,7 @@ class LicenseSentinelUI(App):
                         with TabbedContent():
                             yield TabPane("File", self._scancode_table())
                             yield TabPane("Dettagli", Static("Dettagli analisi ScanCode..."))
-                        #yield Static("Risultati ScanCode", classes="footer-title")
+                        # yield Static("Risultati ScanCode", classes="footer-title")
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "send":
