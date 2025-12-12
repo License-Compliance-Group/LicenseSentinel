@@ -17,6 +17,19 @@ from textual.widgets import (
 
 
 class LicenseSentinelUI(App):
+    """
+    Main GUI application class for LicenseSentinel.
+
+    This class is responsible for constructing and managing the user interface,
+    handling user input, updating the dependency tree visualization, and displaying
+    PyPI metadata and ScanCode results. Key attributes include:
+
+    - dep_tree: The Tree widget displaying package dependencies.
+    - spinner: A LoadingIndicator shown during background operations.
+
+    The class also provides methods for updating the dependency tree and populating
+    data tables for PyPI and ScanCode results.
+    """
     THEME = "harlequin"
     CSS_PATH = "style.css"
 
@@ -59,6 +72,17 @@ class LicenseSentinelUI(App):
                         # yield Static("Risultati ScanCode", classes="footer-title")
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
+        """
+        Handles the button press event for the "send" button.
+
+        When the button is pressed, this async handler:
+        1. Retrieves the package name from the input field.
+        2. Shows a loading spinner in the UI.
+        3. Asynchronously builds the dependency tree for the given package
+           by running the backend function in a separate thread.
+        4. Hides the loading spinner once the backend task is complete.
+        5. Updates the dependency tree widget in the UI with the new data.
+        """
         if event.button.id == "send":
             package = self.query_one("#url", Input).value.strip()
 
@@ -71,7 +95,8 @@ class LicenseSentinelUI(App):
             self.refresh()
 
             # Esegui il backend in un thread separato (compatibile con TUTTE le Textual)
-            graph = await asyncio.to_thread(build_dependency_tree_for, package)
+            loop = asyncio.get_running_loop()
+            graph = await loop.run_in_executor(None, build_dependency_tree_for, package)
 
             # Nascondi spinner
             self.spinner.add_class("hidden")
@@ -80,6 +105,13 @@ class LicenseSentinelUI(App):
             self.update_dependency_tree(package, graph)
 
     def update_dependency_tree(self, root_pkg: str, graph: dict):
+        """
+        Update the dependency tree widget with the given dependency graph.
+
+        Args:
+            root_pkg (str): The name of the root package.
+            graph (dict): A dictionary representing the dependency graph, where keys are package names and values are lists of dependencies.
+        """
         self.dep_tree.root.set_label(root_pkg)
         self.dep_tree.root.remove_children()
 
