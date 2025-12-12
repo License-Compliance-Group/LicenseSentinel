@@ -2,14 +2,14 @@
 This class aggressively tries to create a license file, downloading one
 if possible, unless a compliant offline version exists."""
 import os
-import pathlib
+from pathlib import Path
 import json
 import itertools
 from abc import abstractmethod, ABC
 from datetime import datetime
 
-from infrastructure.connectivity import Connectivity as io
-from infrastructure.logger_formatter import LoggerFormatter
+from src.infrastructure.connectivity import Connectivity as io
+from src.infrastructure.logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__,
 LoggerFormatter.DEBUG)
 class CompatibilityCalcStrategy(ABC):
@@ -67,7 +67,7 @@ class LicenseCompatibilityAnalyzer:
         if strategy is None:
             strategy = FullCompatibilityCalc()
         if path is None:
-            path = pathlib.Path(__file__).resolve().parents[1] / "data" / "matrix.json"
+            path = Path.joinpath(Path.cwd(),"data","matrix.json")
         self.path = str(path)
         logger.info("Seeking license file at: %s", self.path)
         if not self.matrix_file_present():
@@ -329,7 +329,7 @@ if __name__ == "__main__":
     # note: these are NOT tests in any way or fashion
     # this is a quick-and-dirty method to check if stuff works
     lca = LicenseCompatibilityAnalyzer(FullCompatibilityCalc())
-    lca.extract_raw_licenses(str(pathlib.Path.cwd())
+    lca.extract_raw_licenses(str(Path.cwd())
                              + '/src/data/licenses.json')
     lca.compare_licenses('afl-2.0', 'afl-2.1') # known compatible
     lca.calculate_license_compatibility(['afl-2.0', 'afl-2.1'])

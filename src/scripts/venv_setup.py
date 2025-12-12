@@ -26,7 +26,11 @@ def create_venv(env_name: str = DEFAULT_ENV, recreate: bool = False) -> Path:
     subprocess.check_call([sys.executable, "-m", "venv", str(env_path)])
 
     pip_name = "pip.exe" if os.name == "nt" else "pip"
-    pip_path = env_path / ("Scripts" if os.name == "nt" else "bin") / pip_name
+    pip_path = env_path / ("Scripts" if os.name == "nt" else "bin")/ pip_name
+    if not recreate and env_path.exists():
+        print(f'The specified virtual environment path ({env_path}) exists,\
+ not overwriting.')
+        return pip_path
 
     print(f"Ambiente virtuale creato in: {env_path}")
     return pip_path
@@ -41,9 +45,11 @@ def install_requirements(
     """Install project (and optionally dev) requirements into the venv."""
     if requirements_file.exists():
         print(f"Installazione pacchetti da {requirements_file}")
-        subprocess.check_call([str(pip_path), "install", "-r", str(requirements_file)])
+        subprocess.check_call([str(pip_path), "install", "-r", 
+                               str(requirements_file)])
     else:
-        print(f"Nessun {requirements_file.name} trovato, salto installazione pacchetti.")
+        print(f"Nessun {requirements_file.name} trovato,\
+ salto installazione pacchetti.")
 
     if with_dev and dev_requirements_file.exists():
         print(f"Installazione pacchetti dev da {dev_requirements_file}")
@@ -56,7 +62,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Crea un virtualenv e installa le dipendenze del progetto."
     )
-    parser.add_argument("--env", default=DEFAULT_ENV, help="Nome/cartella del venv.")
+    parser.add_argument("--env", default=DEFAULT_ENV, 
+                        help="Nome/cartella del venv.")
     parser.add_argument(
         "--no-dev",
         action="store_true",

@@ -1,7 +1,7 @@
 """The Connectivity class is responsible for the I/O that the program does."""
 
 import requests
-from infrastructure.logger_formatter import LoggerFormatter
+from src.infrastructure.logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__)
 
 class Connectivity:

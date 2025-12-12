@@ -1,8 +1,8 @@
 """Package metadata fetcher module.
 
-This module parses requirements.txt files, builds a complete dependency tree
-using a temporary virtual environment, and fetches license/link metadata from PyPI
-for all discovered packages.
+This module parses requirements.txt files, builds a complete dependency 
+tree using a temporary virtual environment, and fetches license/link 
+metadata from PyPI for all discovered packages.
 """
 import logging
 import re
@@ -34,10 +34,8 @@ class PackageMetadataFetcher:
         self.dep_builder = dep_builder
         self.repo_downloader = repo_downloader
 
-    def build_package_metadata(self,
-                               file_path: str,
-
-                               ) -> tuple[List[PyPiMetadata], dict[str, list[str]]]:
+    def build_package_metadata(self, file_path: str,)\
+        -> tuple[List[PyPiMetadata], dict[str, list[str]]]:
         """Build package metadata from a requirements.txt file.
 
         This is the main orchestrator that:
@@ -50,7 +48,8 @@ class PackageMetadataFetcher:
 
         Returns:
             (metadata_list, dependency_graph)
-            metadata_list: A list of PyPiMetadata objects containing package name, license, and link.
+            metadata_list: A list of PyPiMetadata objects containing
+                package name, license, and link.
             dependency_graph: dict pkg -> list of direct dependencies.
             Returns ([], {}) if parsing/build fails.
         """
@@ -59,7 +58,8 @@ class PackageMetadataFetcher:
         if not dependencies:
             return [], {}
 
-        # Step 2: Build dependency tree (single pass - no intermediate function)
+        # Step 2: Build dependency tree 
+        # (single pass - no intermediate function)
         LOGGER.info("Building dependency tree for %d root packages",
                     len(dependencies))
         try:

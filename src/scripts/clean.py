@@ -7,13 +7,12 @@ Script di pulizia del progetto:
 from __future__ import annotations
 
 import argparse
-import os
 import shutil
 import sys
 from pathlib import Path
 
-# Root del progetto (2 livelli sopra la cartella scripts)
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+# Assume standard practice: file ran from project root.
+PROJECT_ROOT = Path.cwd()
 DEFAULT_VENV = ".venv"
 
 PATTERNS = [
@@ -35,6 +34,11 @@ def is_in_venv() -> bool:
 
 
 def clean() -> None:
+    """
+    Remove all files defined in the pattern.
+    """
+    
+    # No logger - scripts are allowed no internal imports.
     print("Pulizia del progetto in corso...")
 
     for pattern in PATTERNS:
@@ -53,6 +57,13 @@ def clean() -> None:
 
 
 def remove_venv(venv_dir: Path) -> None:
+    """Removes the virtual environment.
+    Warns the user if they're attempting to remove a currently 
+    active one.
+
+    Args:
+        venv_dir (Path): The path to wupe.
+    """
     if is_in_venv():
         print("ATTENZIONE: sei dentro un ambiente virtuale attivo.")
         print("Esegui 'deactivate' nella shell prima di cancellare il venv.")

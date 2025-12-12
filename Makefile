@@ -2,7 +2,12 @@ PYTHON ?= python3
 VENV ?= .venv
 REQ_FILE ?= src/requirements.txt
 DEV_REQ_FILE ?= src/requirements-dev.txt
-VENV_BIN = $(VENV)/bin
+# Platform detection for virtualenv bin/Scripts directory
+ifeq ($(OS),Windows_NT)
+    VENV_BIN = $(VENV)/Scripts
+else
+    VENV_BIN = $(VENV)/bin
+endif
 VENV_PY = $(VENV_BIN)/python
 VENV_PIP = $(VENV_BIN)/pip
 
