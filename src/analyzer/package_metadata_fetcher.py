@@ -6,124 +6,172 @@ for all discovered packages.
 """
 import logging
 import re
-from typing import List
+from typing import Dict, List
 
+
+from entities.package_manager_fetcher import AbstractPackageManagerFetcher
+from entities.abstract_dep_tree_builder import AbstractDepTreeBuilder
+from entities.abstract_repo_downloader import AbstractRepoDownloader
 from entities.pypi_metadata import PyPiMetadata
+
 from infrastructure.logger_formatter import LoggerFormatter
-from infrastructure.pypi_client import PyPiHandler
 
-import dep_tree_builder
-
-logger = LoggerFormatter.initialize("package_metadata_fetcher", logging.INFO)
+LOGGER = LoggerFormatter.initialize("package_metadata_fetcher", logging.INFO)
+DOWNLOAD_DIRECTORY = "tmpvenv/repo_downloads"
+DEFAULT_DOWNLOAD_BRANCH = "main"
+PACKAGES_TO_SKIP = ("pip", "pipdeptree")
 
 # Module-level cache for package metadata
-_packages_metadata: List[PyPiMetadata] = []
+# Tree having only packages names
+_graph: Dict[str, List[str]] = {}
+# Same tree but with objects containing metadata
+_packages_metadata: Dict[str, PyPiMetadata] = {}
 
 
-def build_package_metadata(file_path: str) -> List[PyPiMetadata]:
-    """Build package metadata from a requirements.txt file.
+class PackageMetadataFetcher:
+    """Fetches package metadata."""
+    def __init__(self,
+                 pypi_client: AbstractPackageManagerFetcher,
+                 dep_builder: AbstractDepTreeBuilder,
+                 repo_downloader: AbstractRepoDownloader):
+        self.pypi_client = pypi_client
+        self.dep_builder = dep_builder
+        self.repo_downloader = repo_downloader
 
-    This is the main orchestrator that:
-    1. Parses requirements.txt
-    2. Builds full dependency tree (using temp venv + pipdeptree)
-    3. Fetches PyPI metadata for all packages
+    def build_package_metadata(self,
+                               file_path: str,
 
-    Args:
-        file_path: Path to the requirements.txt file.
+                               ) -> Dict[str, PyPiMetadata]:
+        """Build package metadata from a requirements.txt file.
 
-    Returns:
-        A list of PyPiMetadata objects containing package name, license, and link.
-        Returns an empty list if file parsing fails.
-    """
-    # Step 1: Parse requirements file
-    dependencies = _parse_requirements_file(file_path)
-    if not dependencies:
-        return []
+        This is the main orchestrator that:
+        1. Parses requirements.txt
+        2. Builds full dependency tree (using temp venv + pipdeptree)
+        3. Fetches PyPI metadata for all packages
 
-    # Step 2: Build dependency tree (single pass - no intermediate function)
-    logger.info("Building dependency tree for %d root packages", len(dependencies))
-    try:
-        temp_venv = dep_tree_builder.create_venv()
-        dep_tree_builder.install_packages(temp_venv, dependencies)
-        tree_json = dep_tree_builder.get_tree_json(temp_venv)
-        graph = dep_tree_builder.build_map(tree_json)
+        Args:
+            file_path: Path to the requirements.txt file.
 
-        # Extract all unique packages (keys + all values)
-        all_packages = set(graph.keys())
-        for deps in graph.values():
-            all_packages.update(deps)
+        Returns:
+            A list of PyPiMetadata objects containing package name, license, and link.
+            Returns an empty list if file parsing fails.
+        """
+        global _graph  # <-- ADD THIS LINE
 
-        logger.info("Discovered %d total packages", len(all_packages))
-    except RuntimeError as exc:
-        logger.error("Failed to build dependency tree: %s", exc)
-        return []
+        # Step 1: Parse requirements file
+        dependencies = self._parse_requirements_file(file_path)
+        if not dependencies:
+            return {}
 
-    # Step 3: Fetch PyPI metadata (batch operation)
-    logger.info("Fetching PyPI metadata for %d packages", len(all_packages))
-    results = PyPiHandler.get_source_links(list(all_packages))
+        # Step 2: Build dependency tree (single pass - no intermediate function)
+        LOGGER.info("Building dependency tree for %d root packages",
+                    len(dependencies))
+        try:
+            temp_venv = self.dep_builder.create_venv()
+            self.dep_builder.install_packages(temp_venv, dependencies)
+            tree_json = self.dep_builder.get_tree_json(temp_venv)
+            _graph = self.dep_builder.build_map(tree_json)
 
-    # Step 4: per ora stampo ma bisogna lanciare scancode
-    metadata_list = []
-    for pkg_name, metadata in results.items():
-        metadata_list.append(PyPiMetadata(
-            package=pkg_name,
-            license_type=metadata['license'],
-            link=metadata['link']
-        ))
-    logger.info("Successfully fetched metadata for %d packages", len(metadata_list))
-    # Step 5: download sources and scan licenses with scancode
-    # Step 6: compare PyPI license vs scancode detected license
-    # Step 7: create for each package objects package_metadata
-    #        containing both pypi and scancode license info and check results
-    # We had to think more about how to structure this part. From the GUI the user
-    # could select a single package (from the tree view) and see all its details like:
-    #  - PyPI license
-    #  - Scancode detected license
-    #  - License compatibility check result
-    #  - Incompatibility with other packages in the tree (if any)
-    # I think that we should avoid the massive I/O (PyPI jsons + repo download + scancode)
-    # at once for all packages # and let this option be on-demand when the user selects a package.
-    # Possibly let the option "scan all packages" be a separate button that the user
-    # can press if he wants to scan everything at once.
+            # Extract all unique packages (keys + all values)
+            all_packages = set(_graph.keys())  # posso eliminare
+            for deps in _graph.values():
+                all_packages.update(deps)
 
-    return metadata_list
+            LOGGER.info("Discovered %d total packages", len(all_packages))
+        except RuntimeError as exc:
+            LOGGER.error("Failed to build dependency tree: %s", exc)
+            return {}
 
+        # Step 3: Fetch PyPI metadata (batch operation)
+        LOGGER.info("Fetching PyPI metadata for %d packages",
+                    len(all_packages))
+        results = self.pypi_client.get_source_links(list(all_packages))
 
-def _parse_requirements_file(file_path: str) -> List[str]:
-    """Parse a requirements.txt file and extract package names.
+        # Step 4: Build PyPiMetadata objects and prepare
+        package_urls: Dict[str, str | None] = {}
+        # _packages_metadata = {}
+        for pkg_name, metadata in results.items():
+            if pkg_name in PACKAGES_TO_SKIP:
+                continue
+            _packages_metadata[pkg_name] = PyPiMetadata(
+                package=pkg_name,
+                license_type=metadata['license'],
+                link=metadata['link']
+            )
+            package_urls[pkg_name] = metadata["link"]
 
-    Args:
-        file_path: Path to the requirements.txt file.
+        LOGGER.info("Successfully fetched metadata for %d packages",
+                    len(_packages_metadata))
 
-    Returns:
-        List of package names found in the file.
-    """
-    dependencies = []
-    pattern = re.compile(r"^\s*([A-Za-z0-9_.-]+)")
+        # Step 5: download sources
+        # down_results = self.repo_downloader.download_repos(
+        #    repo_urls=package_urls,
+        #    output_path=DOWNLOAD_DIRECTORY,
+        #    branch=DEFAULT_DOWNLOAD_BRANCH,
+        # )
+        # for pkg, success in down_results.items():
+        #    LOGGER.info("Download %s: %s", pkg, success)
 
-    try:
-        logger.info("Parsing project dependencies from %s", file_path)
-        with open(file_path, 'r', encoding='utf-8') as file:
-            for line in file:
-                line = line.split("#")[0].strip()
-                if not line:
-                    continue
-                match = pattern.match(line)
-                if match:
-                    dependencies.append(match.group(1))
+        # Step 6: compare PyPI license vs scancode detected license
+        # Step 7: create for each package objects package_metadata
+        #        containing both pypi and scancode license info and check results
+        # We had to think more about how to structure this part. From the GUI the user
+        # could select a single package (from the tree view) and see all its details like:
+        #  - PyPI license
+        #  - Scancode detected license
+        #  - License compatibility check result
+        #  - Incompatibility with other packages in the tree (if any)
+        # I think that we should avoid the massive I/O (PyPI jsons + repo download + scancode)
+        # at once for all packages # and let this option be on-
+        # when the user selects a package.
+        # Possibly let the option "scan all packages" be a separate button that the user
+        # can press if he wants to scan everything at once.
 
-        logger.info("Found %d direct dependencies", len(dependencies))
+        return _packages_metadata
 
-    except FileNotFoundError:
-        logger.error("File not found: %s", file_path)
-    except OSError as exc:
-        logger.error("Error reading file %s: %s", file_path, exc)
-    except Exception as exc:  # pylint: disable=broad-exception-caught
-        logger.error("Unexpected error parsing %s: %s", file_path, exc)
+    def _parse_requirements_file(self, file_path: str) -> List[str]:
+        """Parse a requirements.txt file and extract package names.
 
-    return dependencies
+        Args:
+            file_path: Path to the requirements.txt file.
 
+        Returns:
+            List of package names found in the file.
+        """
+        dependencies = []
+        pattern = re.compile(r"^\s*([A-Za-z0-9_.-]+)")
 
-def pypi_license_checker():
-    """Placeholder for future license compatibility checker."""
-    raise NotImplementedError("PyPiLicenseChecker is not yet implemented")
+        try:
+            LOGGER.info("Parsing project dependencies from %s", file_path)
+            with open(file_path, 'r', encoding='utf-8') as file:
+                for line in file:
+                    line = line.split("#")[0].strip()
+                    if not line:
+                        continue
+                    match = pattern.match(line)
+                    if match:
+                        dependencies.append(match.group(1))
+
+            LOGGER.info("Found %d direct dependencies", len(dependencies))
+
+        except FileNotFoundError:
+            LOGGER.error("File not found: %s", file_path)
+        except OSError as exc:
+            LOGGER.error("Error reading file %s: %s", file_path, exc)
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            LOGGER.error("Unexpected error parsing %s: %s", file_path, exc)
+
+        return dependencies
+
+    def get_graph(self) -> Dict[str, List[str]]:
+        """Return a copy of the last-built dependency graph.
+
+        Returns:
+            A dict mapping package names to lists of dependency package names.
+            Returns an empty dict if no graph was built yet.
+        """
+        return {pkg: list(deps) for pkg, deps in _graph.items()}
+
+    def pypi_license_checker(self):
+        """Placeholder for future license compatibility checker."""
+        raise NotImplementedError("PyPiLicenseChecker is not yet implemented")

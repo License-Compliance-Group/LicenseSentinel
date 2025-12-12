@@ -1,5 +1,5 @@
 """A Behave step implementation/testing facility for
-LicenseCompatibilityAnalyzer"""
+LicenseCompatibilityAnalyzer's potential reporting functionality"""
 
 # pylint: disable=not-callable, missing-function-docstring, function-redefined
 # Why?
@@ -12,26 +12,19 @@ LicenseCompatibilityAnalyzer"""
 # https://behave.readthedocs.io/en/latest/tutorial/#python-step-implementations
 
 # I would consider moving those new checks into a CI/CD pipeline soon
+from behave.api.pending_step import StepNotImplementedError
 from behave import given, when, then
 
-
-@given('a list of licenses')
+@given('the calculation result is stored')
 def step_impl(context):
-    context.licenses_list = [
-        "BSD-1-Clause","BSD-2-Clause","BSD-3-Clause"
-    ]
+    raise StepNotImplementedError('Given the calculation result is stored')
 
-@when('a comparison is requested')
-def step_impl(context): # pylint: disable=unused-argument
-    assert True # can we control this from here?
 
-@then('retrieve necessary entries from the matrix and compare them against one another')
+@when('the user requests a report')
 def step_impl(context):
-    assert context.lca.calculate_license_compatibility(context.licenses_list) \
-    != (None, None)
+    raise StepNotImplementedError('When the user requests a report')
 
 
-@then('store the result')
+@then('generate a report')
 def step_impl(context):
-    context.lca.calculate_license_compatibility(context.licenses_list)
-    assert context.lca.last_comparison_result[0] == "Yes"
+    raise StepNotImplementedError('Then generate a report')
