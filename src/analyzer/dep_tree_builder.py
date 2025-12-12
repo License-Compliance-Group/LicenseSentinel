@@ -191,6 +191,23 @@ def print_subtree(graph: Dict[str, List[str]], pkg: str, indent: int = 0,
         print_subtree(graph, dep, indent + 4, visited)
 
 
+"""
+    Creazine del collegamento con la GUI
+"""
+def build_dependency_tree_for(package: str) -> Dict[str, List[str]]:
+    """API function to be called from the GUI."""
+    try:
+        venv_bin = create_venv(force_recreate=True)
+        install_packages(venv_bin, [package])
+        tree_json = get_tree_json(venv_bin)
+        graph = build_map(tree_json)
+        return graph
+    except Exception as exc:
+        logger.error("Error while building dependency tree: %s", exc)
+        return {}
+
+
+
 
 
 
