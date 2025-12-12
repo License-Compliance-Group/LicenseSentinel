@@ -192,10 +192,23 @@ def print_subtree(graph: Dict[str, List[str]], pkg: str, indent: int = 0,
 
 
 """
-    Creazine del collegamento con la GUI
+    Creazione del collegamento con la GUI
 """
 def build_dependency_tree_for(package: str) -> Dict[str, List[str]]:
-    """API function to be called from the GUI."""
+    """
+    Build a dependency graph for a given package by creating a virtual environment,
+    installing the package, and analyzing its dependencies using pipdeptree.
+
+    Args:
+        package: The name of the root package to analyze.
+
+    Returns:
+        A dictionary mapping each package name to a list of its direct dependencies.
+        Returns an empty dictionary if an error occurs.
+
+    Raises:
+        All exceptions are caught internally; errors are logged and an empty dict is returned.
+    """
     try:
         venv_bin = create_venv(force_recreate=True)
         install_packages(venv_bin, [package])
