@@ -16,16 +16,17 @@
     width: 1fr;
     background: #1e1e1e;
     color: #f5f5f7;
-    border: heavy round #3a3a3c;
+    border: heavy round #ffc400;
     padding: 0 1;
 }
 
 /* Pulsante */
 .url-button {
-    width: 12;
-    background: #0a84ff;
+    width: 4;
+    height: 3; 
+    background: #2c2c2e;
     color: #ffffff;
-    border: heavy round #0a84ff;
+    border: heavy round #ffc400;
     text-style: bold;
 }
 
@@ -37,7 +38,7 @@
     layout: vertical;
     padding: 0;
     margin: 0;
-    background: #1e1e1e;
+    background: #2c2c2e;
 }
 
 /* Row principale */
@@ -49,15 +50,15 @@
 /* ========================= */
 /* Albero delle dipendenze   */
 /* ========================= */
-Tree {
+
+.dependency {
+    border: heavy round #ffc400;
     width: 40;
     height: 1fr;
-    border: heavy round #3a3a3c;
-    margin: 0;
-    background: #2c2c2e;
-    color: #f5f5f7;
     padding: 1;
+    background: #2c2c2e;
 }
+
 
 /* ========================= */
 /* Colonna destra            */
@@ -73,7 +74,7 @@ Tree {
 /* ========================= */
 .pypi-block {
     height: 1fr;
-    border: heavy round #3a3a3c;
+    border: heavy round #ffc400;
     padding: 1;
     margin-bottom: 1;
     background: #2c2c2e;
@@ -85,7 +86,7 @@ Tree {
 /* ========================= */
 .scancode-block {
     height: 1fr;
-    border: heavy round #3a3a3c;
+    border: heavy round #ffc400;
     padding: 1;
     background: #2c2c2e;
     position: relative; /* NECESSARIO */
@@ -123,3 +124,6 @@ DataTable {
     opacity: 0.8;
 }
 
+.hidden {
+    display: none;
+}
