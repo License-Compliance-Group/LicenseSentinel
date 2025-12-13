@@ -4,6 +4,7 @@ This module parses requirements.txt files, builds a complete dependency tree
 using a temporary virtual environment, and fetches license/link metadata from PyPI
 for all discovered packages.
 """
+import copy
 import logging
 import re
 from typing import Dict, List
@@ -21,15 +22,18 @@ DOWNLOAD_DIRECTORY = "tmpvenv/repo_downloads"
 DEFAULT_DOWNLOAD_BRANCH = "main"
 PACKAGES_TO_SKIP = ("pip", "pipdeptree")
 
-# Module-level cache for package metadata
-# Tree having only packages names
-_graph: Dict[str, List[str]] = {}
-# Same tree but with objects containing metadata
-_packages_metadata: Dict[str, PyPiMetadata] = {}
+# Note: module-level caches moved into the class as class variables below
 
 
 class PackageMetadataFetcher:
     """Fetches package metadata."""
+    # Module-level cache for package metadata, shared across all instances
+
+    # Tree having only package names
+    graph: Dict[str, List[str]] = {}
+    # Same tree but with objects containing metadata
+    packages_metadata: Dict[str, PyPiMetadata] = {}
+
     def __init__(self,
                  pypi_client: AbstractPackageManagerFetcher,
                  dep_builder: AbstractDepTreeBuilder,
@@ -56,7 +60,7 @@ class PackageMetadataFetcher:
             A list of PyPiMetadata objects containing package name, license, and link.
             Returns an empty list if file parsing fails.
         """
-        global _graph  # <-- ADD THIS LINE
+        cls = self.__class__
 
         # Step 1: Parse requirements file
         dependencies = self._parse_requirements_file(file_path)
@@ -70,11 +74,11 @@ class PackageMetadataFetcher:
             temp_venv = self.dep_builder.create_venv()
             self.dep_builder.install_packages(temp_venv, dependencies)
             tree_json = self.dep_builder.get_tree_json(temp_venv)
-            _graph = self.dep_builder.build_map(tree_json)
+            cls.graph = self.dep_builder.build_map(tree_json)
 
             # Extract all unique packages (keys + all values)
-            all_packages = set(_graph.keys())  # posso eliminare
-            for deps in _graph.values():
+            all_packages = set(cls.graph.keys())
+            for deps in cls.graph.values():
                 all_packages.update(deps)
 
             LOGGER.info("Discovered %d total packages", len(all_packages))
@@ -93,7 +97,7 @@ class PackageMetadataFetcher:
         for pkg_name, metadata in results.items():
             if pkg_name in PACKAGES_TO_SKIP:
                 continue
-            _packages_metadata[pkg_name] = PyPiMetadata(
+            cls.packages_metadata[pkg_name] = PyPiMetadata(
                 package=pkg_name,
                 license_type=metadata['license'],
                 link=metadata['link']
@@ -101,7 +105,7 @@ class PackageMetadataFetcher:
             package_urls[pkg_name] = metadata["link"]
 
         LOGGER.info("Successfully fetched metadata for %d packages",
-                    len(_packages_metadata))
+                    len(cls.packages_metadata))
 
         # Step 5: download sources
         # down_results = self.repo_downloader.download_repos(
@@ -127,7 +131,9 @@ class PackageMetadataFetcher:
         # Possibly let the option "scan all packages" be a separate button that the user
         # can press if he wants to scan everything at once.
 
-        return _packages_metadata
+        # Return a shallow copy so callers don't get a direct reference
+        # to the internal class cache.
+        return copy.deepcopy(cls.packages_metadata)
 
     def _parse_requirements_file(self, file_path: str) -> List[str]:
         """Parse a requirements.txt file and extract package names.
@@ -170,7 +176,7 @@ class PackageMetadataFetcher:
             A dict mapping package names to lists of dependency package names.
             Returns an empty dict if no graph was built yet.
         """
-        return {pkg: list(deps) for pkg, deps in _graph.items()}
+        return {pkg: list(deps) for pkg, deps in self.__class__.graph.items()}
 
     def pypi_license_checker(self):
         """Placeholder for future license compatibility checker."""
