@@ -11,9 +11,14 @@ from textual.widgets import (
     TabPane,
     LoadingIndicator
 )
+from textual import events
 
 # Import del backend
-# from analyzer.dep_tree_builder import build_dependency_tree_for
+from infrastructure.pypi_client import PyPiHandler
+from infrastructure.repo_downloader import RepoDownloader
+from infrastructure.dep_tree_builder import DepTreeBuilder
+
+from analyzer.package_metadata_fetcher import PackageMetadataFetcher
 
 
 class LicenseSentinelUI(App):
@@ -24,7 +29,7 @@ class LicenseSentinelUI(App):
     handling user input, updating the dependency tree visualization, and displaying
     PyPI metadata and ScanCode results. Key attributes include:
 
-    - dep_tree: The Tree widget displaying package dependencies.
+    - ui_tree: The Tree widget displaying package dependencies.
     - spinner: A LoadingIndicator shown during background operations.
 
     The class also provides methods for updating the dependency tree and populating
@@ -33,10 +38,31 @@ class LicenseSentinelUI(App):
     THEME = "harlequin"
     CSS_PATH = "style.css"
 
+    def __init__(self):
+        super().__init__()
+
+        self.pypi_client = PyPiHandler()
+        self.repo_downloader = RepoDownloader()
+        self.dep_builder = DepTreeBuilder()
+        # Sarà inizializzato al click del bottone
+        self.fetcher = None
+
+    def _pypi_table(self) -> DataTable:
+        table = DataTable()
+        table.add_columns("Pacchetto", "Licenza dichiarata")
+        return table
+
+    def _scancode_table(self) -> DataTable:
+        table = DataTable()
+        table.add_columns("File", "Licenza rilevata")
+        return table
+
     def compose(self) -> ComposeResult:
-        with Horizontal(classes="urlbar"):
-            yield Input(placeholder="Inserisci un package PyPI (es: flask)", id="url", classes="url-input")
-            yield Button("Invia", id="send", classes="url-button")
+        with Horizontal(classes="path-container"):
+            yield Input(placeholder="Insert requirements.txt path",
+                        id="path",
+                        classes="path-input")
+            yield Button("Check", id="send", classes="url-button")
 
         with Vertical(classes="main-container", id="main-container"):
             with Horizontal(classes="main-row"):
@@ -46,8 +72,8 @@ class LicenseSentinelUI(App):
                     dependency_block.styles.border_title_align = "right"
 
                     # Tree dinamico
-                    self.dep_tree = Tree("Dipendenze")
-                    yield self.dep_tree
+                    self.ui_tree = Tree("Dependencies")
+                    yield self.ui_tree
 
                     # Spinner (inizialmente nascosto)
                     self.spinner = LoadingIndicator(
@@ -71,6 +97,10 @@ class LicenseSentinelUI(App):
                             yield TabPane("Dettagli", Static("Dettagli analisi ScanCode..."))
                         # yield Static("Risultati ScanCode", classes="footer-title")
 
+# ============================================================================#
+#                              Event Handlers                                 #
+# ============================================================================#
+
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         """
         Handles the button press event for the "send" button.
@@ -84,25 +114,83 @@ class LicenseSentinelUI(App):
         5. Updates the dependency tree widget in the UI with the new data.
         """
         if event.button.id == "send":
-            package = self.query_one("#url", Input).value.strip()
+            input_widget = self.query_one("#path", Input)
+            package = input_widget.value.strip()
 
             if not package:
-                self.log("Nessun package inserito")
+                # show message as placeholder and mark input + outer bar as error
+                input_widget.placeholder = "PATH is empty"
+                input_widget.add_class("path-input-error")
+                try:
+                    self.query_one(
+                        ".path-container").add_class("path-container-error")
+                except Exception:
+                    pass
                 return
 
+            # clear any previous error state and restore placeholder
+            input_widget.remove_class("path-input-error")
+            try:
+                self.query_one(
+                    ".path-container").remove_class("path-container-error")
+            except Exception:
+                pass
+            input_widget.placeholder = "Insert requirements.txt path"
+
+            self.fetcher = PackageMetadataFetcher(
+                self.pypi_client,
+                self.dep_builder,
+                self.repo_downloader
+            )
             # Mostra spinner
             self.spinner.remove_class("hidden")
             self.refresh()
 
             # Esegui il backend in un thread separato (compatibile con TUTTE le Textual)
             loop = asyncio.get_running_loop()
-            graph = await loop.run_in_executor(None, build_dependency_tree_for, package)
+            metdt = await loop.run_in_executor(None, self.fetcher.build_package_metadata, package)
 
             # Nascondi spinner
             self.spinner.add_class("hidden")
 
             # Aggiorna il Tree nella GUI
+            graph = self.fetcher.get_graph()
             self.update_dependency_tree(package, graph)
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        """Clear error state when the user starts typing in the URL input."""
+        widget = getattr(event, "input", None) or getattr(
+            event, "target", None)
+        if widget is None:
+            return
+        if widget.id == "path" and widget.value.strip():
+            widget.remove_class("path-input-error")
+            try:
+                self.query_one(
+                    ".path-container").remove_class("path-container-error")
+            except Exception:
+                pass
+            widget.placeholder = "Insert requirements.txt path"
+
+    async def on_blur(self, event: events.Blur) -> None:
+        """Reset styles when the URL input (or its container) loses focus."""
+        widget = getattr(event, "target", None)
+        if widget is None:
+            return
+        # If the blurred widget is the path input (or a child), reset styles
+        if getattr(widget, "id", None) == "path" or "path" in getattr(widget, "classes", []):
+            try:
+                url_input = self.query_one("#url", Input)
+            except Exception:
+                url_input = None
+            try:
+                self.query_one(
+                    ".path-container").remove_class("path-container-error")
+            except Exception:
+                pass
+            if url_input:
+                url_input.remove_class("path-input-error")
+                url_input.placeholder = "Insert requirements.txt path"
 
     def update_dependency_tree(self, root_pkg: str, graph: dict):
         """
@@ -110,10 +198,11 @@ class LicenseSentinelUI(App):
 
         Args:
             root_pkg (str): The name of the root package.
-            graph (dict): A dictionary representing the dependency graph, where keys are package names and values are lists of dependencies.
+            graph (dict): A dictionary representing the dependency graph,
+            where keys are package names and values are lists of dependencies.
         """
-        self.dep_tree.root.set_label(root_pkg)
-        self.dep_tree.root.remove_children()
+        self.ui_tree.root.set_label(root_pkg)
+        self.ui_tree.root.remove_children()
 
         def add_nodes(parent, pkg):
             deps = graph.get(pkg, [])
@@ -121,22 +210,12 @@ class LicenseSentinelUI(App):
                 node = parent.add(dep)
                 add_nodes(node, dep)
 
-        add_nodes(self.dep_tree.root, root_pkg)
+        add_nodes(self.ui_tree.root, root_pkg)
 
         # Espandi tutto automaticamente
-        self.dep_tree.root.expand_all()
+        self.ui_tree.root.expand_all()
 
-        self.dep_tree.refresh(layout=True)
-
-    def _pypi_table(self) -> DataTable:
-        table = DataTable()
-        table.add_columns("Pacchetto", "Licenza dichiarata")
-        return table
-
-    def _scancode_table(self) -> DataTable:
-        table = DataTable()
-        table.add_columns("File", "Licenza rilevata")
-        return table
+        self.ui_tree.refresh(layout=True)
 
 
 if __name__ == "__main__":

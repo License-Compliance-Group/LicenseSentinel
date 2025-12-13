@@ -1,7 +1,7 @@
 /* ========================= */
 /* Barra URL in cima          */
 /* ========================= */
-.urlbar {
+.path-container {
     width: 100%;
     height: auto; 
     padding: 0;
@@ -11,12 +11,18 @@
     border: heavy round #4a361d;
 }
 
-.urlbar:focus-within {
+.path-container:focus-within {
     border: heavy round #cc8a36;
 }
 
+.path-container.path-container-error {
+    border: heavy round #ff6b6b;
+}
+
+
+
 /* Input */
-.url-input {
+.path-input {
     width: 1fr;
     height: auto; 
     background: #1e1e1e;
@@ -24,13 +30,16 @@
     border: none;
     padding: 0 1;
 }
+.path-input.path-input-error {
+    color: #ff6b6b;
+}
 
 /* Pulsante */
 .url-button {
     width: 10;
     height: 100%; 
     background: #cc8a36;
-    color: #1e1e1e;
+    color: #cc8a36;
     border: none;
     padding: 0 1;
     margin: 0;
