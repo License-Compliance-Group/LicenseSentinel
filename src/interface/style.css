@@ -46,6 +46,25 @@
 }
 
 /* ========================= */
+/* Log Console                */
+/* ========================= */
+.log-console {
+    width: 100%;
+    height: auto;
+    min-height: 5;
+    max-height: 10;
+    background: #1e1e1e;
+    color: #f5f5f7;
+    border: heavy round #4a361d;
+    padding: 1;
+    margin: 0;
+}
+
+.log-console:focus-within {
+    border: heavy round #cc8a36;
+}
+
+/* ========================= */
 /* Container principale       */
 /* ========================= */
 .main-container {

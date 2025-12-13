@@ -24,7 +24,7 @@ from infrastructure.connectivity import Connectivity
 from analyzer.package_metadata_fetcher import PackageMetadataFetcher
 
 ERROR_PLACEHOLDER = "❌ Invalid path!"
-INFO_PLACEHOLDER = "📄 Insert path to requirements.txt"
+INFO_PLACEHOLDER = "📄 Insert the path to the requirements.txt file"
 
 
 class TextualLogHandler(logging.Handler):
@@ -72,12 +72,12 @@ class LicenseSentinelUI(App):
     The class also provides methods for updating the dependency tree and populating
     data tables for PyPI and ScanCode results.
     """
-    THEME = "harlequin"
+    # THEME = "harlequin"
     CSS_PATH = "style.css"
 
     def __init__(self):
         super().__init__()
-
+        # self.theme = "tokyo-night"
         # Backend components
         self.pypi_client = PyPiHandler()
         self.repo_downloader = RepoDownloader()
@@ -185,15 +185,25 @@ class LicenseSentinelUI(App):
 
         handler = TextualLogHandler(lambda: self)
         handler.setFormatter(logging.Formatter(
-            '%(asctime)s %(levelname)s: %(message)s', datefmt='%H:%M:%S'))
+            '%(asctime)s %(levelname)s [%(name)s]: %(message)s', datefmt='%H:%M:%S'))
         handler.setLevel(logging.INFO)
 
-        # Attach to the package_metadata_fetcher logger
-        fetcher_logger = logging.getLogger('package_metadata_fetcher')
-        fetcher_logger.addHandler(handler)
-        fetcher_logger.setLevel(logging.INFO)
+        # Attach to the root logger to capture logs from all modules
+        root_logger = logging.getLogger()
+        root_logger.addHandler(handler)
+        root_logger.setLevel(logging.INFO)
 
         self._log_handler = handler
+
+    async def _mount_log_console(self, before_widget) -> None:
+        """Create and mount the log console widget."""
+        self.log_view = Log(classes="log-console")
+        self.log_view.styles.scrollbar_background = "#1e1e1e"
+        self.log_view.styles.scrollbar_corner_color = "#1e1e1e"
+        self.log_view.styles.scrollbar_color = "#cc8a36"
+        self.log_view.styles.scrollbar_color_hover = "#d69a46"
+        await self.mount(self.log_view, before=before_widget)
+        self.log_view.write_line("Starting dependency analysis...")
 
 # =================================================================================#
 #                                 Event Handlers                                   #
@@ -229,9 +239,7 @@ class LicenseSentinelUI(App):
             path_container.add_class("hidden")
 
             if self.log_view is None:
-                self.log_view = Log()
-                await self.mount(self.log_view, before=path_container)
-                self.log_view.write_line("Starting dependency analysis...")
+                await self._mount_log_console(path_container)
 
             # Mostra spinner
             self.spinner.remove_class("hidden")
@@ -249,7 +257,7 @@ class LicenseSentinelUI(App):
 
             # Aggiorna il Tree nella GUI
             graph = self.fetcher.get_graph()
-            self.update_dependency_tree(package, graph)
+            self.update_dependency_tree("flask", graph)
 
     @on(Input.Changed, "#path")
     async def on_path_input_changed(self, event: Input.Changed) -> None:
