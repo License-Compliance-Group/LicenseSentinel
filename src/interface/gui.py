@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from pathlib import Path
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
@@ -10,7 +11,8 @@ from textual.widgets import (
     DataTable,
     TabbedContent,
     TabPane,
-    LoadingIndicator
+    LoadingIndicator,
+    Log
 )
 from textual import events, on
 
@@ -23,6 +25,37 @@ from analyzer.package_metadata_fetcher import PackageMetadataFetcher
 
 ERROR_PLACEHOLDER = "❌ Invalid path!"
 INFO_PLACEHOLDER = "📄 Insert path to requirements.txt"
+
+
+class TextualLogHandler(logging.Handler):
+    """Logging handler that writes to a Textual Log widget."""
+
+    def __init__(self, app_getter):
+        super().__init__()
+        self._app_getter = app_getter
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            msg = self.format(record)
+        except Exception:
+            msg = record.getMessage()
+
+        app = self._app_getter()
+        if app is None:
+            return
+
+        def _write():
+            log_widget = getattr(app, "log_view", None)
+            if log_widget:
+                try:
+                    log_widget.write_line(msg)
+                except Exception:
+                    pass
+
+        try:
+            app.call_from_thread(_write)
+        except Exception:
+            pass
 
 
 class LicenseSentinelUI(App):
@@ -55,12 +88,17 @@ class LicenseSentinelUI(App):
             self.dep_builder,
             self.repo_downloader
         )
-        # UI components
 
+        # UI components
         self.ui_tree = Tree("Dependencies")  # Tree
-        # Spinner (inizialmente nascosto)
+        # Spinner (Initially hidden)
         self.spinner = LoadingIndicator(id="spinner", classes="hidden")
         self._path_input_has_error = False
+
+        # Log widget for displaying build output
+        self.log_view: Log | None = None
+        self._log_handler = None
+        self._setup_logging()
 
     def _pypi_table(self) -> DataTable:
         table = DataTable()
@@ -140,6 +178,23 @@ class LicenseSentinelUI(App):
             if path_container:
                 path_container.remove_class("path-container-error")
 
+    def _setup_logging(self) -> None:
+        """Setup logging handler to forward logs to the UI Log widget."""
+        if self._log_handler is not None:
+            return
+
+        handler = TextualLogHandler(lambda: self)
+        handler.setFormatter(logging.Formatter(
+            '%(asctime)s %(levelname)s: %(message)s', datefmt='%H:%M:%S'))
+        handler.setLevel(logging.INFO)
+
+        # Attach to the package_metadata_fetcher logger
+        fetcher_logger = logging.getLogger('package_metadata_fetcher')
+        fetcher_logger.addHandler(handler)
+        fetcher_logger.setLevel(logging.INFO)
+
+        self._log_handler = handler
+
 # =================================================================================#
 #                                 Event Handlers                                   #
 # =================================================================================#
@@ -169,16 +224,28 @@ class LicenseSentinelUI(App):
             # clear any previous error state
             self._set_path_error(False)
 
+            # Hide input bar and mount log widget
+            path_container = self.query_one(".path-container", Horizontal)
+            path_container.add_class("hidden")
+
+            if self.log_view is None:
+                self.log_view = Log()
+                await self.mount(self.log_view, before=path_container)
+                self.log_view.write_line("Starting dependency analysis...")
+
             # Mostra spinner
             self.spinner.remove_class("hidden")
             self.refresh()
 
             # Esegui il backend in un thread separato (compatibile con TUTTE le Textual)
             loop = asyncio.get_running_loop()
-            metdt = await loop.run_in_executor(None, self.fetcher.build_package_metadata, package)
+            await loop.run_in_executor(None, self.fetcher.build_package_metadata, package)
 
             # Nascondi spinner
             self.spinner.add_class("hidden")
+
+            if self.log_view:
+                self.log_view.write_line("\n✅ Analysis complete!")
 
             # Aggiorna il Tree nella GUI
             graph = self.fetcher.get_graph()
