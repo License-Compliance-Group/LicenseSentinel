@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import (
@@ -11,14 +12,17 @@ from textual.widgets import (
     TabPane,
     LoadingIndicator
 )
-from textual import events
+from textual import events, on
 
 # Import del backend
 from infrastructure.pypi_client import PyPiHandler
 from infrastructure.repo_downloader import RepoDownloader
 from infrastructure.dep_tree_builder import DepTreeBuilder
-
+from infrastructure.connectivity import Connectivity
 from analyzer.package_metadata_fetcher import PackageMetadataFetcher
+
+ERROR_PLACEHOLDER = "❌ Invalid path!"
+INFO_PLACEHOLDER = "📄 Insert path to requirements.txt"
 
 
 class LicenseSentinelUI(App):
@@ -41,11 +45,22 @@ class LicenseSentinelUI(App):
     def __init__(self):
         super().__init__()
 
+        # Backend components
         self.pypi_client = PyPiHandler()
         self.repo_downloader = RepoDownloader()
         self.dep_builder = DepTreeBuilder()
-        # Sarà inizializzato al click del bottone
-        self.fetcher = None
+        # TODO: reset fetcher on each analysis
+        self.fetcher = PackageMetadataFetcher(
+            self.pypi_client,
+            self.dep_builder,
+            self.repo_downloader
+        )
+        # UI components
+
+        self.ui_tree = Tree("Dependencies")  # Tree
+        # Spinner (inizialmente nascosto)
+        self.spinner = LoadingIndicator(id="spinner", classes="hidden")
+        self._path_input_has_error = False
 
     def _pypi_table(self) -> DataTable:
         table = DataTable()
@@ -59,49 +74,77 @@ class LicenseSentinelUI(App):
 
     def compose(self) -> ComposeResult:
         with Horizontal(classes="path-container"):
-            yield Input(placeholder="Insert requirements.txt path",
-                        id="path",
-                        classes="path-input")
+            yield Input(placeholder=INFO_PLACEHOLDER, id="path", classes="path-input")
             yield Button("Check", id="send", classes="url-button")
 
         with Vertical(classes="main-container", id="main-container"):
             with Horizontal(classes="main-row"):
+                yield from self._compose_dependency_section()
+                yield from self._compose_right_column()
 
-                with Vertical(classes="dependency") as dependency_block:
-                    dependency_block.border_title = "Dependency Tree"
-                    dependency_block.styles.border_title_align = "right"
+    def _compose_dependency_section(self) -> ComposeResult:
+        """Compose the dependency tree section."""
+        with Vertical(classes="dependency") as block:
+            block.border_title = "Dependency Tree"
+            block.styles.border_title_align = "right"
+            yield self.ui_tree
+            yield self.spinner
 
-                    # Tree dinamico
-                    self.ui_tree = Tree("Dependencies")
-                    yield self.ui_tree
+    def _compose_right_column(self) -> ComposeResult:
+        """Compose the right column with PyPI and ScanCode sections."""
+        with Vertical(classes="right-column"):
+            yield from self._compose_pypi_section()
+            yield from self._compose_scancode_section()
 
-                    # Spinner (inizialmente nascosto)
-                    self.spinner = LoadingIndicator(
-                        id="spinner", classes="hidden")
-                    yield self.spinner
+    def _compose_pypi_section(self) -> ComposeResult:
+        """Compose the PyPI metadata section."""
+        with Vertical(classes="section-box pypi-block") as block:
+            block.border_title = "PyPI Metadata"
+            block.styles.border_title_align = "right"
+            with TabbedContent():
+                yield TabPane("Incompatibilities", self._pypi_table())
+                yield TabPane("Info", Static("Info PyPI..."))
 
-                with Vertical(classes="right-column"):
-                    with Vertical(classes="section-box pypi-block") as pypi_block:
-                        pypi_block.border_title = "PyPI Metadata"
-                        pypi_block.styles.border_title_align = "right"
-                        with TabbedContent():
-                            yield TabPane("Pacchetti", self._pypi_table())
-                            yield TabPane("Info", Static("Info pacchetti PyPI..."))
-                        # yield Static("Risultati PyPI", classes="footer-title")
+    def _compose_scancode_section(self) -> ComposeResult:
+        """Compose the ScanCode results section."""
+        with Vertical(classes="section-box scancode-block") as block:
+            block.border_title = "ScanCode Results"
+            block.styles.border_title_align = "right"
+            with TabbedContent():
+                yield TabPane("File", self._scancode_table())
+                yield TabPane("Dettagli", Static("Dettagli analisi ScanCode..."))
 
-                    with Vertical(classes="section-box scancode-block") as scancode_block:
-                        scancode_block.border_title = "ScanCode Results"
-                        scancode_block.styles.border_title_align = "right"
-                        with TabbedContent():
-                            yield TabPane("File", self._scancode_table())
-                            yield TabPane("Dettagli", Static("Dettagli analisi ScanCode..."))
-                        # yield Static("Risultati ScanCode", classes="footer-title")
+# =================================================================================#
+#                                   Helpers                                        #
+# =================================================================================#
 
-# ============================================================================#
-#                              Event Handlers                                 #
-# ============================================================================#
+    def _set_path_error(self, show_error: bool) -> None:
+        """Set or clear the path input error state.
 
-    async def on_button_pressed(self, event: Button.Pressed) -> None:
+        Args:
+            show_error: True to show error, False to clear it.
+        """
+        path_input = self.query_one("#path", Input)
+        path_container = self.query_one(".path-container", Horizontal)
+
+        self._path_input_has_error = show_error
+
+        if show_error:
+            path_input.placeholder = ERROR_PLACEHOLDER
+            path_input.add_class("path-input-error")
+            if path_container:
+                path_container.add_class("path-container-error")
+        else:
+            path_input.placeholder = INFO_PLACEHOLDER
+            path_input.remove_class("path-input-error")
+            if path_container:
+                path_container.remove_class("path-container-error")
+
+# =================================================================================#
+#                                 Event Handlers                                   #
+# =================================================================================#
+    @on(Button.Pressed, "#send")
+    async def handle_check_button(self, event: Button.Pressed) -> None:
         """
         Handles the button press event for the "send" button.
 
@@ -117,31 +160,15 @@ class LicenseSentinelUI(App):
             input_widget = self.query_one("#path", Input)
             package = input_widget.value.strip()
 
-            if not package:
-                # show message as placeholder and mark input + outer bar as error
-                input_widget.placeholder = "PATH is empty"
-                input_widget.add_class("path-input-error")
-                try:
-                    self.query_one(
-                        ".path-container").add_class("path-container-error")
-                except Exception:
-                    pass
+            if not package or not self.input_check(package):
+                # show error state
+                input_widget.value = ""
+                self._set_path_error(True)
                 return
 
-            # clear any previous error state and restore placeholder
-            input_widget.remove_class("path-input-error")
-            try:
-                self.query_one(
-                    ".path-container").remove_class("path-container-error")
-            except Exception:
-                pass
-            input_widget.placeholder = "Insert requirements.txt path"
+            # clear any previous error state
+            self._set_path_error(False)
 
-            self.fetcher = PackageMetadataFetcher(
-                self.pypi_client,
-                self.dep_builder,
-                self.repo_downloader
-            )
             # Mostra spinner
             self.spinner.remove_class("hidden")
             self.refresh()
@@ -157,65 +184,63 @@ class LicenseSentinelUI(App):
             graph = self.fetcher.get_graph()
             self.update_dependency_tree(package, graph)
 
-    def on_input_changed(self, event: Input.Changed) -> None:
-        """Clear error state when the user starts typing in the URL input."""
-        widget = getattr(event, "input", None) or getattr(
-            event, "target", None)
-        if widget is None:
-            return
-        if widget.id == "path" and widget.value.strip():
-            widget.remove_class("path-input-error")
-            try:
-                self.query_one(
-                    ".path-container").remove_class("path-container-error")
-            except Exception:
-                pass
-            widget.placeholder = "Insert requirements.txt path"
+    @on(Input.Changed, "#path")
+    async def on_path_input_changed(self, event: Input.Changed) -> None:
+        """Clear error state when the user starts typing in the path input."""
+        if event.input.value.strip() and self._path_input_has_error:
+            self._set_path_error(False)
 
-    async def on_blur(self, event: events.Blur) -> None:
-        """Reset styles when the URL input (or its container) loses focus."""
-        widget = getattr(event, "target", None)
-        if widget is None:
+    async def on_mouse_down(self, event: events.MouseDown) -> None:
+        """Fallback: when the user clicks anywhere, clear the input error
+        if the path input currently shows an error and the click is outside
+        the input/container.
+        """
+        if not self._path_input_has_error:
             return
-        # If the blurred widget is the path input (or a child), reset styles
-        if getattr(widget, "id", None) == "path" or "path" in getattr(widget, "classes", []):
-            try:
-                url_input = self.query_one("#url", Input)
-            except Exception:
-                url_input = None
-            try:
-                self.query_one(
-                    ".path-container").remove_class("path-container-error")
-            except Exception:
-                pass
-            if url_input:
-                url_input.remove_class("path-input-error")
-                url_input.placeholder = "Insert requirements.txt path"
+
+        path_input = self.query_one("#path", Input)
+        path_container = self.query_one(".path-container", Horizontal)
+
+        # If click landed on the input or on its container, don't clear yet
+        if event.widget is path_input or event.widget is path_container:
+            return
+
+        # otherwise clear the error state
+        self._set_path_error(False)
+
+# =================================================================================#
+#                                   View Updaters                                  #
+# =================================================================================#
 
     def update_dependency_tree(self, root_pkg: str, graph: dict):
-        """
-        Update the dependency tree widget with the given dependency graph.
-
-        Args:
-            root_pkg (str): The name of the root package.
-            graph (dict): A dictionary representing the dependency graph,
-            where keys are package names and values are lists of dependencies.
-        """
-        self.ui_tree.root.set_label(root_pkg)
-        self.ui_tree.root.remove_children()
+        """Update the dependency tree with package dependencies."""
+        root = self.ui_tree.root
+        root.set_label(root_pkg)
+        root.remove_children()
 
         def add_nodes(parent, pkg):
-            deps = graph.get(pkg, [])
-            for dep in deps:
-                node = parent.add(dep)
-                add_nodes(node, dep)
+            for dep in graph.get(pkg, []):
+                add_nodes(parent.add(dep), dep)
 
-        add_nodes(self.ui_tree.root, root_pkg)
-
-        # Espandi tutto automaticamente
-        self.ui_tree.root.expand_all()
-
+        add_nodes(root, root_pkg)
+        root.expand_all()
         self.ui_tree.refresh(layout=True)
+
+# =================================================================================#
+#                                   Logic                                          #
+# =================================================================================#
+
+    def input_check(self, path: str) -> bool:
+        """Check if the input path is valid (non-empty).
+
+        Args:
+            path (str): The input path to validate. 
+        Returns:
+            bool: True if the path is valid, False otherwise.
+        """
+        path_obj = Path(path.strip())
+
+        return bool(Connectivity.check_file_exists(path_obj))
 
 
 if __name__ == "__main__":
