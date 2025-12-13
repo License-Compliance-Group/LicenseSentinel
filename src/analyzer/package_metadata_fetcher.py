@@ -41,6 +41,7 @@ class PackageMetadataFetcher:
         self.pypi_client = pypi_client
         self.dep_builder = dep_builder
         self.repo_downloader = repo_downloader
+        self.dependencies: List[str] = []
 
     def build_package_metadata(self,
                                file_path: str,
@@ -63,16 +64,16 @@ class PackageMetadataFetcher:
         cls = self.__class__
 
         # Step 1: Parse requirements file
-        dependencies = self._parse_requirements_file(file_path)
-        if not dependencies:
+        self.dependencies = self._parse_requirements_file(file_path)
+        if not self.dependencies:
             return {}
 
         # Step 2: Build dependency tree (single pass - no intermediate function)
         LOGGER.info("Building dependency tree for %d root packages",
-                    len(dependencies))
+                    len(self.dependencies))
         try:
             temp_venv = self.dep_builder.create_venv()
-            self.dep_builder.install_packages(temp_venv, dependencies)
+            self.dep_builder.install_packages(temp_venv, self.dependencies)
             tree_json = self.dep_builder.get_tree_json(temp_venv)
             cls.graph = self.dep_builder.build_map(tree_json)
 
@@ -176,7 +177,9 @@ class PackageMetadataFetcher:
             A dict mapping package names to lists of dependency package names.
             Returns an empty dict if no graph was built yet.
         """
-        return {pkg: list(deps) for pkg, deps in self.__class__.graph.items()}
+        graph_copy = {pkg: list(deps) for pkg, deps in self.__class__.graph.items()}
+        graph_copy["root"] = self.dependencies
+        return graph_copy
 
     def pypi_license_checker(self):
         """Placeholder for future license compatibility checker."""

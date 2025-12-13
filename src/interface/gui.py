@@ -257,7 +257,7 @@ class LicenseSentinelUI(App):
 
             # Aggiorna il Tree nella GUI
             graph = self.fetcher.get_graph()
-            self.update_dependency_tree("flask", graph)
+            self.update_dependency_tree("root", graph)
 
     @on(Input.Changed, "#path")
     async def on_path_input_changed(self, event: Input.Changed) -> None:
@@ -320,3 +320,6 @@ class LicenseSentinelUI(App):
 
 if __name__ == "__main__":
     LicenseSentinelUI().run()
+
+
+#  C:\Users\Dabaduck\Desktop\LicensesChecker\src\requirements.txt
