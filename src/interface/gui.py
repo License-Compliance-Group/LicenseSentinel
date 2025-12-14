@@ -25,6 +25,8 @@ from analyzer.package_metadata_fetcher import PackageMetadataFetcher
 
 ERROR_PLACEHOLDER = "❌ Invalid path!"
 INFO_PLACEHOLDER = "📄 Insert the path to the requirements.txt file"
+ANALYSIS_COMPLETE = "\n✅ Analysis complete! Press Enter ↵ to show command line"
+ANALYSIS_STARTING = "⏳ Starting dependency analysis..."
 
 
 class TextualLogHandler(logging.Handler):
@@ -113,7 +115,7 @@ class LicenseSentinelUI(App):
     def compose(self) -> ComposeResult:
         with Horizontal(classes="path-container"):
             yield Input(placeholder=INFO_PLACEHOLDER, id="path", classes="path-input")
-            yield Button("Check", id="send", classes="url-button")
+            yield Button("Analyze 🔍", variant="primary", id="send", classes="analyze-button")
 
         with Vertical(classes="main-container", id="main-container"):
             with Horizontal(classes="main-row"):
@@ -198,12 +200,13 @@ class LicenseSentinelUI(App):
     async def _mount_log_console(self, before_widget) -> None:
         """Create and mount the log console widget."""
         self.log_view = Log(classes="log-console")
-        self.log_view.styles.scrollbar_background = "#1e1e1e"
-        self.log_view.styles.scrollbar_corner_color = "#1e1e1e"
-        self.log_view.styles.scrollbar_color = "#cc8a36"
-        self.log_view.styles.scrollbar_color_hover = "#d69a46"
+        self.log_view.border_title = "Console log"
+        # self.log_view.styles.scrollbar_background = "#1e1e1e"
+        # self.log_view.styles.scrollbar_corner_color = "#1e1e1e"
+        # self.log_view.styles.scrollbar_color = "#cc8a36"
+        # self.log_view.styles.scrollbar_color_hover = "#d69a46"
         await self.mount(self.log_view, before=before_widget)
-        self.log_view.write_line("Starting dependency analysis...")
+        self.log_view.write_line(ANALYSIS_STARTING)
 
 # =================================================================================#
 #                                 Event Handlers                                   #
@@ -253,7 +256,7 @@ class LicenseSentinelUI(App):
             self.spinner.add_class("hidden")
 
             if self.log_view:
-                self.log_view.write_line("\n✅ Analysis complete!")
+                self.log_view.write_line(ANALYSIS_COMPLETE)
 
             # Aggiorna il Tree nella GUI
             graph = self.fetcher.get_graph()
