@@ -1,5 +1,7 @@
 import asyncio
 import logging
+from enum import Enum, auto
+
 from pathlib import Path
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
@@ -23,8 +25,10 @@ from infrastructure.dep_tree_builder import DepTreeBuilder
 from infrastructure.connectivity import Connectivity
 from analyzer.package_metadata_fetcher import PackageMetadataFetcher
 
-ERROR_PLACEHOLDER = "❌ Invalid path!"
-INFO_PLACEHOLDER = "📄 Insert the path to the requirements.txt file"
+ERROR_PATH_PLACEHOLDER = "❌ Invalid path!"
+PATH_PLACEHOLDER = "📄 Insert the path to the requirements.txt file"
+LICENSE_PLACEHOLDER = "📜 Select the main repository license..."
+ERROR_LICENSE_PLACEHOLDER = "❌ Invalid license!"
 ANALYSIS_COMPLETE = "\n✅ Analysis complete! Press Enter ↵ to show command line"
 ANALYSIS_STARTING = "⏳ Starting dependency analysis..."
 
@@ -60,6 +64,12 @@ class TextualLogHandler(logging.Handler):
             pass
 
 
+class Stage(Enum):
+    REQUIREMENTS = auto()
+    LICENSE = auto()
+    RUNNING = auto()
+
+
 class LicenseSentinelUI(App):
     """
     Main GUI application class for LicenseSentinel.
@@ -75,11 +85,12 @@ class LicenseSentinelUI(App):
     data tables for PyPI and ScanCode results.
     """
     # THEME = "harlequin"
+    # self.theme = "tokyo-night"
     CSS_PATH = "style.css"
 
     def __init__(self):
         super().__init__()
-        # self.theme = "tokyo-night"
+
         # Backend components
         self.pypi_client = PyPiHandler()
         self.repo_downloader = RepoDownloader()
@@ -90,6 +101,9 @@ class LicenseSentinelUI(App):
             self.dep_builder,
             self.repo_downloader
         )
+        self.stage = Stage.REQUIREMENTS
+        self.requirements_path: str
+        self.main_license: str
 
         # UI components
         self.ui_tree = Tree("Dependencies")  # Tree
@@ -114,8 +128,8 @@ class LicenseSentinelUI(App):
 
     def compose(self) -> ComposeResult:
         with Horizontal(classes="path-container"):
-            yield Input(placeholder=INFO_PLACEHOLDER, id="path", classes="path-input")
-            yield Button("Analyze 🔍", variant="primary", id="send", classes="analyze-button")
+            yield Input(placeholder=PATH_PLACEHOLDER, id="path", classes="path-input")
+            yield Button("Next ->", variant="primary", id="send", classes="analyze-button")
 
         with Vertical(classes="main-container", id="main-container"):
             with Horizontal(classes="main-row"):
@@ -155,30 +169,110 @@ class LicenseSentinelUI(App):
                 yield TabPane("Dettagli", Static("Dettagli analisi ScanCode..."))
 
 # =================================================================================#
-#                                   Helpers                                        #
+#                                 Event Handlers                                   #
 # =================================================================================#
 
-    def _set_path_error(self, show_error: bool) -> None:
-        """Set or clear the path input error state.
-
-        Args:
-            show_error: True to show error, False to clear it.
+    @on(Button.Pressed, "#send")
+    async def handle_check_button(self, event: Button.Pressed) -> None:
         """
+        Handles the button press event for the "send" button.
+
+        When the button is pressed, this async handler:
+        1. Retrieves the package name from the input field.
+        2. Shows a loading spinner in the UI.
+        3. Asynchronously builds the dependency tree for the given package
+           by running the backend function in a separate thread.
+        4. Hides the loading spinner once the backend task is complete.
+        5. Updates the dependency tree widget in the UI with the new data.
+        """
+        if event.button.id == "send":
+            input_widget = self.query_one("#path", Input)
+            await self.handle_step_requirements(input_widget.value.strip())
+
+    @on(Input.Submitted, "#path")
+    async def on_path_submitted(self, event) -> None:
+        """Handle Enter pressed in the path input to start analysis."""
+        input_widget = self.query_one("#path", Input)
+        await self.handle_step_requirements(input_widget.value.strip())
+
+    @on(Input.Changed, "#path")
+    async def on_path_input_changed(self, event: Input.Changed) -> None:
+        """Clear error state when the user starts typing in the path input."""
+        if event.input.value.strip() and self._path_input_has_error:
+            self._set_input_error(False)
+
+    async def on_mouse_down(self, event: events.MouseDown) -> None:
+        """When the user clicks anywhere, clear the input error
+        if the path input currently shows an error and the click is outside
+        the input/container.
+        """
+        if not self._path_input_has_error:
+            return
+
         path_input = self.query_one("#path", Input)
         path_container = self.query_one(".path-container", Horizontal)
 
-        self._path_input_has_error = show_error
+        # If click landed on the input or on its container, don't clear yet
+        if event.widget is path_input or event.widget is path_container:
+            return
 
-        if show_error:
-            path_input.placeholder = ERROR_PLACEHOLDER
-            path_input.add_class("path-input-error")
-            if path_container:
-                path_container.add_class("path-container-error")
-        else:
-            path_input.placeholder = INFO_PLACEHOLDER
-            path_input.remove_class("path-input-error")
-            if path_container:
-                path_container.remove_class("path-container-error")
+        # otherwise clear the error state
+        self._set_input_error(False)
+
+# =================================================================================#
+#                                   Helpers                                        #
+# =================================================================================#
+
+    async def handle_step_requirements(self, input_value: str) -> None:
+        """Handle the two-step input flow and trigger analysis when ready.
+
+        Behaviour by stage:
+        - REQUIREMENTS: validate and store the requirements file path, switch
+          to the LICENSE stage and update input/button UI.
+        - LICENSE: validate the provided license, store it and start analysis.
+        - RUNNING: input is ignored (analysis in progress).
+
+        Args:
+            input_value: The raw string entered by the user in the `#path` input.
+
+        Returns:
+            None
+        """
+
+        match self.stage:
+            case Stage.REQUIREMENTS:
+                if self.path_check(input_value):
+                    self.requirements_path = input_value
+                    self.stage = Stage.LICENSE
+                    self.query_one(
+                        "#path", Input).placeholder = LICENSE_PLACEHOLDER
+                    print(self.stage)
+                    print(self.requirements_path)
+                    self.query_one("#send", Button).label = "Analyze 📊"
+                    self.query_one("#path", Input).value = ""
+                    # clear error state
+                    self._set_input_error(False)
+
+                    return
+                self.stage = Stage.REQUIREMENTS
+                # invalid path
+                self._set_input_error(True)
+                return
+
+            case Stage.LICENSE:
+                if self.license_check(input_value) and self.path_check(self.requirements_path):
+                    self.main_license = input_value
+                    self.stage = Stage.RUNNING
+                    await self._start_analysis(self.requirements_path)
+                    return
+                self.stage = Stage.LICENSE
+                # invalid license
+                self._set_input_error(True)
+                return
+
+            case Stage.RUNNING:
+                # input ignored while running
+                return
 
     def _setup_logging(self) -> None:
         """Setup logging handler to forward logs to the UI Log widget."""
@@ -197,98 +291,79 @@ class LicenseSentinelUI(App):
 
         self._log_handler = handler
 
-    async def _mount_log_console(self, before_widget) -> None:
-        """Create and mount the log console widget."""
-        self.log_view = Log(classes="log-console")
-        self.log_view.border_title = "Console log"
-        # self.log_view.styles.scrollbar_background = "#1e1e1e"
-        # self.log_view.styles.scrollbar_corner_color = "#1e1e1e"
-        # self.log_view.styles.scrollbar_color = "#cc8a36"
-        # self.log_view.styles.scrollbar_color_hover = "#d69a46"
-        await self.mount(self.log_view, before=before_widget)
-        self.log_view.write_line(ANALYSIS_STARTING)
+    async def _start_analysis(self, requirements_path: str) -> None:
+        """Common logic to start the analysis for a package string."""
+        input_widget = self.query_one("#path", Input)
 
-# =================================================================================#
-#                                 Event Handlers                                   #
-# =================================================================================#
-    @on(Button.Pressed, "#send")
-    async def handle_check_button(self, event: Button.Pressed) -> None:
-        """
-        Handles the button press event for the "send" button.
-
-        When the button is pressed, this async handler:
-        1. Retrieves the package name from the input field.
-        2. Shows a loading spinner in the UI.
-        3. Asynchronously builds the dependency tree for the given package
-           by running the backend function in a separate thread.
-        4. Hides the loading spinner once the backend task is complete.
-        5. Updates the dependency tree widget in the UI with the new data.
-        """
-        if event.button.id == "send":
-            input_widget = self.query_one("#path", Input)
-            package = input_widget.value.strip()
-
-            if not package or not self.input_check(package):
-                # show error state
-                input_widget.value = ""
-                self._set_path_error(True)
-                return
-
-            # clear any previous error state
-            self._set_path_error(False)
-
-            # Hide input bar and mount log widget
-            path_container = self.query_one(".path-container", Horizontal)
-            path_container.add_class("hidden")
-
-            if self.log_view is None:
-                await self._mount_log_console(path_container)
-
-            # Mostra spinner
-            self.spinner.remove_class("hidden")
-            self.refresh()
-
-            # Esegui il backend in un thread separato (compatibile con TUTTE le Textual)
-            loop = asyncio.get_running_loop()
-            await loop.run_in_executor(None, self.fetcher.build_package_metadata, package)
-
-            # Nascondi spinner
-            self.spinner.add_class("hidden")
-
-            if self.log_view:
-                self.log_view.write_line(ANALYSIS_COMPLETE)
-
-            # Aggiorna il Tree nella GUI
-            graph = self.fetcher.get_graph()
-            self.update_dependency_tree("root", graph)
-
-    @on(Input.Changed, "#path")
-    async def on_path_input_changed(self, event: Input.Changed) -> None:
-        """Clear error state when the user starts typing in the path input."""
-        if event.input.value.strip() and self._path_input_has_error:
-            self._set_path_error(False)
-
-    async def on_mouse_down(self, event: events.MouseDown) -> None:
-        """Fallback: when the user clicks anywhere, clear the input error
-        if the path input currently shows an error and the click is outside
-        the input/container.
-        """
-        if not self._path_input_has_error:
+        if not requirements_path or not self.path_check(requirements_path) or self.stage != Stage.RUNNING:
+            # show error state
+            input_widget.value = ""
+            self._set_input_error(True)
             return
 
-        path_input = self.query_one("#path", Input)
+        # clear any previous error state
+        self._set_input_error(False)
+        # Hide input bar and mount log widget
         path_container = self.query_one(".path-container", Horizontal)
+        path_container.add_class("hidden")
 
-        # If click landed on the input or on its container, don't clear yet
-        if event.widget is path_input or event.widget is path_container:
-            return
+        if self.log_view is None:
+            await self._mount_log_console(path_container)
 
-        # otherwise clear the error state
-        self._set_path_error(False)
+        # Mostra spinner
+        self.spinner.remove_class("hidden")
+        self.refresh()
+
+        # Esegui il backend in un thread separato
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self.fetcher.build_package_metadata, requirements_path)
+
+        # Nascondi spinner
+        self.spinner.add_class("hidden")
+
+        if self.log_view:
+            self.log_view.write_line(ANALYSIS_COMPLETE)
+
+        # Aggiorna il Tree nella GUI
+        graph = self.fetcher.get_graph()
+        self.update_dependency_tree("root", graph)
 
 # =================================================================================#
 #                                   View Updaters                                  #
 # =================================================================================#
+
+    def _set_input_error(self, show_error: bool) -> None:
+        """Set or clear the input widget error state.
+
+        Args:
+            show_error: True to show error, False to clear it.
+        """
+        path_input = self.query_one("#path", Input)
+        path_container = self.query_one(".path-container", Horizontal)
+
+        self._path_input_has_error = show_error
+        match self.stage:
+            case Stage.REQUIREMENTS:
+                error = ERROR_PATH_PLACEHOLDER
+                info = PATH_PLACEHOLDER
+            case Stage.LICENSE:
+                error = ERROR_LICENSE_PLACEHOLDER
+                info = LICENSE_PLACEHOLDER
+            case Stage.RUNNING:
+                # Will prepare the same input widget for the scan session
+                error = ""
+                info = ""
+        if show_error:
+            path_input.value = ""
+            path_input.placeholder = error
+            path_input.add_class("path-input-error")
+            if path_container:
+                path_container.add_class("path-container-error")
+        else:
+            path_input.placeholder = info
+            path_input.remove_class("path-input-error")
+            if path_container:
+                path_container.remove_class("path-container-error")
 
     def update_dependency_tree(self, root_pkg: str, graph: dict):
         """Update the dependency tree with package dependencies."""
@@ -304,21 +379,42 @@ class LicenseSentinelUI(App):
         root.expand_all()
         self.ui_tree.refresh(layout=True)
 
+    async def _mount_log_console(self, before_widget) -> None:
+        """Create and mount the log console widget."""
+        self.log_view = Log(classes="log-console")
+        self.log_view.border_title = "Console log"
+        # self.log_view.styles.scrollbar_background = "#1e1e1e"
+        # self.log_view.styles.scrollbar_corner_color = "#1e1e1e"
+        # self.log_view.styles.scrollbar_color = "#cc8a36"
+        # self.log_view.styles.scrollbar_color_hover = "#d69a46"
+        await self.mount(self.log_view, before=before_widget)
+        self.log_view.write_line(ANALYSIS_STARTING)
 # =================================================================================#
 #                                   Logic                                          #
 # =================================================================================#
 
-    def input_check(self, path: str) -> bool:
+    def path_check(self, path: str | None) -> bool:
         """Check if the input path is valid (non-empty).
 
         Args:
-            path (str): The input path to validate. 
+            path (str): The input path to validate.
         Returns:
             bool: True if the path is valid, False otherwise.
         """
+        if not path or not path.strip():
+            return False
         path_obj = Path(path.strip())
-
         return bool(Connectivity.check_file_exists(path_obj))
+
+    def license_check(self, license_str: str) -> bool:
+        """Check if the input license is valid (non-empty).
+
+        Args:
+            license (str): The input license to validate.
+        Returns:
+            bool: True if the license is valid, False otherwise.
+        """
+        return True
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@
     height: auto;
     padding: 0;
     margin: 0;
-    border-title-color: $surface-lighten-3;
+    /*border-title-color: $surface-lighten-3;*/
     border: heavy round $surface-lighten-3;
 }
 
@@ -31,19 +31,20 @@
 }
 
 .analyze-button {
-    width: 10;
-    height: 100%;
+    width: auto;
+    height: auto;
     border: none;
     padding: 0 1;
     margin: 0 1;
    /* background: $primary;
     color: ;*/
 }
-
-/*.analyze-button:hover {
+/*
+.analyze-button:hover {
     background: $primary-darken-1;
     color: $text-secondary;
-}*/
+}
+*/
 
 /* ========================================= */
 /*  Log Console                             */
@@ -72,7 +73,7 @@
     padding: 0;
     margin: 0;
 }
-/*
+
 .main-row {
     height: 1fr;
 }
@@ -81,7 +82,7 @@
     width: 1fr;
     height: 1fr;
 }
-*/
+
 /* ========================================= */
 /*  Dependency Tree                         */
 /* ========================================= */
