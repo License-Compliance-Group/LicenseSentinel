@@ -22,34 +22,12 @@ MATRIX_PATH = DATA_DIR / "matrix.json"
 DEFAULT_REQUIREMENTS = PROJECT_ROOT / "requirements.txt"
 
 
-def ensure_license_matrix() -> None:
-    """Ensure the OSADL compatibility matrix is present\
-        before processing.
-    Creates the DATA_DIR if it doesn't exist."""
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    lca = LicenseCompatibilityAnalyzer(path=MATRIX_PATH)
 
-    if not lca.matrix_file_present():
-        logger.info("License matrix missing, downloading a fresh copy...")
-        if not lca.update_license_matrix():
-            logger.error("Unable to download the license matrix.\
-                Continuing with offline copy, if present.")
-        return
-
-    if lca.check_timestamp():
-        logger.info("License matrix present and up-to-date.")
-    else:
-        logger.info("License matrix is stale, updating...")
-        if not lca.update_license_matrix():
-            logger.error("Unable to update the license matrix;\
-                using offline copy.")
 
 
 def main() -> None:
     """The main function of the project."""
     logger.debug("Working directory: %s", os.getcwd())
-
-    ensure_license_matrix()
 
     file_path = DEFAULT_REQUIREMENTS
     if not file_path.exists():
@@ -132,8 +110,12 @@ def run_tree_compatibility_check(packages_metadata, graph) -> None:
                 if notice[0] == 'Same':
                     logger.error('License %s/%s is incompatible with itself.',
                                  lic_parent,lic_dep)
-                incompatible_edges.append((parent, lic_parent,
-                                           dep, lic_dep, notice))
+                if notice[1] is None:
+                    msg = "No explanation available."
+                else:
+                    msg = notice[1]
+                incompatible_edges.append((
+                    parent, lic_parent,dep, lic_dep, (notice[0], msg)))
 
     print_dependency_forest(graph, license_by_pkg, incompatible_edges)
 
@@ -141,13 +123,11 @@ def run_tree_compatibility_check(packages_metadata, graph) -> None:
         logger.info("Dependency-tree compatibility result:\
              Yes (all edges compatible).")
         return
-
-    first = incompatible_edges[0]
-    msg = first[4][1] if first[4] and len(first[4]) > 1 \
-        else "No explanation available."
-    logger.warning("Dependency-tree compatibility result: No. \
-        First incompatible edge: %s (%s) -> %s (%s) -> %s",
-                   first[0], first[1], first[2], first[3], msg)
+    logger.warning("Dependency-tree compatibility check negative.")
+    logger.info('Listing problems.')
+    for edge in incompatible_edges:
+        logger.info("Incompatibility: %s (%s) -> %s (%s), reason: %s",
+                   *edge)
 
 
 def find_first_incompatibility(lca: LicenseCompatibilityAnalyzer,

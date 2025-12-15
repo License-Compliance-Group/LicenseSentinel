@@ -19,8 +19,11 @@ from entities.pypi_metadata import PyPiMetadata
 
 from infrastructure.logger_formatter import LoggerFormatter
 
-LOGGER = LoggerFormatter.initialize("package_metadata_fetcher", logging.INFO)
-DOWNLOAD_DIRECTORY = "tmpvenv/repo_downloads"
+LOGGER = LoggerFormatter.initialize("package_metadata_fetcher", logging.DEBUG)
+
+
+PROJECT_ROOT = Path.cwd()
+DOWNLOAD_DIRECTORY = Path.joinpath(PROJECT_ROOT,'src','tmpvenv','repo_downloads')
 DEFAULT_DOWNLOAD_BRANCH = "main"
 
 
@@ -29,7 +32,7 @@ class PackageMetadataFetcher:
     @property
     def cache_file(self) -> Path:
         """Get the cache file path."""
-        return Path(__file__).resolve().parents[1] / "data" / "metadata_cache.json"
+        return Path.joinpath(PROJECT_ROOT,"src", "data", "metadata_cache.json")
 
     def __init__(self,
                  pypi_client: AbstractPackageManagerFetcher,
@@ -58,7 +61,8 @@ class PackageMetadataFetcher:
         except OSError as exc:
             LOGGER.warning("Failed to save cache: %s", exc)
 
-    def build_package_metadata(self, file_path: str,)\
+    def build_package_metadata(self, file_path: str,
+                               override_cache: bool = False)\
         -> tuple[List[PyPiMetadata], dict[str, list[str]]]:
         """Build package metadata from a requirements.txt file.
 
@@ -69,6 +73,7 @@ class PackageMetadataFetcher:
 
         Args:
             file_path: Path to the requirements.txt file.
+            override_cache: download everything unconditionally if True.
 
         Returns:
             (metadata_list, dependency_graph)
@@ -82,7 +87,7 @@ class PackageMetadataFetcher:
         if not dependencies:
             return [], {}
 
-        # Step 2: Build dependency tree 
+        # Step 2: Build dependency tree
         # (single pass - no intermediate function)
         LOGGER.info("Building dependency tree for %d root packages",
                     len(dependencies))
@@ -106,10 +111,32 @@ class PackageMetadataFetcher:
             LOGGER.error("Failed to build dependency tree: %s", exc)
             return [], {}
 
-        # Step 3: Fetch PyPI metadata (batch operation)
-        LOGGER.info("Fetching PyPI metadata for %d packages",
+        # Step 3: Fetch PyPI metadata (batch operation with caching)
+        if override_cache:
+            LOGGER.info('Cache override active, redownloading everything.')
+            LOGGER.info("Fetching PyPI metadata for %d packages",
                     len(all_packages))
-        results = self.pypi_client.get_source_links(list(all_packages))
+            results = self.pypi_client.get_source_links(list(all_packages))
+        else:
+            cache = self._load_cache()
+            missing_packages = [pkg for pkg in all_packages
+                                if pkg not in cache]
+
+            if missing_packages:
+                LOGGER.info("Fetching PyPI metadata for %d new packages\
+                    (cached: %d)",
+                            len(missing_packages),
+                            len(all_packages) - len(missing_packages))
+                results = self.pypi_client.get_source_links(missing_packages)
+                # Update cache with new data
+                cache.update(results)
+                self._save_cache(cache)
+            else:
+                LOGGER.info("All %d package links found in cache", 
+                            len(all_packages))
+
+            # Use cached data for all packages
+            results = {pkg: cache[pkg] for pkg in all_packages}
         package_urls: Dict[str, str | None] = {}
         # Step 4: Build PyPiMetadata objects and prepare
         _packages_metadata = []
@@ -125,7 +152,23 @@ class PackageMetadataFetcher:
                     len(_packages_metadata))
 
         # Step 5: download sources (only for packages with valid repo links)
-        filtered_repo_urls = {pkg: url for pkg, url in package_urls.items() if url}
+        if override_cache:
+            LOGGER.info('Cache override active, redownloading everything.')
+            filtered_repo_urls = {pkg: url for pkg,
+                                  url in package_urls.items() if url}
+        else:
+            filtered_repo_urls = {}
+            for pkg, url in package_urls.items():
+                zip_path = Path.joinpath(
+                    Path(DOWNLOAD_DIRECTORY), f'{pkg}.zip')
+                LOGGER.debug('Looking for cached .zip at %s', zip_path)
+                if url \
+                and not Path.exists(zip_path):
+                    filtered_repo_urls[pkg] = url
+                else:
+                    LOGGER.debug(
+                        'Package %s inaccessible or cached, skipping',
+                        pkg)
         if filtered_repo_urls:
             down_results = self.repo_downloader.download_repos(
                 repo_urls=filtered_repo_urls,

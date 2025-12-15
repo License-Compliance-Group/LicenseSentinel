@@ -7,6 +7,7 @@ import json
 import itertools
 from abc import abstractmethod, ABC
 from datetime import datetime
+from time import time
 
 from src.infrastructure.connectivity import Connectivity as io
 from src.infrastructure.logger_formatter import LoggerFormatter
@@ -49,6 +50,9 @@ class FullCompatibilityCalc(CompatibilityCalcStrategy):
                 return result
         return ("Yes", "n.a.")
 
+_last_online_check = 0 # This variable is intended to be common
+                       # across all instances. It need not be thread-safe.
+
 class LicenseCompatibilityAnalyzer:
     """Analyzes cross-compatibility of multiple licenses.
     Handles calculations using a matrix file generously provided by OSADL
@@ -67,7 +71,7 @@ class LicenseCompatibilityAnalyzer:
         if strategy is None:
             strategy = FullCompatibilityCalc()
         if path is None:
-            path = Path.joinpath(Path.cwd(),"data","matrix.json")
+            path = Path.joinpath(Path.cwd(),"src","data","matrix.json")
         self.path = str(path)
         logger.info("Seeking license file at: %s", self.path)
         if not self.matrix_file_present():
@@ -86,6 +90,21 @@ class LicenseCompatibilityAnalyzer:
     @compat_calc_strategy.setter
     def compat_calc_strategy(self, content):
         self._compat_calc_strategy = content
+
+    @property
+    def last_online_check(self):
+        """Last time a successful online verification happened.
+        Used to prevent excessive remote pinging.
+        
+        Returns:
+            last_online_check: epoch time since last succesful check,
+                0 if none ever happened
+        """
+        return _last_online_check
+    @last_online_check.setter
+    def last_online_check(self, value):
+        _last_online_check = value
+
 
     @property
     def last_comparison_result(self):
@@ -142,8 +161,10 @@ class LicenseCompatibilityAnalyzer:
             attempts (int, optional): How many download attempts will happen\
             before the script gives up. Defaults to 2.
         """
-        if not io.verify_internet_access():
-            return None
+        if time() - 5 * 1000 * 60 > self.last_online_check: # 5 minutes
+            if not io.verify_internet_access():
+                return None
+            self.last_online_check = time()
         for i in range(1, attempts + 1):
             if i > 1:
                 logger.warning("Download failed, trying again...")
@@ -256,8 +277,7 @@ class LicenseCompatibilityAnalyzer:
         else:
             self.license_matrix = read_json
             return True
-
-
+        
     def extract_raw_licenses(self, json_path):
         """
         This method conflates a scancode JSON file to a raw list of licenses.

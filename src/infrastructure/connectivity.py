@@ -20,7 +20,8 @@ class Connectivity:
             bool: Was the write successful?
         """
         try:
-            with open(path, 'w', encoding='utf-8') as f:
+            # w+ instead of w just makes the file instead of throwing.
+            with open(path, 'w+', encoding='utf-8') as f:
                 f.write(content)
         except IOError as ex:
             logger.warning("Could not create file: %s", ex)
