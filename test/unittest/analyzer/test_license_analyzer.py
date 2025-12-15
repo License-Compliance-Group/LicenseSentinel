@@ -50,7 +50,8 @@ class TestLicenseCompatibilityAnalyzer(unittest.TestCase):
     def test_calculate_compatibility(self):
         """Test calculating compatibility for multiple licenses."""
         licenses = ["MIT", "Apache-2.0"]
-        result = self.analyzer.calculate_license_compatibility(licenses)
+        self.analyzer.calculate_license_compatibility(licenses)
+        result = self.analyzer.last_comparison_result
         self.assertIsNotNone(result)
 
 

@@ -50,7 +50,7 @@ def clean() -> None:
                 elif path.is_dir():
                     shutil.rmtree(path)
                     print(f" - Cartella rimossa: {path}")
-            except Exception as exc:
+            except Exception as exc:  # pylint: disable=broad-exception-caught
                 print(f" ! Errore su {path}: {exc}")
 
     print("Pulizia completata.")
@@ -82,7 +82,7 @@ def remove_venv(venv_dir: Path) -> None:
     try:
         shutil.rmtree(venv_dir)
         print(f"Ambiente virtuale rimosso: {venv_dir}")
-    except Exception as exc:
+    except IOError as exc:
         print(f"Errore nella rimozione di {venv_dir}: {exc}")
 
 

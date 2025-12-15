@@ -79,7 +79,8 @@ class LicenseCompatibilityAnalyzer:
         """The strategy property.
 
         Returns:
-            CompatibilityCalcStrategy: The current strategy used for license compatibility calculation.
+            CompatibilityCalcStrategy: The current strategy used for
+            license compatibility calculation.
         """
         return self._compat_calc_strategy
     @compat_calc_strategy.setter
