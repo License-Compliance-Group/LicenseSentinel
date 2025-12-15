@@ -57,7 +57,7 @@
     max-height: 10;
     padding: 1;
     margin: 0;
-    border: heavy round $secondary;
+    border: heavy round $surface-lighten-3;
 }
 
 .log-console:focus-within {

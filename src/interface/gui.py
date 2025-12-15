@@ -176,14 +176,7 @@ class LicenseSentinelUI(App):
     async def handle_check_button(self, event: Button.Pressed) -> None:
         """
         Handles the button press event for the "send" button.
-
-        When the button is pressed, this async handler:
-        1. Retrieves the package name from the input field.
-        2. Shows a loading spinner in the UI.
-        3. Asynchronously builds the dependency tree for the given package
-           by running the backend function in a separate thread.
-        4. Hides the loading spinner once the backend task is complete.
-        5. Updates the dependency tree widget in the UI with the new data.
+        Initiates the process to handle step requirements based on the current stage.
         """
         if event.button.id == "send":
             input_widget = self.query_one("#path", Input)
@@ -273,6 +266,7 @@ class LicenseSentinelUI(App):
             case Stage.RUNNING:
                 # input ignored while running
                 return
+        raise ValueError("Unknown stage")
 
     def _setup_logging(self) -> None:
         """Setup logging handler to forward logs to the UI Log widget."""
@@ -341,6 +335,7 @@ class LicenseSentinelUI(App):
         path_input = self.query_one("#path", Input)
         path_container = self.query_one(".path-container", Horizontal)
 
+        # Prepare placeholders according to the actual stage
         self._path_input_has_error = show_error
         match self.stage:
             case Stage.REQUIREMENTS:
@@ -353,6 +348,7 @@ class LicenseSentinelUI(App):
                 # Will prepare the same input widget for the scan session
                 error = ""
                 info = ""
+        # Update input widget state
         if show_error:
             path_input.value = ""
             path_input.placeholder = error
@@ -389,6 +385,45 @@ class LicenseSentinelUI(App):
         # self.log_view.styles.scrollbar_color_hover = "#d69a46"
         await self.mount(self.log_view, before=before_widget)
         self.log_view.write_line(ANALYSIS_STARTING)
+
+    @on(events.Key)
+    async def on_key_pressed(self, event: events.Key) -> None:
+        """When the console is mounted, pressing Enter will unmount it
+        and remount the original input bar so the user can type again."""
+        # Only act on Enter and when the log console is mounted/visible
+        if event.key.lower() != "enter":
+            return
+
+        if not self.log_view:
+            return
+
+        # Remove log console and restore the path input bar
+        try:
+            await self.log_view.remove()
+        except Exception:
+            try:
+                self.log_view.remove()  # fallback if sync
+            except Exception:
+                pass
+
+        self.log_view = None
+
+        path_container = self.query_one(".path-container", Horizontal)
+        # Show input bar again
+        if path_container:
+            path_container.remove_class("hidden")
+
+        # Reset input to initial state (requirements stage)
+        input_widget = self.query_one("#path", Input)
+        send_button = self.query_one("#send", Button)
+        input_widget.placeholder = PATH_PLACEHOLDER
+        input_widget.value = ""
+        send_button.label = "Next ->"
+        self.stage = Stage.RUNNING
+        # focus the input for convenience
+        # TODO: AGGIUNGI NUOVI PLACEHOLDER E BOTTONI PER LA SCAN
+        input_widget.focus()
+
 # =================================================================================#
 #                                   Logic                                          #
 # =================================================================================#
@@ -407,13 +442,16 @@ class LicenseSentinelUI(App):
         return bool(Connectivity.check_file_exists(path_obj))
 
     def license_check(self, license_str: str) -> bool:
-        """Check if the input license is valid (non-empty).
+        """Check if the input license is valid (and non-empty).
 
         Args:
             license (str): The input license to validate.
         Returns:
             bool: True if the license is valid, False otherwise.
         """
+        if not license_str or not license_str.strip():
+            return False
+
         return True
 
 
