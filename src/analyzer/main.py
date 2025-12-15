@@ -65,12 +65,16 @@ def main() -> None:
         dep_tree_builder_instance,
         repo_downloader_instance
     )
-    finder, graph = package_metadata_fetcher_instance.\
-    build_package_metadata(str(file_path))
-    for pkg in finder:
-        print(f"{pkg.package} | {pkg.license_type} | {pkg.link}")
+    try:
+        finder, graph = package_metadata_fetcher_instance.\
+        build_package_metadata(str(file_path))
+        for pkg in finder:
+            print(f"{pkg.package} | {pkg.license_type} | {pkg.link}")
 
-    run_tree_compatibility_check(finder, graph)
+        run_tree_compatibility_check(finder, graph)
+    except Exception as exc:
+        logger.error("An error occurred during processing: %s", exc)
+        return
 
 
 def run_tree_compatibility_check(packages_metadata, graph) -> None:
@@ -205,13 +209,20 @@ def normalize_license_name(name: str) -> str | None:
         "BSD Zero Clause License": "0BSD",
         "BSD 1-Clause License": "BSD-1-Clause",
         "BSD 2-Clause \"Simplified\" License": "BSD-2-Clause",
+        "BSD 2-Clause": "BSD-2-Clause",
         "bsd-simplified": "BSD-2-Clause",
         "BSD 3-Clause \"New\" or \"Revised\" License": "BSD-3-Clause",
+        "BSD 3-Clause": "BSD-3-Clause",
         "BSD License": "BSD-3-Clause",
         "bsd-new": "BSD-3-Clause",
         "BSD 4-Clause \"Original\" or \"Old\" License": "BSD-4-Clause",
         "BSD 4-Clause (University of California-Specific)": "BSD-4-Clause-UC",
         "BSD 3-Clause Open MPI variant": "BSD-3-Clause-Open-MPI",
+        "BSD-2-Clause-FreeBSD": "BSD-2-Clause-FreeBSD",
+        "BSD-2-Clause-NetBSD": "BSD-2-Clause-NetBSD",
+        "BSD-3-Clause-Attribution": "BSD-3-Clause-Attribution",
+        "BSD-3-Clause-Clear": "BSD-3-Clause-Clear",
+        "BSD-3-Clause-LBNL": "BSD-3-Clause-LBNL",
 
         # MIT Family
         "MIT License": "MIT",
@@ -219,6 +230,10 @@ def normalize_license_name(name: str) -> str | None:
         "CMU License": "MIT-CMU",
         "MIT-CMU": "MIT-CMU",
         "cmu-uc": "MIT-CMU",
+        "MIT-Modern-Variant": "MIT-Modern-Variant",
+        "MIT-enna": "MIT-enna",
+        "MIT-feh": "MIT-feh",
+        "MIT-Wu": "MIT-Wu",
 
         # Mozilla Family
         "Mozilla Public License 1.1": "MPL-1.1",
@@ -227,7 +242,7 @@ def normalize_license_name(name: str) -> str | None:
         "mpl-2.0": "MPL-2.0",
         "Mozilla Public License 2.0 (no copyleft exception)": "MPL-2.0-no-copyleft-exception",
 
-        # Other Mappings
+        # Other Common Licenses
         "Academic Free License v2.0": "AFL-2.0",
         "Academic Free License v2.1": "AFL-2.1",
         "Academic Free License v3.0": "AFL-3.0",
@@ -285,7 +300,7 @@ def normalize_license_name(name: str) -> str | None:
         "Saxpath License": "Saxpath",
         "SGI Free Software License B v2.0": "SGI-B-2.0",
         "Sleepycat License": "Sleepycat",
-        "Standard ML of New Jersey License": "SMLNJ",
+        "SML of New Jersey License": "SMLNJ",
         "Spencer License 86": "Spencer-86",
         "SSH OpenSSH license": "SSH-OpenSSH",
         "SSH short notice": "SSH-short",
@@ -304,11 +319,21 @@ def normalize_license_name(name: str) -> str | None:
         "zlib License": "Zlib",
         "zlib/libpng License with Acknowledgement": "zlib-acknowledgement",
         "Zope Public License 2.0": "ZPL-2.0",
+        # Additional common mappings
+        "ISC": "ISC",
+        "CC0-1.0": "CC0-1.0",
+        "CC-BY-4.0": "CC-BY-4.0",
+        "CC-BY-SA-4.0": "CC-BY-SA-4.0",
+        "Beerware": "Beerware",
+        "PostgreSQL": "PostgreSQL",
+        "Public Domain": "Unlicense",  # Approximation
     }
     if key in mapping:
         return mapping[key]
     # Already in a likely OSADL/SPDX form
-    if any(key.startswith(prefix) for prefix in ("apache-", "bsd-", "gpl-", "lgpl-", "mpl-", "mit", "psf")):
+    if any(key.startswith(prefix) for prefix in (
+        "apache-", "bsd-", "gpl-", "lgpl-", "mpl-", "mit", "psf")
+    ):
         return key
     return None
 

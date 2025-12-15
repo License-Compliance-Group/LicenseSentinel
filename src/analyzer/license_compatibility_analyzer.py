@@ -289,8 +289,8 @@ class LicenseCompatibilityAnalyzer:
         """Compare two licenses for compatibility and return the result.
 
         Args:
-            lic_a (_type_): The name of the first license.
-            lic_b (_type_): The name of the second license.
+            lic_a (str): The name of the first license.
+            lic_b (str): The name of the second license.
 
         Returns:
             tuple: (compatibility, explanation) if found, otherwise (None, None).
@@ -300,9 +300,11 @@ class LicenseCompatibilityAnalyzer:
         # if it ever gets confirmed, we can use much more efficient binary
         # search. For now, linear will have to do.
         # Twice.
-        classclass = cls(cls)
-        for lic in classclass.license_matrix['licenses']:
-            if lic['name'].lower() == lic_a:
+        if not hasattr(cls, '_instance'):
+            cls._instance = cls()
+        instance = cls._instance
+        for lic in instance.license_matrix['licenses']:
+            if lic['name'].lower() == lic_a.lower():
                 for compat in lic['compatibilities']:
                     if compat['name'].lower() == lic_b.lower():
                         notice = (compat['compatibility'],
@@ -310,9 +312,9 @@ class LicenseCompatibilityAnalyzer:
                         logger.debug("Notice detected: %s", notice)
                         return notice
 
-                logger.warning('Unknown license type: %s', lic_b)
+                logger.warning('Unknown license type for lic_b: %s (lic_a: %s found)', lic_b, lic_a)
                 return (None, None)
-        logger.warning('Unknown license type: %s', lic_b)
+        logger.warning('Unknown license type for lic_a: %s', lic_a)
         return (None, None)
 
     def calculate_license_compatibility(self, licenses):

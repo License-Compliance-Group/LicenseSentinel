@@ -4,8 +4,10 @@ This module parses requirements.txt files, builds a complete dependency
 tree using a temporary virtual environment, and fetches license/link 
 metadata from PyPI for all discovered packages.
 """
+import json
 import logging
 import re
+from pathlib import Path
 from typing import Dict, List
 
 
@@ -20,11 +22,14 @@ from infrastructure.logger_formatter import LoggerFormatter
 LOGGER = LoggerFormatter.initialize("package_metadata_fetcher", logging.INFO)
 DOWNLOAD_DIRECTORY = "tmpvenv/repo_downloads"
 DEFAULT_DOWNLOAD_BRANCH = "main"
-# Module-level cache for package metadata
-_packages_metadata: List[PyPiMetadata] = []
 
 
 class PackageMetadataFetcher:
+
+    @property
+    def cache_file(self) -> Path:
+        """Get the cache file path."""
+        return Path(__file__).resolve().parents[1] / "data" / "metadata_cache.json"
 
     def __init__(self,
                  pypi_client: AbstractPackageManagerFetcher,
@@ -33,6 +38,25 @@ class PackageMetadataFetcher:
         self.pypi_client = pypi_client
         self.dep_builder = dep_builder
         self.repo_downloader = repo_downloader
+        self.cache_file.parent.mkdir(parents=True, exist_ok=True)
+
+    def _load_cache(self) -> Dict[str, Dict[str, str]]:
+        """Load metadata cache from file."""
+        if self.cache_file.exists():
+            try:
+                with open(self.cache_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, OSError) as exc:
+                LOGGER.warning("Failed to load cache: %s", exc)
+        return {}
+
+    def _save_cache(self, cache: Dict[str, Dict[str, str]]) -> None:
+        """Save metadata cache to file."""
+        try:
+            with open(self.cache_file, 'w', encoding='utf-8') as f:
+                json.dump(cache, f, indent=2)
+        except OSError as exc:
+            LOGGER.warning("Failed to save cache: %s", exc)
 
     def build_package_metadata(self, file_path: str,)\
         -> tuple[List[PyPiMetadata], dict[str, list[str]]]:
@@ -68,6 +92,10 @@ class PackageMetadataFetcher:
             tree_json = self.dep_builder.get_tree_json(temp_venv)
             graph = self.dep_builder.build_map(tree_json)
 
+            # Check for cycles in dependency graph
+            if self.dep_builder.has_cycles(graph):
+                LOGGER.warning("Cycles detected in dependency graph - this may cause issues")
+
             # Extract all unique packages (keys + all values)
             all_packages = set(graph.keys())
             for deps in graph.values():
@@ -96,14 +124,18 @@ class PackageMetadataFetcher:
         LOGGER.info("Successfully fetched metadata for %d packages",
                     len(_packages_metadata))
 
-        # Step 5: download sources
-        down_results = self.repo_downloader.download_repos(
-            repo_urls=package_urls,
-            output_path=DOWNLOAD_DIRECTORY,
-            branch=DEFAULT_DOWNLOAD_BRANCH,
-        )
-        for pkg, success in down_results.items():
-            LOGGER.info("Download %s: %s", pkg, success)
+        # Step 5: download sources (only for packages with valid repo links)
+        filtered_repo_urls = {pkg: url for pkg, url in package_urls.items() if url}
+        if filtered_repo_urls:
+            down_results = self.repo_downloader.download_repos(
+                repo_urls=filtered_repo_urls,
+                output_path=DOWNLOAD_DIRECTORY,
+                branch=DEFAULT_DOWNLOAD_BRANCH,
+            )
+            for pkg, success in down_results.items():
+                LOGGER.info("Download %s: %s", pkg, success)
+        else:
+            LOGGER.info("No valid repository links found, skipping downloads")
 
         # Step 6: compare PyPI license vs scancode detected license
         # Step 7: create for each package objects package_metadata
@@ -132,18 +164,29 @@ class PackageMetadataFetcher:
             List of package names found in the file.
         """
         dependencies = []
-        pattern = re.compile(r"^\s*([A-Za-z0-9_.-]+)")
+        # More restrictive pattern: allow only safe characters, no leading/trailing special chars
+        pattern = re.compile(r"^\s*([A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?)(?:\s*(?:[<>=!~]+|;).*)?$")
 
         try:
             LOGGER.info("Parsing project dependencies from %s", file_path)
             with open(file_path, 'r', encoding='utf-8') as file:
-                for line in file:
+                for line_num, line in enumerate(file, 1):
                     line = line.split("#")[0].strip()
                     if not line:
                         continue
                     match = pattern.match(line)
                     if match:
-                        dependencies.append(match.group(1))
+                        pkg_name = match.group(1)
+                        # Additional security: limit length and disallow dangerous patterns
+                        if len(pkg_name) > 100:
+                            LOGGER.warning("Package name too long on line %d, skipping: %s", line_num, pkg_name)
+                            continue
+                        if ".." in pkg_name or pkg_name.startswith(("/", "\\", ".")):
+                            LOGGER.warning("Potentially unsafe package name on line %d, skipping: %s", line_num, pkg_name)
+                            continue
+                        dependencies.append(pkg_name)
+                    else:
+                        LOGGER.warning("Invalid package name format on line %d: %s", line_num, line)
 
             LOGGER.info("Found %d direct dependencies", len(dependencies))
 

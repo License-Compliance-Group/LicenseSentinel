@@ -17,7 +17,6 @@ from infrastructure.logger_formatter import LoggerFormatter
 
 logger = LoggerFormatter.initialize("Dependency tree builder", logging.INFO)
 
-PACKAGES = [""]  # to remove
 PATH = "tmpvenv"
 # Deve gestire la creazione dell'enviroment stile singleton
 # (create e destroy ecc ma per ora non uso il pattern)
@@ -178,6 +177,36 @@ class DepTreeBuilder(AbstractDepTreeBuilder):
 
         return graph
 
+    def has_cycles(self, graph: Dict[str, List[str]]) -> bool:
+        """Check if the dependency graph has cycles.
+
+        Args:
+            graph: Dependency graph (package -> list of dependencies).
+
+        Returns:
+            True if cycles are detected, False otherwise.
+        """
+        visited = set()
+        rec_stack = set()
+
+        def dfs(node: str) -> bool:
+            visited.add(node)
+            rec_stack.add(node)
+            for dep in graph.get(node, []):
+                if dep not in visited:
+                    if dfs(dep):
+                        return True
+                elif dep in rec_stack:
+                    return True
+            rec_stack.remove(node)
+            return False
+
+        for node in graph:
+            if node not in visited:
+                if dfs(node):
+                    return True
+        return False
+
     def print_subtree(self, graph: Dict[str, List[str]], pkg: str, indent: int = 0,
                       visited: Optional[Set[str]] = None) -> None:
         """Recursively print the dependency subtree for a given package.
@@ -212,7 +241,8 @@ def main() -> None:
         venv_bin = builder.create_venv()
 
         logger.info("Installing root packages…")
-        builder.install_packages(venv_bin, PACKAGES)
+        example_packages = ["requests"]  # Example for testing
+        builder.install_packages(venv_bin, example_packages)
 
         logger.info("Analyzing dependencies…")
         tree_json = builder.get_tree_json(venv_bin)
@@ -221,7 +251,7 @@ def main() -> None:
             print(pkg)
 
         print("\n=== DEPENDENCY TREE ===\n")
-        for pkg in PACKAGES:
+        for pkg in example_packages:
             print(pkg)
             builder.print_subtree(graph, pkg, indent=2)
             print()
