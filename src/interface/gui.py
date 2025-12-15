@@ -14,7 +14,9 @@ from textual.widgets import (
     TabbedContent,
     TabPane,
     LoadingIndicator,
-    Log
+    Log,
+    ListView,
+    ListItem
 )
 from textual import events, on
 
@@ -31,6 +33,8 @@ LICENSE_PLACEHOLDER = "📜 Select the main repository license..."
 ERROR_LICENSE_PLACEHOLDER = "❌ Invalid license!"
 ANALYSIS_COMPLETE = "\n✅ Analysis complete! Press Enter ↵ to show command line"
 ANALYSIS_STARTING = "⏳ Starting dependency analysis..."
+COMMANDS_PLACEHOLDER = "💬 Type a command..."
+ERROR_COMMANDS_PLACEHOLDER = "❌ Invalid command!"
 
 
 class TextualLogHandler(logging.Handler):
@@ -67,7 +71,8 @@ class TextualLogHandler(logging.Handler):
 class Stage(Enum):
     REQUIREMENTS = auto()
     LICENSE = auto()
-    RUNNING = auto()
+    ANALYZING = auto()
+    INTERACTIVE = auto()
 
 
 class LicenseSentinelUI(App):
@@ -116,6 +121,19 @@ class LicenseSentinelUI(App):
         self._log_handler = None
         self._setup_logging()
 
+        # Suggestion system
+        self.suggestions_list: ListView | None = None
+        self._setting_up_suggestions = False
+        self.commands: list[str] = [
+            "scan <package_name>",
+            "analyze dependencies",
+            "show licenses",
+            "export report",
+            "clear cache",
+            "quit",
+        ]
+        self.filtered_commands: list[str] = []
+
     def _pypi_table(self) -> DataTable:
         table = DataTable()
         table.add_columns("Pacchetto", "Licenza dichiarata")
@@ -127,9 +145,11 @@ class LicenseSentinelUI(App):
         return table
 
     def compose(self) -> ComposeResult:
-        with Horizontal(classes="path-container"):
-            yield Input(placeholder=PATH_PLACEHOLDER, id="path", classes="path-input")
-            yield Button("Next ->", variant="primary", id="send", classes="analyze-button")
+        with Vertical(id="top-section", classes="top-section"):
+            with Horizontal(classes="path-container"):
+                with Vertical(id="input-section", classes="input-section"):
+                    yield Input(placeholder=PATH_PLACEHOLDER, id="path", classes="path-input")
+                yield Button("Next ->", variant="primary", id="send", classes="analyze-button")
 
         with Vertical(classes="main-container", id="main-container"):
             with Horizontal(classes="main-row"):
@@ -180,19 +200,26 @@ class LicenseSentinelUI(App):
         """
         if event.button.id == "send":
             input_widget = self.query_one("#path", Input)
-            await self.handle_step_requirements(input_widget.value.strip())
+            await self.process_stage_input(input_widget.value.strip())
 
     @on(Input.Submitted, "#path")
     async def on_path_submitted(self, event) -> None:
         """Handle Enter pressed in the path input to start analysis."""
         input_widget = self.query_one("#path", Input)
-        await self.handle_step_requirements(input_widget.value.strip())
+        await self.process_stage_input(input_widget.value.strip())
 
     @on(Input.Changed, "#path")
     async def on_path_input_changed(self, event: Input.Changed) -> None:
-        """Clear error state when the user starts typing in the path input."""
+        """Clear error state when the user starts typing in the path input.
+        When in ANALYZING stage, update suggestions based on input."""
         if event.input.value.strip() and self._path_input_has_error:
             self._set_input_error(False)
+
+        # Update suggestions when in ANALYZING or INTERACTIVE stage (but not during setup)
+        if (self.stage in (Stage.ANALYZING, Stage.INTERACTIVE) and
+            self.suggestions_list is not None and
+                not self._setting_up_suggestions):
+            await self._update_suggestions(event.input.value)
 
     async def on_mouse_down(self, event: events.MouseDown) -> None:
         """When the user clicks anywhere, clear the input error
@@ -212,21 +239,51 @@ class LicenseSentinelUI(App):
         # otherwise clear the error state
         self._set_input_error(False)
 
+    @on(events.Key)
+    async def on_key_pressed(self, event: events.Key) -> None:
+        """When the console is mounted, pressing Enter will unmount it
+        and remount the original input bar so the user can type again."""
+        # Only act on Enter and when the log console is mounted/visible
+        if event.key.lower() != "enter" or self.stage != Stage.ANALYZING or not self.log_view:
+            return
+
+        await self._unmount_log_console()
+        await self._mount_input_bar()
+        await self.process_stage_input("")
+        # Clear flag - setup complete
+        self._setting_up_suggestions = False
+        # focus the input for convenience
+        # input_widget = self.query_one("#path", Input)
+        # send_button = self.query_one("#send", Button)
+        # input_widget.placeholder = COMMANDS_PLACEHOLDER
+        # send_button.label = "Execute ▶"
+        # Stay in ANALYZING stage
+        # self.stage = Stage.ANALYZING (already set)
+
+        # Set value AFTER suggestions are ready (this triggers Input.Changed)
+        # input_widget.value = ""
+
+        # Clear flag - setup complete
+        # self._setting_up_suggestions = False
+
+        # focus the input for convenience
+        # input_widget.focus()
 # =================================================================================#
 #                                   Helpers                                        #
 # =================================================================================#
 
-    async def handle_step_requirements(self, input_value: str) -> None:
-        """Handle the two-step input flow and trigger analysis when ready.
+    async def process_stage_input(self, input_value: str) -> None:
+        """Handle the three-step input flow and trigger analysis when ready.
 
         Behaviour by stage:
         - REQUIREMENTS: validate and store the requirements file path, switch
           to the LICENSE stage and update input/button UI.
         - LICENSE: validate the provided license, store it and start analysis.
-        - RUNNING: input is ignored (analysis in progress).
+        - ANALYZING: input is ignored (analysis in progress).
 
         Args:
-            input_value: The raw string entered by the user in the `#path` input.
+            #path` input.
+            input_value: The raw string entered by the user in the `
 
         Returns:
             None
@@ -246,27 +303,38 @@ class LicenseSentinelUI(App):
                     # clear error state
                     self._set_input_error(False)
 
-                    return
-                self.stage = Stage.REQUIREMENTS
-                # invalid path
-                self._set_input_error(True)
+                else:
+                    self.stage = Stage.REQUIREMENTS
+                    # invalid path
+                    self._set_input_error(True)
                 return
 
             case Stage.LICENSE:
                 if self.license_check(input_value) and self.path_check(self.requirements_path):
                     self.main_license = input_value
-                    self.stage = Stage.RUNNING
+                    self.stage = Stage.ANALYZING
                     await self._start_analysis(self.requirements_path)
-                    return
-                self.stage = Stage.LICENSE
-                # invalid license
-                self._set_input_error(True)
+                else:
+                    self.stage = Stage.LICENSE
+                    # invalid license
+                    self._set_input_error(True)
                 return
 
-            case Stage.RUNNING:
-                # input ignored while running
+            case Stage.ANALYZING:
+                send_button = self.query_one("#send", Button)
+                input_widget = self.query_one("#path", Input)
+                input_widget.placeholder = COMMANDS_PLACEHOLDER
+                send_button.label = "Execute ▶"
+                input_widget.value = ""
+                self.stage = Stage.INTERACTIVE
                 return
-        raise ValueError("Unknown stage")
+            case Stage.INTERACTIVE:
+                if (input_value):
+                    print(f"Execute command: {input_value}")
+                else:
+                    self._set_input_error(True)
+                return
+        raise ValueError(f"Unknown stage. Actual stage: {self.stage}")
 
     def _setup_logging(self) -> None:
         """Setup logging handler to forward logs to the UI Log widget."""
@@ -289,8 +357,9 @@ class LicenseSentinelUI(App):
         """Common logic to start the analysis for a package string."""
         input_widget = self.query_one("#path", Input)
 
-        if not requirements_path or not self.path_check(requirements_path) or self.stage != Stage.RUNNING:
+        if not requirements_path or not self.path_check(requirements_path) or self.stage != Stage.ANALYZING:
             # show error state
+            # In realtà dovrebbe essere impossibile arrivarci metti un RISE
             input_widget.value = ""
             self._set_input_error(True)
             return
@@ -344,10 +413,10 @@ class LicenseSentinelUI(App):
             case Stage.LICENSE:
                 error = ERROR_LICENSE_PLACEHOLDER
                 info = LICENSE_PLACEHOLDER
-            case Stage.RUNNING:
+            case Stage.INTERACTIVE | Stage.ANALYZING:
                 # Will prepare the same input widget for the scan session
-                error = ""
-                info = ""
+                error = ERROR_COMMANDS_PLACEHOLDER
+                info = COMMANDS_PLACEHOLDER if self.suggestions_list else ""
         # Update input widget state
         if show_error:
             path_input.value = ""
@@ -386,18 +455,9 @@ class LicenseSentinelUI(App):
         await self.mount(self.log_view, before=before_widget)
         self.log_view.write_line(ANALYSIS_STARTING)
 
-    @on(events.Key)
-    async def on_key_pressed(self, event: events.Key) -> None:
-        """When the console is mounted, pressing Enter will unmount it
-        and remount the original input bar so the user can type again."""
-        # Only act on Enter and when the log console is mounted/visible
-        if event.key.lower() != "enter":
+    async def _unmount_log_console(self) -> None:
+        if self.log_view is None:
             return
-
-        if not self.log_view:
-            return
-
-        # Remove log console and restore the path input bar
         try:
             await self.log_view.remove()
         except Exception:
@@ -405,28 +465,74 @@ class LicenseSentinelUI(App):
                 self.log_view.remove()  # fallback if sync
             except Exception:
                 pass
-
         self.log_view = None
+        return
 
+    async def _mount_input_bar(self) -> None:
+        """Create and mount the input bar for commands."""
         path_container = self.query_one(".path-container", Horizontal)
         # Show input bar again
         if path_container:
             path_container.remove_class("hidden")
 
-        # Reset input to initial state (requirements stage)
-        input_widget = self.query_one("#path", Input)
-        send_button = self.query_one("#send", Button)
-        input_widget.placeholder = PATH_PLACEHOLDER
-        input_widget.value = ""
-        send_button.label = "Next ->"
-        self.stage = Stage.RUNNING
-        # focus the input for convenience
-        # TODO: AGGIUNGI NUOVI PLACEHOLDER E BOTTONI PER LA SCAN
-        input_widget.focus()
+        # Set flag to prevent Input.Changed from triggering during setup
+        self._setting_up_suggestions = True
+
+        # Mount suggestions FIRST, before modifying input
+        # (changing input value triggers Input.Changed event)
+        if self.suggestions_list is None:
+            await self._mount_suggestions()
+
+    async def _mount_suggestions(self) -> None:
+        """Create and mount the suggestions ListView as an overlay."""
+        if self.suggestions_list is not None:
+            return
+
+        suggestions_widget = ListView(
+            id="suggestions", classes="suggestions-overlay hidden")
+        # Mount in the input section container, after the input
+        input_section = self.query_one("#input-section", Vertical)
+        await input_section.mount(suggestions_widget)
+
+        # Set the reference AFTER mount is complete
+        self.suggestions_list = suggestions_widget
+        self.filtered_commands = list(self.commands)
+
+    async def _update_suggestions(self, search_term: str) -> None:
+        """Update the suggestions list based on the search term."""
+        if self.suggestions_list is None:
+            return
+
+        search_lower = search_term.lower().strip()
+
+        # Hide suggestions if input is empty
+        if not search_lower:
+            self.suggestions_list.add_class("hidden")
+            return
+
+        self.filtered_commands = [
+            cmd for cmd in self.commands if search_lower in cmd.lower()
+        ]
+
+        # Clear and repopulate the list
+        self.suggestions_list.clear()
+        for cmd in self.filtered_commands:
+            item = ListItem(Static(cmd), classes="suggestion-item")
+            self.suggestions_list.append(item)
+
+        # Show suggestions if there are any filtered commands
+        if self.filtered_commands:
+            self.suggestions_list.remove_class("hidden")
+        else:
+            self.suggestions_list.add_class("hidden")
+
+        self.suggestions_list.refresh(layout=True)
+
 
 # =================================================================================#
 #                                   Logic                                          #
 # =================================================================================#
+
 
     def path_check(self, path: str | None) -> bool:
         """Check if the input path is valid (non-empty).
@@ -443,8 +549,7 @@ class LicenseSentinelUI(App):
 
     def license_check(self, license_str: str) -> bool:
         """Check if the input license is valid (and non-empty).
-
-        Args:
+ò
             license (str): The input license to validate.
         Returns:
             bool: True if the license is valid, False otherwise.

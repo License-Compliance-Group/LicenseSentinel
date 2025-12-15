@@ -2,6 +2,21 @@
 /*  Top Bar - Path Input & Button           */
 /* ========================================= */
 /* https://textual.textualize.io/guide/design/#additional-variables funzionano*/
+
+.top-section {
+    width: 100%;
+    height: auto;
+    padding: 0;
+    margin: 0;
+}
+
+.input-section {
+    width: 1fr;
+    height: auto;
+    padding: 0;
+    margin: 0;
+}
+
 .path-container {
     width: 100%;
     height: auto;
@@ -172,4 +187,43 @@ DataTable {
 
 .hidden {
     display: none;
+}
+
+/* ========================================= */
+/*  Suggestions Overlay                     */
+/* ========================================= */
+
+.suggestions-overlay {
+    /* Layout - full width of input-section container */
+    width: 100%;
+    height: auto;
+    max-height: 12;
+    margin: 0;
+    padding: 1;
+    
+    /* Visuals - no borders for seamless integration */
+    border: none;
+    background: $surface;
+    
+    /* Scrolling */
+    overflow-y: auto;
+}
+
+.suggestion-item {
+    /* Spacing */
+    padding: 0 1;
+    height: 1;
+    
+    /* Visuals */
+    background: transparent;
+    color: $text;
+}
+
+.suggestion-item:hover {
+    background: $surface-lighten-3;
+}
+
+.suggestion-item.--selected {
+    background: $primary;
+    color: $text-primary;
 }
