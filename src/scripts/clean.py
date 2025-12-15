@@ -37,7 +37,7 @@ def clean() -> None:
     """
     Remove all files defined in the pattern.
     """
-    
+
     # No logger - scripts are allowed no internal imports.
     print("Pulizia del progetto in corso...")
 
@@ -87,6 +87,11 @@ def remove_venv(venv_dir: Path) -> None:
 
 
 def parse_args() -> argparse.Namespace:
+    """Binds command line arguments to functions.
+
+    Returns:
+        argparse.Namespace: The bindings' namespace.
+    """
     parser = argparse.ArgumentParser(
         description="Pulisce cache/log e opzionalmente elimina il virtualenv."
     )
@@ -104,6 +109,9 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """The main function of the script.
+    Will be called by CI/CD pipelines.
+    """
     args = parse_args()
     clean()
     if args.remove_venv:

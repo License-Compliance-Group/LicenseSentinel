@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Protocol, Optional, Dict, Any
 from pathlib import Path
-from typing import Optional, Dict, Any
+
 
 
 class ScanEngine(Protocol):

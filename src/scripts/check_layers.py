@@ -140,13 +140,13 @@ def extract_imports(file_path: Path) -> list[tuple[str, int, str]]:
             for alias in node.names:
                 # alias.name può essere "src.entities.user" ecc.
                 module_name = alias.name
-                imports.append((module_name, node.lineno, 
+                imports.append((module_name, node.lineno,
                                 f"import {alias.name}"))
         elif isinstance(node, ast.ImportFrom):
             if node.module:
                 module_name = node.module
                 imports.append(
-                    (module_name, node.lineno, 
+                    (module_name, node.lineno,
                      f"from {node.module} import ...")
                 )
 
@@ -225,6 +225,9 @@ def check_file(file_path: Path, layer: str) -> list[str]:
 
 
 def main() -> None:
+    """The main function of the script.
+    Will be called by CI/CD pipelines.
+    """
     print("Controllo statico dei livelli...")
 
     all_violations: list[str] = []

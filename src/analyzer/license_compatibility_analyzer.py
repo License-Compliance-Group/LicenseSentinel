@@ -9,11 +9,11 @@ from abc import abstractmethod, ABC
 from datetime import datetime
 from time import time
 
-from src.infrastructure.connectivity import Connectivity as io
-from src.infrastructure.logger_formatter import LoggerFormatter
+from infrastructure.connectivity import Connectivity as io
+from infrastructure.logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__,
 LoggerFormatter.DEBUG)
-class CompatibilityCalcStrategy(ABC):
+class CompatibilityCalcStrategy(ABC): # pylint: disable=too-few-public-methods
     # This class is meant for a single purpose.
     """Abstract Strategy class for compatibility calculation algorithms"""
     @abstractmethod
@@ -27,7 +27,7 @@ class CompatibilityCalcStrategy(ABC):
             tuple: (result as "Yes"/"No"/"Same", explanation)
         """
 
-class FullCompatibilityCalc(CompatibilityCalcStrategy):
+class FullCompatibilityCalc(CompatibilityCalcStrategy): # pylint: disable=too-few-public-methods
     # This class is meant for a single purpose.
     """ Regular mode: just check every possible unique pair"""
     def calculate_license_compatibility(self, licenses):
@@ -50,7 +50,10 @@ class FullCompatibilityCalc(CompatibilityCalcStrategy):
                 return result
         return ("Yes", "n.a.")
 
-_last_online_check = 0 # This variable is intended to be common
+_LAST_ONLINE_CHECK = 0 # pylint:disable=invalid-name
+                       # this variable is expected by pylint to be
+                       # both snake_case and PASCAL_CASE. good luck.
+                       # This variable is intended to be common
                        # across all instances. It need not be thread-safe.
 
 class LicenseCompatibilityAnalyzer:
@@ -58,6 +61,9 @@ class LicenseCompatibilityAnalyzer:
     Handles calculations using a matrix file generously provided by OSADL
     https://osadl.org
     """
+
+    # pylint: disable=too-many-instance-attributes
+    # The thing confuses properties and attributes
 
     _license_matrix = ""
     _compat_calc_strategy = FullCompatibilityCalc()
@@ -69,14 +75,16 @@ class LicenseCompatibilityAnalyzer:
         The default path is (project root)/src/data/matrix.json
         """
         if strategy is None:
-            strategy = FullCompatibilityCalc()
+            self._compat_calc_strategy = FullCompatibilityCalc()
+        else:
+            self.compat_calc_strategy = strategy
+
         if path is None:
             path = Path.joinpath(Path.cwd(),"src","data","matrix.json")
         self.path = str(path)
         logger.info("Seeking license file at: %s", self.path)
         if not self.matrix_file_present():
             logger.info("License file not present.")
-        self.compat_calc_strategy = strategy
 
     @property
     def compat_calc_strategy(self):
@@ -100,11 +108,10 @@ class LicenseCompatibilityAnalyzer:
             last_online_check: epoch time since last succesful check,
                 0 if none ever happened
         """
-        return _last_online_check
+        return _LAST_ONLINE_CHECK
     @last_online_check.setter
     def last_online_check(self, value):
-        _last_online_check = value
-
+        _LAST_ONLINE_CHECK = value # pylint:disable=invalid-name
 
     @property
     def last_comparison_result(self):
@@ -277,7 +284,7 @@ class LicenseCompatibilityAnalyzer:
         else:
             self.license_matrix = read_json
             return True
-        
+
     def extract_raw_licenses(self, json_path):
         """
         This method conflates a scancode JSON file to a raw list of licenses.
@@ -333,7 +340,8 @@ class LicenseCompatibilityAnalyzer:
                         logger.debug("Notice detected: %s", notice)
                         return notice
 
-                logger.warning('Unknown license type for lic_b: %s (lic_a: %s found)', lic_b, lic_a)
+                logger.warning('Unknown license type for lic_b: %s \
+                    (lic_a: %s found)', lic_b, lic_a)
                 return (None, None)
         logger.warning('Unknown license type for lic_a: %s', lic_a)
         return (None, None)

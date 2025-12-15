@@ -3,4 +3,3 @@
 
 class PackageMetadata:
     """Contains metadata about a package"""
-    

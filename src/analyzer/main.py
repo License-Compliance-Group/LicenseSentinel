@@ -90,8 +90,28 @@ def run_tree_compatibility_check(packages_metadata, graph) -> None:
         return
 
     lca = LicenseCompatibilityAnalyzer(path=MATRIX_PATH)
-    incompatible_edges = []
+    lca.update_license_matrix()
+    incompatible_edges = detect_incompatible_edges(graph, license_by_pkg, lca)
 
+
+    print_dependency_forest(graph, license_by_pkg, incompatible_edges)
+
+    compile_compatibility_report(incompatible_edges)
+
+def detect_incompatible_edges(graph, license_by_pkg, lca = None):
+    """Detects and highlights incompatibilites within a dependency graph
+
+    Args:
+        graph (dict[str, list[str]]): A dependency graph.
+        license_by_pkg (dict[str, str]): A packagename-license relation
+        dict.
+        lca (optional, LicenseCompatibilityAnalyzer): A customized
+        instance of LCA. If not present, a sensible default 
+        will be created.
+    """
+    incompatible_edges = []
+    if lca is None:
+        lca = LicenseCompatibilityAnalyzer()
     for parent, deps in graph.items():
         parent_key = parent.lower()
         lic_parent = license_by_pkg.get(parent_key)
@@ -116,12 +136,16 @@ def run_tree_compatibility_check(packages_metadata, graph) -> None:
                     msg = notice[1]
                 incompatible_edges.append((
                     parent, lic_parent,dep, lic_dep, (notice[0], msg)))
+    return incompatible_edges
+def compile_compatibility_report(incompatible_edges):
+    """Prints a report regarding potential tree incompatibilities.
 
-    print_dependency_forest(graph, license_by_pkg, incompatible_edges)
-
+    Args:
+        incompatible_edges (List): List of incompatible edges.
+    """
     if not incompatible_edges:
         logger.info("Dependency-tree compatibility result:\
-             Yes (all edges compatible).")
+            Yes (all edges compatible).")
         return
     logger.warning("Dependency-tree compatibility check negative.")
     logger.info('Listing problems.')
@@ -151,7 +175,7 @@ def find_first_incompatibility(lca: LicenseCompatibilityAnalyzer,
             where 'notice' is the result from lca.compare_licenses 
                 (typically a tuple or None).  
             Returns None if all pairs are compatible.  
-    """  
+    """
     for (pkg_a, lic_a), (pkg_b, lic_b) in itertools.combinations(
         pkg_licenses, 2):
         notice = lca.compare_licenses(lic_a, lic_b)
@@ -177,7 +201,7 @@ def print_dependency_forest(graph: dict[str, list[str]],
             List of tuples representing incompatible dependency 
             relationships. Each tuple contains  
             (parent_pkg, parent_license, dep_pkg, dep_license, notice).  
-    """      
+    """
     red = "\x1b[31m"
     reset = "\x1b[0m"
 

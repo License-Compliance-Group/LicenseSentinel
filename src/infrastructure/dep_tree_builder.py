@@ -24,7 +24,13 @@ PATH = "tmpvenv"
 
 
 class DepTreeBuilder(AbstractDepTreeBuilder):
+    """
+    Creates an isolated virtual environment, installs specified packages
+    and uses pipdeptree to build and print a dependency tree.
 
+    Args:
+        AbstractDepTreeBuilder: implements this interface.
+    """
     def venv_exists(self, path: str = PATH) -> bool:
         """Check if a virtual environment exists at the given path.
 

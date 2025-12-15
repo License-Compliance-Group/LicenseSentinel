@@ -28,7 +28,12 @@ DEFAULT_DOWNLOAD_BRANCH = "main"
 
 
 class PackageMetadataFetcher:
+    """The class responsible for fetching package metadata from PyPI.
 
+    Raises:
+        NotImplementedError: A WIP function has been called.
+
+    """
     @property
     def cache_file(self) -> Path:
         """Get the cache file path."""
@@ -89,54 +94,19 @@ class PackageMetadataFetcher:
 
         # Step 2: Build dependency tree
         # (single pass - no intermediate function)
+
         LOGGER.info("Building dependency tree for %d root packages",
                     len(dependencies))
         try:
-            temp_venv = self.dep_builder.create_venv()
-            self.dep_builder.install_packages(temp_venv, dependencies)
-            tree_json = self.dep_builder.get_tree_json(temp_venv)
-            graph = self.dep_builder.build_map(tree_json)
-
-            # Check for cycles in dependency graph
-            if self.dep_builder.has_cycles(graph):
-                LOGGER.warning("Cycles detected in dependency graph - this may cause issues")
-
-            # Extract all unique packages (keys + all values)
-            all_packages = set(graph.keys())
-            for deps in graph.values():
-                all_packages.update(deps)
-
+            graph, all_packages = self._deptree_handler(dependencies)
             LOGGER.info("Discovered %d total packages", len(all_packages))
         except RuntimeError as exc:
             LOGGER.error("Failed to build dependency tree: %s", exc)
             return [], {}
 
         # Step 3: Fetch PyPI metadata (batch operation with caching)
-        if override_cache:
-            LOGGER.info('Cache override active, redownloading everything.')
-            LOGGER.info("Fetching PyPI metadata for %d packages",
-                    len(all_packages))
-            results = self.pypi_client.get_source_links(list(all_packages))
-        else:
-            cache = self._load_cache()
-            missing_packages = [pkg for pkg in all_packages
-                                if pkg not in cache]
+        results = self._load_pypi_metadata(all_packages,override_cache)
 
-            if missing_packages:
-                LOGGER.info("Fetching PyPI metadata for %d new packages\
-                    (cached: %d)",
-                            len(missing_packages),
-                            len(all_packages) - len(missing_packages))
-                results = self.pypi_client.get_source_links(missing_packages)
-                # Update cache with new data
-                cache.update(results)
-                self._save_cache(cache)
-            else:
-                LOGGER.info("All %d package links found in cache", 
-                            len(all_packages))
-
-            # Use cached data for all packages
-            results = {pkg: cache[pkg] for pkg in all_packages}
         package_urls: Dict[str, str | None] = {}
         # Step 4: Build PyPiMetadata objects and prepare
         _packages_metadata = []
@@ -152,6 +122,36 @@ class PackageMetadataFetcher:
                     len(_packages_metadata))
 
         # Step 5: download sources (only for packages with valid repo links)
+        self._download_sources(package_urls, override_cache)
+
+        # Step 6: compare PyPI license vs scancode detected license
+        # Step 7: create for each package objects package_metadata
+        #        containing both pypi and scancode license info and check results
+        # We had to think more about how to structure this part. From the GUI the user
+        # could select a single package (from the tree view) and see all its details like:
+        #  - PyPI license
+        #  - Scancode detected license
+        #  - License compatibility check result
+        #  - Incompatibility with other packages in the tree (if any)
+        # I think that we should avoid the massive I/O (PyPI jsons + repo download + scancode)
+        # at once for all packages # and let this option be on-
+        # when the user selects a package.
+        # Possibly let the option "scan all packages" be a separate button that the user
+        # can press if he wants to scan everything at once.
+
+        return _packages_metadata, graph
+
+    def _download_sources(self, package_urls, override_cache = False):
+        """Private function. Downloads package sources from given URLs,
+        utilizing a cache where appriopriate.
+
+        Args:
+            package_urls (Dict[str,str]): Dictionary storing package
+            names and their respective URLs.
+            override_cache (bool, optional): Downloads everything
+            unconditionally if True, else uses a cache.
+            Defaults to False.
+        """
         if override_cache:
             LOGGER.info('Cache override active, redownloading everything.')
             filtered_repo_urls = {pkg: url for pkg,
@@ -180,22 +180,69 @@ class PackageMetadataFetcher:
         else:
             LOGGER.info("No valid repository links found, skipping downloads")
 
-        # Step 6: compare PyPI license vs scancode detected license
-        # Step 7: create for each package objects package_metadata
-        #        containing both pypi and scancode license info and check results
-        # We had to think more about how to structure this part. From the GUI the user
-        # could select a single package (from the tree view) and see all its details like:
-        #  - PyPI license
-        #  - Scancode detected license
-        #  - License compatibility check result
-        #  - Incompatibility with other packages in the tree (if any)
-        # I think that we should avoid the massive I/O (PyPI jsons + repo download + scancode)
-        # at once for all packages # and let this option be on-
-        # when the user selects a package.
-        # Possibly let the option "scan all packages" be a separate button that the user
-        # can press if he wants to scan everything at once.
+    def _deptree_handler(self, dependencies):
+        """Private function. 
+        Creates a dependency graph and lists packages used.
 
-        return _packages_metadata, graph
+        Args:
+            dependencies (List[str]): list of detected dependencies.
+
+        Returns:
+            (Dict[str, List[str]], set(str)): A dependency graph
+            and names of packages used within that graph.
+        """
+        temp_venv = self.dep_builder.create_venv()
+        self.dep_builder.install_packages(temp_venv, dependencies)
+        tree_json = self.dep_builder.get_tree_json(temp_venv)
+        graph = self.dep_builder.build_map(tree_json)
+
+        # Check for cycles in dependency graph
+        if self.dep_builder.has_cycles(graph):
+            LOGGER.warning("Cycles detected in dependency graph - this may cause issues")
+
+        # Extract all unique packages (keys + all values)
+        all_packages = set(graph.keys())
+        for deps in graph.values():
+            all_packages.update(deps)
+
+        return graph, all_packages
+
+
+
+    def _load_pypi_metadata(self, packages,override_cache=False):
+        """Private function. Loads PyPIMetadata, utilizing a cache.
+
+        Args:
+            packages: set(str): A set of package names.
+            override_cache (bool, optional): 
+            If true, download unconditionally. Defaults to False.
+        """
+        if override_cache:
+            LOGGER.info('Cache override active, redownloading everything.')
+            LOGGER.info("Fetching PyPI metadata for %d packages",
+                    len(packages))
+            results = self.pypi_client.get_source_links(list(packages))
+        else:
+            cache = self._load_cache()
+            missing_packages = [pkg for pkg in packages
+                                if pkg not in cache]
+
+            if missing_packages:
+                LOGGER.info("Fetching PyPI metadata for %d new packages\
+                    (cached: %d)",
+                            len(missing_packages),
+                            len(packages) - len(missing_packages))
+                results = self.pypi_client.get_source_links(missing_packages)
+                # Update cache with new data
+                cache.update(results)
+                self._save_cache(cache)
+            else:
+                LOGGER.info("All %d package links found in cache",
+                            len(packages))
+
+            # Use cached data for all packages
+            results = {pkg: cache[pkg] for pkg in packages}
+        return results
 
     def _parse_requirements_file(self, file_path: str) -> List[str]:
         """Parse a requirements.txt file and extract package names.
@@ -208,7 +255,8 @@ class PackageMetadataFetcher:
         """
         dependencies = []
         # More restrictive pattern: allow only safe characters, no leading/trailing special chars
-        pattern = re.compile(r"^\s*([A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?)(?:\s*(?:[<>=!~]+|;).*)?$")
+        # I don't think regex patterns are line-breakable
+        pattern = re.compile(r"^\s*([A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?)(?:\s*(?:[<>=!~]+|;).*)?$") # pylint: disable=line-too-long
 
         try:
             LOGGER.info("Parsing project dependencies from %s", file_path)
@@ -222,10 +270,14 @@ class PackageMetadataFetcher:
                         pkg_name = match.group(1)
                         # Additional security: limit length and disallow dangerous patterns
                         if len(pkg_name) > 100:
-                            LOGGER.warning("Package name too long on line %d, skipping: %s", line_num, pkg_name)
+                            LOGGER.warning("Package name too long on\
+                                line %d, skipping: %s", line_num, pkg_name)
                             continue
-                        if ".." in pkg_name or pkg_name.startswith(("/", "\\", ".")):
-                            LOGGER.warning("Potentially unsafe package name on line %d, skipping: %s", line_num, pkg_name)
+                        if ".." in pkg_name \
+                        or pkg_name.startswith(("/", "\\", ".")):
+                            LOGGER.warning("Potentially unsafe package \
+                                name on line %d, skipping: %s",
+                                line_num, pkg_name)
                             continue
                         dependencies.append(pkg_name)
                     else:

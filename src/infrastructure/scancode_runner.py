@@ -24,7 +24,6 @@ import json
 from typing import Optional
 from pathlib import Path
 
-from entities.scan_engine import ScanEngine
 
 from infrastructure.logger_formatter import LoggerFormatter
 
@@ -111,7 +110,7 @@ class ScanCodeRunner():
         except zipfile.BadZipFile as e:
             LOGGER.error("Failed to extract zip file %s: %s", zip_file_path, e)
             return False
-        except Exception as e:
+        except IOError as e:
             LOGGER.error("Unexpected error extracting %s: %s",
                          zip_file_path, e)
             return False

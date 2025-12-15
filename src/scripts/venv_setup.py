@@ -45,7 +45,7 @@ def install_requirements(
     """Install project (and optionally dev) requirements into the venv."""
     if requirements_file.exists():
         print(f"Installazione pacchetti da {requirements_file}")
-        subprocess.check_call([str(pip_path), "install", "-r", 
+        subprocess.check_call([str(pip_path), "install", "-r",
                                str(requirements_file)])
     else:
         print(f"Nessun {requirements_file.name} trovato,\
@@ -59,10 +59,15 @@ def install_requirements(
 
 
 def parse_args() -> argparse.Namespace:
+    """Binds command line arguments to functions.
+
+    Returns:
+        argparse.Namespace: The bindings' namespace.
+    """
     parser = argparse.ArgumentParser(
         description="Crea un virtualenv e installa le dipendenze del progetto."
     )
-    parser.add_argument("--env", default=DEFAULT_ENV, 
+    parser.add_argument("--env", default=DEFAULT_ENV,
                         help="Nome/cartella del venv.")
     parser.add_argument(
         "--no-dev",
@@ -86,4 +91,3 @@ if __name__ == "__main__":
         dev_requirements_file=DEFAULT_DEV_REQUIREMENTS,
         with_dev=not args.no_dev,
     )
-
