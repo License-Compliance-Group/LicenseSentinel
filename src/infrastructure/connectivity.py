@@ -1,5 +1,7 @@
 """The Connectivity class is responsible for the I/O that the program does."""
 
+import zipfile
+from pathlib import Path
 import requests
 from infrastructure.logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__)
@@ -97,3 +99,29 @@ class Connectivity:
             "exception occurred: %s", url, ex)
             return None
         return response
+
+    @staticmethod
+    def extract_zip_contents(zip_file_path: Path, extract_to: Path) -> bool:
+        """
+        Extract ZIP archive to the given directory. Logs and skips on corrupt archives.
+
+        :param zip_file_path: Path to the ZIP file (Path object).
+        :param extract_to: Directory to extract to (Path object).
+        :return: True on success, False on failure.
+        """
+        if not zip_file_path.exists():
+            logger.error("The file %s does not exist.", zip_file_path)
+            return False
+
+        try:
+            extract_to.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+                zip_ref.extractall(extract_to)
+        except zipfile.BadZipFile as e:
+            logger.error("Failed to extract zip file %s: %s", zip_file_path, e)
+            return False
+        except IOError as e:
+            logger.error("Unexpected error extracting %s: %s",
+                         zip_file_path, e)
+            return False
+        return True
