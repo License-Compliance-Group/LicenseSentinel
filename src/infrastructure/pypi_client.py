@@ -106,14 +106,12 @@ class PyPiHandler(AbstractPackageManagerFetcher):
 
             license_final = self.extract_license(info)
 
-            results[package] = {
+            LOGGER.info("Fetched %s.json", package)
+            return package, {
                 'license': license_final,
-                #   'license_expression': license_expression,
                 'link': source_link
             }
-            LOGGER.info("Fetched %s.json", package)
 
-        return results
     def extract_license(self, info):
         """Extract license type when given PyPI metadata JSON
         Looks in
@@ -167,3 +165,25 @@ class PyPiHandler(AbstractPackageManagerFetcher):
             license_expression or \
             "Unknown"
         return license_final
+    def fetch_package_json(self, package: str, timeout: int) -> Optional[Dict[str, Any]]:
+        """Download and parse the JSON metadata for a single package from PyPI.
+
+        Args:
+            package: The package name.
+            timeout: Request timeout in seconds.
+
+        Returns:
+            The parsed JSON dictionary, or None if the request fails or JSON is invalid.
+        """
+        url = f"https://pypi.org/pypi/{package}/json"
+        try:
+            resp = requests.get(url, timeout=timeout)
+            resp.raise_for_status()
+            return resp.json()
+        except RequestException as exc:
+            LOGGER.warning("Network error fetching %s: %s", package, exc)
+            return None
+        except ValueError as exc:
+            LOGGER.warning("Invalid JSON for %s: %s", package, exc)
+            return None
+        return None

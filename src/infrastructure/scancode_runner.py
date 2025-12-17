@@ -93,7 +93,7 @@ class ScanCodeRunner(ScanEngine):
             return None
 
         cmd_all = SCANCOMMAND_ALL + [str(extracted_path)]
-        LOGGER.info("Running ScanCode command: %s", " ".join(cmd_all))
+        LOGGER.debug("Running ScanCode command: %s", " ".join(cmd_all))
 
         start_time = datetime.now()
         try:
@@ -108,13 +108,13 @@ class ScanCodeRunner(ScanEngine):
             try:
                 scan_results = json.loads(result.stdout)
                 elapsed = datetime.now() - start_time
-                LOGGER.info("Elapsed time for %s: %s", pkg, elapsed)
+                LOGGER.debug("Elapsed time for %s: %s", pkg, elapsed)
                 # Save to cache
                 try:
                     cache_dir.mkdir(parents=True, exist_ok=True)
                     with open(cache_path, 'w', encoding='utf-8') as f:
                         json.dump(scan_results, f)
-                    LOGGER.info("Cached ScanCode results for %s", pkg)
+                    LOGGER.debug("Cached ScanCode results for %s", pkg)
                 except IOError as e:
                     LOGGER.warning("Failed to save cached results for %s: %s", pkg, e)
                 return scan_results
