@@ -356,6 +356,7 @@ class LicenseCompatibilityAnalyzer:
         self.last_comparison_result = self.compat_calc_strategy.\
             calculate_license_compatibility(licenses)
 
+
 if __name__ == "__main__":
     # note: these are NOT tests in any way or fashion
     # this is a quick-and-dirty method to check if stuff works

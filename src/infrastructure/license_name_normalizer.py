@@ -190,4 +190,4 @@ def normalize(name: str) -> str | None:
         "apache-", "bsd-", "gpl-", "lgpl-", "mpl-", "mit", "psf")
     ):
         return key
-    return None
+    return key

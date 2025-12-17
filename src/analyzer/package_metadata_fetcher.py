@@ -14,10 +14,10 @@ from typing import Dict, List
 from entities.package_manager_fetcher import AbstractPackageManagerFetcher
 from entities.abstract_dep_tree_builder import AbstractDepTreeBuilder
 from entities.abstract_repo_downloader import AbstractRepoDownloader
-
 from entities.pypi_metadata import PyPiMetadata
 
 from infrastructure.logger_formatter import LoggerFormatter
+
 
 LOGGER = LoggerFormatter.initialize("package_metadata_fetcher", logging.DEBUG)
 
@@ -84,7 +84,9 @@ class PackageMetadataFetcher:
             (metadata_list, dependency_graph)
             metadata_list: A list of PyPiMetadata objects containing
                 package name, license, and link.
-            dependency_graph: dict pkg -> list of direct dependencies.
+            dependency_graph: 
+                dicsrc/infrastructure/license_comparator.pyt pkg 
+                -> list of direct dependencies.
             Returns ([], {}) if parsing/build fails.
         """
         # Step 1: Parse requirements file
@@ -105,12 +107,12 @@ class PackageMetadataFetcher:
             return [], {}
 
         # Step 3: Fetch PyPI metadata (batch operation with caching)
-        results = self._load_pypi_metadata(all_packages,override_cache)
+        pypi_metadata = self._load_pypi_metadata(all_packages,override_cache)
 
         package_urls: Dict[str, str | None] = {}
         # Step 4: Build PyPiMetadata objects and prepare
         _packages_metadata = []
-        for pkg_name, metadata in results.items():
+        for pkg_name, metadata in pypi_metadata.items():
             _packages_metadata.append(PyPiMetadata(
                 package=pkg_name,
                 license_type=metadata['license'],
@@ -124,7 +126,10 @@ class PackageMetadataFetcher:
         # Step 5: download sources (only for packages with valid repo links)
         self._download_sources(package_urls, override_cache)
 
-        # Step 6: compare PyPI license vs scancode detected license
+        # Step 6: compare against scancode
+        # This is a separate concern and has been moved to
+        # LicenseComparator
+
         # Step 7: create for each package objects package_metadata
         #        containing both pypi and scancode license info and check results
         # We had to think more about how to structure this part. From the GUI the user
@@ -140,6 +145,7 @@ class PackageMetadataFetcher:
         # can press if he wants to scan everything at once.
 
         return _packages_metadata, graph
+
 
     def _download_sources(self, package_urls, override_cache = False):
         """Private function. Downloads package sources from given URLs,

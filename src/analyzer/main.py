@@ -7,12 +7,14 @@ import logging
 from infrastructure import pypi_client
 from infrastructure import repo_downloader
 from infrastructure import dep_tree_builder
+from infrastructure import scancode_runner
 from infrastructure.logger_formatter import LoggerFormatter
 from infrastructure import license_name_normalizer
 
 from analyzer import package_metadata_fetcher
 from analyzer.license_compatibility_analyzer import\
     LicenseCompatibilityAnalyzer
+from analyzer.license_comparator import LicenseComparator
 
 logger = LoggerFormatter.initialize(__name__, logging.DEBUG)
 
@@ -49,7 +51,76 @@ def main() -> None:
     for pkg in finder:
         print(f"{pkg.package} | {pkg.license_type} | {pkg.link}")
 
+
+    logger.info('Verifying PyPI/Scancode integrity...')
+    scan_engine_instance = scancode_runner.ScanCodeRunner()
+    license_comparator_instance = LicenseComparator(
+        finder,
+        scan_engine_instance
+    )
+
+    discrepancies, doubts = license_comparator_instance.compare_license_trees()
+    if discrepancies:
+        explain_discrepancies(discrepancies)
+    if doubts:
+        explain_doubts(doubts)
+
+    logger.info('Tree cross-check finished with %s errors and %s warnings.',
+                len(discrepancies), len(doubts))
+
     run_tree_compatibility_check(finder, graph)
+
+def explain_discrepancies(discrepancies):
+    """Explains comparison errors in an user-friendly way.
+
+    Args:
+        discrepancies: A list of discrepancies obtained from 
+            comparing license trees
+    """
+    error_str = 'Lacking compatibility report:\n'
+    for d in discrepancies:
+        pkg = d[0]
+        pypi_lic = d[1]
+        scan_lic = d[2]
+        error_str += f'{pkg}: {pypi_lic} was declared, '
+        if len(scan_lic) == 1:
+            error_str += f'but {scan_lic[0]} was found.\n'
+        else:
+            error_str += f'multiple licenses: ({scan_lic}) were found and'\
+                'the declared one is none of them.\n'
+    error_str += 'Please note that licenses may be interchangeable despite not'\
+        ' being identical.'
+    logger.error(error_str)
+
+def explain_doubts(doubts):
+    """Explains comparison errors in an user-friendly way.
+
+    Args:
+        discrepancies: A list of unclear decisions obtained from 
+            comparing license trees
+    """
+    multi_licensing = False
+    warn_str = 'Unknown compatibility report:\n'
+    for d in doubts:
+        pkg = d[0]
+        pypi_lic = d[1]
+        scan_lic = d[2]
+
+        warn_str += f'{pkg}: {pypi_lic} was declared'
+
+        if isinstance(scan_lic, tuple) and len(scan_lic) > 1:
+            multi_licensing = True
+            warn_str += f', but multiple licenses ({scan_lic}) were found'\
+                f' and {pypi_lic} is one of them.\n'
+
+        if scan_lic == 'Unknown':
+            warn_str += ' and we were unable to discover'\
+                ' a license based on source files.\n'
+    warn_str += 'Please note that exceptions and special clauses may apply. '
+    if multi_licensing:
+        warn_str += 'When a program is released under multiple licenses, it is'\
+            ' usually the licensee\'s responsibility to comply with all of them.'
+    logger.warning(warn_str)
 
 def run_tree_compatibility_check(packages_metadata, graph) -> None:
     """  
@@ -62,12 +133,12 @@ def run_tree_compatibility_check(packages_metadata, graph) -> None:
             their dependency package names.  
     """
     if not packages_metadata:
-        logger.warning("No package metadata available, skipping\
-            compatibility check.")
+        logger.warning("No package metadata available, skipping"
+            " compatibility check.")
         return
     if not graph:
-        logger.warning("Dependency graph unavailable, cannot performtree-based\
-             compatibility check.")
+        logger.warning("Dependency graph unavailable, cannot performtree-based"
+             " compatibility check.")
         return
 
     license_by_pkg: dict[str, str] = {}
