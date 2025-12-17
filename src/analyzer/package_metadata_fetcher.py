@@ -19,7 +19,7 @@ from entities.pypi_metadata import PyPiMetadata
 from infrastructure.logger_formatter import LoggerFormatter
 
 
-LOGGER = LoggerFormatter.initialize("package_metadata_fetcher", logging.DEBUG)
+LOGGER = LoggerFormatter.initialize("package_metadata_fetcher", logging.INFO)
 
 
 PROJECT_ROOT = Path.cwd()
@@ -47,6 +47,7 @@ class PackageMetadataFetcher:
         self.dep_builder = dep_builder
         self.repo_downloader = repo_downloader
         self.cache_file.parent.mkdir(parents=True, exist_ok=True)
+        self.graph = {}
 
     def _load_cache(self) -> Dict[str, Dict[str, str]]:
         """Load metadata cache from file."""
@@ -89,7 +90,6 @@ class PackageMetadataFetcher:
                 -> list of direct dependencies.
             Returns ([], {}) if parsing/build fails.
         """
-        global _graph  # <-- ADD THIS LINE
 
         # Step 1: Parse requirements file
         dependencies = self._parse_requirements_file(file_path)
@@ -213,6 +213,7 @@ class PackageMetadataFetcher:
         for deps in graph.values():
             all_packages.update(deps)
 
+        self.graph = graph
         return graph, all_packages
 
 
@@ -309,7 +310,7 @@ class PackageMetadataFetcher:
             A dict mapping package names to lists of dependency package names.
             Returns an empty dict if no graph was built yet.
         """
-        return {pkg: list(deps) for pkg, deps in _graph.items()}
+        return {pkg: list(deps) for pkg, deps in self.graph.items()}
 
     def pypi_license_checker(self):
         """Placeholder for future license compatibility checker."""

@@ -12,7 +12,7 @@ from time import time
 from infrastructure.connectivity import Connectivity as io
 from infrastructure.logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__,
-LoggerFormatter.DEBUG)
+LoggerFormatter.INFO)
 class CompatibilityCalcStrategy(ABC): # pylint: disable=too-few-public-methods
     # This class is meant for a single purpose.
     """Abstract Strategy class for compatibility calculation algorithms"""
