@@ -7,6 +7,7 @@ import logging
 from infrastructure import pypi_client
 from infrastructure import repo_downloader
 from infrastructure import dep_tree_builder
+<<<<<<< HEAD
 from infrastructure import scancode_runner
 from infrastructure.logger_formatter import LoggerFormatter
 from infrastructure import license_name_normalizer
@@ -15,6 +16,11 @@ from analyzer import package_metadata_fetcher
 from analyzer.license_compatibility_analyzer import\
     LicenseCompatibilityAnalyzer
 from analyzer.license_comparator import LicenseComparator
+=======
+from infrastructure.logger_formatter import LoggerFormatter
+
+from analyzer import package_metadata_fetcher
+>>>>>>> origin/develop
 
 logger = LoggerFormatter.initialize(__name__, logging.DEBUG)
 
@@ -36,7 +42,16 @@ def main() -> None:
         logger.warning("File not found: %s", file_path)
         return
 
+<<<<<<< HEAD
     logger.debug("File loaded: %s", file_path)
+=======
+    if not os.path.exists(file_path):
+        logger.warning("File not found!")
+        return
+
+    logger.debug("File loaded: %s", file_path)
+
+>>>>>>> origin/develop
     pypi_client_instance = pypi_client.PyPiHandler()
     repo_downloader_instance = repo_downloader.RepoDownloader()
     dep_tree_builder_instance = dep_tree_builder.DepTreeBuilder()
@@ -46,6 +61,7 @@ def main() -> None:
         dep_tree_builder_instance,
         repo_downloader_instance
     )
+<<<<<<< HEAD
     finder, graph = package_metadata_fetcher_instance.\
     build_package_metadata(str(file_path))
     for pkg in finder:
@@ -313,6 +329,26 @@ def print_dependency_forest(graph: dict[str, list[str]],
     for idx, root in enumerate(roots):
         render(root, "", idx == len(roots) - 1, visited_global, False)
     print("=== End Dependency Tree ===\n")
+=======
+
+    metadata_items = package_metadata_fetcher_instance.build_package_metadata(
+        file_path)
+
+    if not metadata_items:
+        logger.warning("No package metadata found for %s", file_path)
+        return
+
+    header = f"{' PACKAGE':<20} {' LICENSE':<40} {' LINK'}"
+    print("-" * (len(header) + 40))
+    print(header)
+    print("-" * (len(header) + 40))
+
+    for _, metadata in metadata_items.items():
+        print(f" {metadata.package:<20} {metadata.license_type:<40} {metadata.link}")
+
+    dep_tree_builder_instance.print_full_tree(
+        package_metadata_fetcher_instance.get_graph())
+>>>>>>> origin/develop
 
 
 if __name__ == "__main__":

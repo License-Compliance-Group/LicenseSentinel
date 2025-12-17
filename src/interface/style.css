@@ -1,0 +1,143 @@
+/* ========================= */
+/* Barra URL in cima          */
+/* ========================= */
+.urlbar {
+    width: 100%;
+    height: auto; 
+    padding: 0;
+    margin: 0;
+    background: #1e1e1e;
+    border-bottom: heavy #3a3a3c;
+    border: heavy round #4a361d;
+}
+
+.urlbar:focus-within {
+    border: heavy round #cc8a36;
+}
+
+/* Input */
+.url-input {
+    width: 1fr;
+    height: auto; 
+    background: #1e1e1e;
+    color: #f5f5f7;
+    border: none;
+    padding: 0 1;
+}
+
+/* Pulsante */
+.url-button {
+    width: 10;
+    height: 100%; 
+    background: #cc8a36;
+    color: #1e1e1e;
+    border: none;
+    padding: 0 1;
+    margin: 0;
+}
+
+/* ========================= */
+/* Container principale       */
+/* ========================= */
+.main-container {
+    height: 1fr;
+    padding: 0;
+    margin: 0;
+    background: #1e1e1e;
+}
+
+/* Row principale */
+.main-row {
+    height: 1fr;
+}
+
+/* ========================= */
+/* Albero delle dipendenze   */
+/* ========================= */
+
+.dependency {
+    border: heavy round #4a361d;
+    width: 40;
+    height: 1fr;
+    padding: 1;
+    background: #1e1e1e;
+}
+.dependency:focus-within {
+    border: heavy round #cc8a36;
+}
+
+/* ========================= */
+/* Colonna destra            */
+/* ========================= */
+.right-column {
+    width: 1fr;
+    height: 1fr;
+}
+
+/* ========================= */
+/* PyPI block                */
+/* ========================= */
+.pypi-block {
+    height: 1fr;
+    border: heavy round #4a361d;
+    padding: 1;
+    margin-bottom: 1;
+    background: #1e1e1e;
+    position: relative; /* NECESSARIO */
+}
+.pypi-block:focus-within {
+    border: heavy round #cc8a36;
+}
+
+/* ========================= */
+/* ScanCode block            */
+/* ========================= */
+.scancode-block {
+    height: 1fr;
+    border: heavy round #4a361d;
+    padding: 1;
+    background: #1e1e1e;
+    position: relative; /* NECESSARIO */
+}
+
+.scancode-block:focus-within {
+    border: heavy round #cc8a36;
+}
+
+
+
+
+/* ========================= */
+/* Wrapper per DataTable     */
+/* ========================= */
+.table-wrapper {
+    border: heavy round #3a3a3c;
+    padding: 1;
+    background: #1e1e1e;
+}
+
+/* ========================= */
+/* Tabelle DataTable         */
+/* ========================= */
+DataTable {
+    border: none;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background: #1e1e1e;
+    color: #f5f5f7;
+}
+
+/* ========================= */
+/* Footer dei blocchi        */
+/* ========================= */
+.footer-title {
+    color: #636366;        /* grigio macOS */
+    padding: 0 1;
+    text-align: right;     /* ALLINEA A DESTRA */
+    opacity: 0.8;
+}
+
+.hidden {
+    display: none;
+}

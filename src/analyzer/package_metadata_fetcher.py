@@ -89,6 +89,8 @@ class PackageMetadataFetcher:
                 -> list of direct dependencies.
             Returns ([], {}) if parsing/build fails.
         """
+        global _graph  # <-- ADD THIS LINE
+
         # Step 1: Parse requirements file
         dependencies = self._parse_requirements_file(file_path)
         if not dependencies:
@@ -299,6 +301,15 @@ class PackageMetadataFetcher:
             LOGGER.error("Unexpected error parsing %s: %s", file_path, exc)
 
         return dependencies
+
+    def get_graph(self) -> Dict[str, List[str]]:
+        """Return a copy of the last-built dependency graph.
+
+        Returns:
+            A dict mapping package names to lists of dependency package names.
+            Returns an empty dict if no graph was built yet.
+        """
+        return {pkg: list(deps) for pkg, deps in _graph.items()}
 
     def pypi_license_checker(self):
         """Placeholder for future license compatibility checker."""
