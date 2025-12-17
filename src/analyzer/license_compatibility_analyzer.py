@@ -2,17 +2,18 @@
 This class aggressively tries to create a license file, downloading one
 if possible, unless a compliant offline version exists."""
 import os
-import pathlib
+from pathlib import Path
 import json
 import itertools
 from abc import abstractmethod, ABC
 from datetime import datetime
+from time import time
 
-from src.infrastructure.connectivity import Connectivity as io
-from src.infrastructure.logger_formatter import LoggerFormatter
+from infrastructure.connectivity import Connectivity as io
+from infrastructure.logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__,
-LoggerFormatter.DEBUG)
-class CompatibilityCalcStrategy(ABC):
+LoggerFormatter.INFO)
+class CompatibilityCalcStrategy(ABC): # pylint: disable=too-few-public-methods
     # This class is meant for a single purpose.
     """Abstract Strategy class for compatibility calculation algorithms"""
     @abstractmethod
@@ -26,7 +27,7 @@ class CompatibilityCalcStrategy(ABC):
             tuple: (result as "Yes"/"No"/"Same", explanation)
         """
 
-class FullCompatibilityCalc(CompatibilityCalcStrategy):
+class FullCompatibilityCalc(CompatibilityCalcStrategy): # pylint: disable=too-few-public-methods
     # This class is meant for a single purpose.
     """ Regular mode: just check every possible unique pair"""
     def calculate_license_compatibility(self, licenses):
@@ -49,40 +50,68 @@ class FullCompatibilityCalc(CompatibilityCalcStrategy):
                 return result
         return ("Yes", "n.a.")
 
+_LAST_ONLINE_CHECK = 0 # pylint:disable=invalid-name
+                       # this variable is expected by pylint to be
+                       # both snake_case and PASCAL_CASE. good luck.
+                       # This variable is intended to be common
+                       # across all instances. It need not be thread-safe.
+
 class LicenseCompatibilityAnalyzer:
     """Analyzes cross-compatibility of multiple licenses.
     Handles calculations using a matrix file generously provided by OSADL
     https://osadl.org
     """
 
+    # pylint: disable=too-many-instance-attributes
+    # The thing confuses properties and attributes
+
     _license_matrix = ""
     _compat_calc_strategy = FullCompatibilityCalc()
     _last_comparison_result = ("None", "You have to perform a comparison first\
         ! You should use calculate_license_compatibility() for that.")
 
-    def __init__(self, strategy=None, path=str(pathlib.Path.cwd()) + "/src/data/matrix.json"):
+    def __init__(self, strategy=None, path=None):
         """Constructor
         The default path is (project root)/src/data/matrix.json
         """
         if strategy is None:
-            strategy = FullCompatibilityCalc()
-        self.path = path
+            self._compat_calc_strategy = FullCompatibilityCalc()
+        else:
+            self.compat_calc_strategy = strategy
+
+        if path is None:
+            path = Path.joinpath(Path.cwd(),"src","data","matrix.json")
+        self.path = str(path)
         logger.info("Seeking license file at: %s", self.path)
         if not self.matrix_file_present():
             logger.info("License file not present.")
-        self.compat_calc_strategy = strategy
 
     @property
     def compat_calc_strategy(self):
         """The strategy property.
 
         Returns:
-            CompatibilityCalcStrategy: The current strategy used for license compatibility calculation.
+            CompatibilityCalcStrategy: The current strategy used for
+            license compatibility calculation.
         """
         return self._compat_calc_strategy
     @compat_calc_strategy.setter
     def compat_calc_strategy(self, content):
         self._compat_calc_strategy = content
+
+    @property
+    def last_online_check(self):
+        """Last time a successful online verification happened.
+        Used to prevent excessive remote pinging.
+        
+        Returns:
+            last_online_check: epoch time since last succesful check,
+                0 if none ever happened
+        """
+        return _LAST_ONLINE_CHECK
+    @last_online_check.setter
+    def last_online_check(self, value):
+        _LAST_ONLINE_CHECK = value # pylint:disable=invalid-name
 
     @property
     def last_comparison_result(self):
@@ -139,8 +168,10 @@ class LicenseCompatibilityAnalyzer:
             attempts (int, optional): How many download attempts will happen\
             before the script gives up. Defaults to 2.
         """
-        if not io.verify_internet_access():
-            return None
+        if time() - 5 * 1000 * 60 > self.last_online_check: # 5 minutes
+            if not io.verify_internet_access():
+                return None
+            self.last_online_check = time()
         for i in range(1, attempts + 1):
             if i > 1:
                 logger.warning("Download failed, trying again...")
@@ -254,7 +285,6 @@ class LicenseCompatibilityAnalyzer:
             self.license_matrix = read_json
             return True
 
-
     def extract_raw_licenses(self, json_path):
         """
         This method conflates a scancode JSON file to a raw list of licenses.
@@ -287,8 +317,8 @@ class LicenseCompatibilityAnalyzer:
         """Compare two licenses for compatibility and return the result.
 
         Args:
-            lic_a (_type_): The name of the first license.
-            lic_b (_type_): The name of the second license.
+            lic_a (str): The name of the first license.
+            lic_b (str): The name of the second license.
 
         Returns:
             tuple: (compatibility, explanation) if found, otherwise (None, None).
@@ -298,9 +328,11 @@ class LicenseCompatibilityAnalyzer:
         # if it ever gets confirmed, we can use much more efficient binary
         # search. For now, linear will have to do.
         # Twice.
-        classclass = cls(cls)
-        for lic in classclass.license_matrix['licenses']:
-            if lic['name'].lower() == lic_a:
+        if not hasattr(cls, '_instance'):
+            cls._instance = cls()
+        instance = cls._instance
+        for lic in instance.license_matrix['licenses']:
+            if lic['name'].lower() == lic_a.lower():
                 for compat in lic['compatibilities']:
                     if compat['name'].lower() == lic_b.lower():
                         notice = (compat['compatibility'],
@@ -308,9 +340,10 @@ class LicenseCompatibilityAnalyzer:
                         logger.debug("Notice detected: %s", notice)
                         return notice
 
-                logger.warning('Unknown license type: %s', lic_b)
+                logger.warning('Unknown license type for lic_b: %s \
+                    (lic_a: %s found)', lic_b, lic_a)
                 return (None, None)
-        logger.warning('Unknown license type: %s', lic_b)
+        logger.warning('Unknown license type for lic_a: %s', lic_a)
         return (None, None)
 
     def calculate_license_compatibility(self, licenses):
@@ -323,11 +356,12 @@ class LicenseCompatibilityAnalyzer:
         self.last_comparison_result = self.compat_calc_strategy.\
             calculate_license_compatibility(licenses)
 
+
 if __name__ == "__main__":
     # note: these are NOT tests in any way or fashion
     # this is a quick-and-dirty method to check if stuff works
     lca = LicenseCompatibilityAnalyzer(FullCompatibilityCalc())
-    lca.extract_raw_licenses(str(pathlib.Path.cwd())
+    lca.extract_raw_licenses(str(Path.cwd())
                              + '/src/data/licenses.json')
     lca.compare_licenses('afl-2.0', 'afl-2.1') # known compatible
     lca.calculate_license_compatibility(['afl-2.0', 'afl-2.1'])

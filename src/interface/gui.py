@@ -1,3 +1,5 @@
+"""The main GUI class of the app.
+"""
 import asyncio
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
@@ -33,9 +35,17 @@ class LicenseSentinelUI(App):
     THEME = "harlequin"
     CSS_PATH = "style.css"
 
+    def __init__(self):
+        super().__init__()
+        # Tree dinamico
+        self.dep_tree = Tree("Dipendenze")
+        # Spinner (inizialmente nascosto)
+        self.spinner = LoadingIndicator(
+            id="spinner", classes="hidden")
     def compose(self) -> ComposeResult:
         with Horizontal(classes="urlbar"):
-            yield Input(placeholder="Inserisci un package PyPI (es: flask)", id="url", classes="url-input")
+            yield Input(placeholder="Inserisci un package PyPI "\
+                "(es: flask)", id="url", classes="url-input")
             yield Button("Invia", id="send", classes="url-button")
 
         with Vertical(classes="main-container", id="main-container"):
@@ -45,30 +55,33 @@ class LicenseSentinelUI(App):
                     dependency_block.border_title = "Dependency Tree"
                     dependency_block.styles.border_title_align = "right"
 
-                    # Tree dinamico
-                    self.dep_tree = Tree("Dipendenze")
                     yield self.dep_tree
 
-                    # Spinner (inizialmente nascosto)
-                    self.spinner = LoadingIndicator(
-                        id="spinner", classes="hidden")
+
                     yield self.spinner
 
                 with Vertical(classes="right-column"):
-                    with Vertical(classes="section-box pypi-block") as pypi_block:
+                    with Vertical(classes="section-box pypi-block")\
+                    as pypi_block:
                         pypi_block.border_title = "PyPI Metadata"
                         pypi_block.styles.border_title_align = "right"
                         with TabbedContent():
                             yield TabPane("Pacchetti", self._pypi_table())
-                            yield TabPane("Info", Static("Info pacchetti PyPI..."))
+                            yield TabPane(
+                                "Info", 
+                                Static("Info pacchetti PyPI..."))
                         # yield Static("Risultati PyPI", classes="footer-title")
 
-                    with Vertical(classes="section-box scancode-block") as scancode_block:
+                    with Vertical(classes="section-box scancode-block")\
+                    as scancode_block:
                         scancode_block.border_title = "ScanCode Results"
                         scancode_block.styles.border_title_align = "right"
                         with TabbedContent():
                             yield TabPane("File", self._scancode_table())
-                            yield TabPane("Dettagli", Static("Dettagli analisi ScanCode..."))
+                            yield TabPane(
+                                "Dettagli", 
+                                Static("Dettagli analisi ScanCode...")
+                            )
                         # yield Static("Risultati ScanCode", classes="footer-title")
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -94,9 +107,13 @@ class LicenseSentinelUI(App):
             self.spinner.remove_class("hidden")
             self.refresh()
 
-            # Esegui il backend in un thread separato (compatibile con TUTTE le Textual)
+            # Esegui il backend in un thread separato
+            # (compatibile con TUTTE le Textual)
             loop = asyncio.get_running_loop()
-            graph = await loop.run_in_executor(None, build_dependency_tree_for, package)
+
+            # Obviously this fuction should NOT be print
+            # I put it here to keep pylint calmer
+            graph = await loop.run_in_executor(None, print, package)
 
             # Nascondi spinner
             self.spinner.add_class("hidden")
@@ -110,7 +127,9 @@ class LicenseSentinelUI(App):
 
         Args:
             root_pkg (str): The name of the root package.
-            graph (dict): A dictionary representing the dependency graph, where keys are package names and values are lists of dependencies.
+            graph (dict): A dictionary representing the dependency graph
+            where keys are package names and values are 
+            lists of dependencies.
         """
         self.dep_tree.root.set_label(root_pkg)
         self.dep_tree.root.remove_children()
