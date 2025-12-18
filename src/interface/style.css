@@ -61,6 +61,59 @@
 }
 */
 
+
+/* ========================================= */
+/*  Suggestions Overlay                     */
+/* ========================================= */
+
+.suggestions-overlay {
+    /* Layout - full width of input-section container */
+    width: 100%;
+    height: auto;
+    max-height: 8;
+    margin: 0;
+    padding: 1;
+    
+    /* Visuals - no borders for seamless integration */
+    border: none;
+    background: $surface;
+    
+    /* Scrolling */
+    overflow-y: auto;
+}
+
+.suggestion-item {
+    /* Spacing */
+    padding: 0 1;
+    height: 1;
+    
+    /* Visuals */
+    background: transparent;
+    color: $text;
+}
+
+.suggestion-item:hover {
+    background: $primary;
+    color: $text-primary;
+}
+
+.suggestion-item.--selected {
+    background: $primary;
+    color: $text-primary;
+}
+
+
+/*.suggestion-item.highlighted { background: $primary; color: $text-primary; }*/
+
+
+/* Ensure keyboard-highlighted items get the same background (use class-based selectors) */
+ListView > ListItem.--highlight,
+ListView:focus > ListItem.--highlight,
+.suggestion-item.--highlight {
+    background: $primary;
+    color: $text-primary;
+}
+
 /* ========================================= */
 /*  Log Console                             */
 /* ========================================= */
@@ -168,7 +221,7 @@
     padding: 1;
 }
 
-DataTable {
+.DataTable {
     border: none;
     width: 100%;
     height: 100%;
@@ -189,41 +242,3 @@ DataTable {
     display: none;
 }
 
-/* ========================================= */
-/*  Suggestions Overlay                     */
-/* ========================================= */
-
-.suggestions-overlay {
-    /* Layout - full width of input-section container */
-    width: 100%;
-    height: auto;
-    max-height: 12;
-    margin: 0;
-    padding: 1;
-    
-    /* Visuals - no borders for seamless integration */
-    border: none;
-    background: $surface;
-    
-    /* Scrolling */
-    overflow-y: auto;
-}
-
-.suggestion-item {
-    /* Spacing */
-    padding: 0 1;
-    height: 1;
-    
-    /* Visuals */
-    background: transparent;
-    color: $text;
-}
-
-.suggestion-item:hover {
-    background: $surface-lighten-3;
-}
-
-.suggestion-item.--selected {
-    background: $primary;
-    color: $text-primary;
-}

@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from enum import Enum, auto
 
@@ -121,6 +122,11 @@ class LicenseSentinelUI(App):
         self._log_handler = None
         self._setup_logging()
 
+        # Licenses (loaded from matrix.json / license_names.txt)
+        self.license_names = self._load_license_names()
+        self._license_lookup = {
+            name.lower(): name for name in self.license_names}
+
         # Suggestion system
         self.suggestions_list: ListView | None = None
         self._setting_up_suggestions = False
@@ -132,16 +138,22 @@ class LicenseSentinelUI(App):
             "clear cache",
             "quit",
         ]
-        self.filtered_commands: list[str] = []
+        self.filtered_suggestions: list[str] = []
+        self._suggestion_data: dict[int, str] = {}
+        # Internal flag to avoid double-moving the ListView on a single keypress -> see handle key in suggestions
+        self._suppress_list_move = False
+        # Track last highlighted item so we can detect deselection
+        self._last_highlighted_item: ListItem | None = None
 
     def _pypi_table(self) -> DataTable:
         table = DataTable()
-        table.add_columns("Pacchetto", "Licenza dichiarata")
+        table.add_columns("Package", "Declared License", "Source code")
+
         return table
 
     def _scancode_table(self) -> DataTable:
         table = DataTable()
-        table.add_columns("File", "Licenza rilevata")
+        table.add_columns("File", "Detected Licenses")
         return table
 
     def compose(self) -> ComposeResult:
@@ -176,8 +188,10 @@ class LicenseSentinelUI(App):
             block.border_title = "PyPI Metadata"
             block.styles.border_title_align = "right"
             with TabbedContent():
-                yield TabPane("Incompatibilities", self._pypi_table())
-                yield TabPane("Info", Static("Info PyPI..."))
+                with TabPane("Info"):
+                    yield self._pypi_table()
+                with TabPane("Incompatibilities"):
+                    yield Static("Dettagli incompatibilità tra licenze...")
 
     def _compose_scancode_section(self) -> ComposeResult:
         """Compose the ScanCode results section."""
@@ -215,8 +229,8 @@ class LicenseSentinelUI(App):
         if event.input.value.strip() and self._path_input_has_error:
             self._set_input_error(False)
 
-        # Update suggestions when in ANALYZING or INTERACTIVE stage (but not during setup)
-        if (self.stage in (Stage.ANALYZING, Stage.INTERACTIVE) and
+        # Update suggestions when in LICENSE or INTERACTIVE stage (but not during setup)
+        if (self.stage in (Stage.LICENSE, Stage.INTERACTIVE) and
             self.suggestions_list is not None and
                 not self._setting_up_suggestions):
             await self._update_suggestions(event.input.value)
@@ -239,19 +253,103 @@ class LicenseSentinelUI(App):
         # otherwise clear the error state
         self._set_input_error(False)
 
+    @on(ListView.Selected, "#suggestions")
+    async def on_suggestion_selected(self, event: ListView.Selected) -> None:
+        """Populate the input with the selected suggestion."""
+        value = self._suggestion_data.get(id(event.item))
+        if not value:
+            # Fallback: try to read text content from Static widget
+            child = getattr(event.item, "children", [None])[0]
+            if child and getattr(child, "renderable", None) is not None:
+                value = getattr(child.renderable, "plain", None)
+        if value:
+            self._apply_suggestion(str(value))
+
+    @on(Tree.NodeSelected)
+    @on(Tree.NodeHighlighted)
+    async def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
+        """When a tree node is selected, print its label to the console."""
+        node = getattr(event, "node", None)
+        # Skip if no node provided or if it's the root node
+        if node is None or getattr(node, "is_root", False):
+            return
+
+        label = getattr(node, "label", None)
+        label_str = str(label) if label is not None else ""
+        self._update_pypi_table(label_str)
+#
+    # INVECE DI FARE UN FOR E SEGNARE L'ULTIMO EVIDENZIATO
+    # VEDI SE ESISTE UNLIGHTED ITEM E RIMUOVI LA PROPRIETÀ CSS
+    # oppure per ogni elemento selezionato salvalo come previous
+    # e rimuovi la classe da quello vecchio
+
+    @on(ListView.Highlighted, "#suggestions")
+    async def on_suggestion_highlighted(self, event: ListView.Highlighted) -> None:
+        """When the ListView highlight changes, sync the visual --highlight class
+        so keyboard navigation shows the same background as mouse hover.
+        """
+
+        if self.suggestions_list is None:
+            return
+        print("HIGHLIGHT EVENT TRIGGERED")
+        print(self.suggestions_list.index)
+        # Remove highlight from previous item
+        if self._last_highlighted_item is not None:
+            try:
+                self._last_highlighted_item.remove_class("--highlight")
+            except Exception:
+                pass
+            self._last_highlighted_item = None
+
+        # Apply highlight to newly highlighted item
+        item = getattr(event, "item", None)
+        if item is not None:
+            try:
+                print("APPLY HIGHLIGHT CLASS")
+                item.add_class("--highlight")
+                self._last_highlighted_item = item
+            except Exception:
+                self._last_highlighted_item = None
+
     @on(events.Key)
-    async def on_key_pressed(self, event: events.Key) -> None:
+    async def handle_suggestions_keypress(self, event: events.Key) -> None:
+        # Only handle keys when suggestions overlay is visible
+        if self.suggestions_list is None or self.suggestions_list.has_class("hidden"):
+            return
+
+        # Handle DOWN key from input to move focus to suggestions
+        key = event.key.lower()
+        if key in ("down", "arrow_down"):
+            input_widget = self.query_one("#path", Input)
+            if input_widget.has_focus:
+                self.suggestions_list.focus()
+                if hasattr(self.suggestions_list, "index"):
+                    self.suggestions_list.index = 0
+                    if self._last_highlighted_item is not None:
+                        self._last_highlighted_item.add_class("--highlight")
+
+            return
+        # If first item is highlighted and user presses UP, move focus back to input
+        if key in ("up", "arrow_up"):
+            suggestion_widget = self.query_one("#suggestions", ListView)
+            if suggestion_widget.has_focus and self.suggestions_list.index == 0:
+                # Remove highlight from current (first) item
+                if self._last_highlighted_item is not None:
+                    self._last_highlighted_item.remove_class("--highlight")
+                    input_widget = self.query_one("#path", Input)
+                    input_widget.focus()
+        return
+
+    @on(events.Key)
+    async def console_enter_key(self, event: events.Key) -> None:
         """When the console is mounted, pressing Enter will unmount it
         and remount the original input bar so the user can type again."""
         # Only act on Enter and when the log console is mounted/visible
         if event.key.lower() != "enter" or self.stage != Stage.ANALYZING or not self.log_view:
             return
 
-        await self._unmount_log_console()
-        await self._mount_input_bar()
         await self.process_stage_input("")
         # Clear flag - setup complete
-        self._setting_up_suggestions = False
         # focus the input for convenience
         # input_widget = self.query_one("#path", Input)
         # send_button = self.query_one("#send", Button)
@@ -268,9 +366,12 @@ class LicenseSentinelUI(App):
 
         # focus the input for convenience
         # input_widget.focus()
+
+
 # =================================================================================#
 #                                   Helpers                                        #
 # =================================================================================#
+
 
     async def process_stage_input(self, input_value: str) -> None:
         """Handle the three-step input flow and trigger analysis when ready.
@@ -302,6 +403,7 @@ class LicenseSentinelUI(App):
                     self.query_one("#path", Input).value = ""
                     # clear error state
                     self._set_input_error(False)
+                    await self._mount_suggestions()
 
                 else:
                     self.stage = Stage.REQUIREMENTS
@@ -311,9 +413,10 @@ class LicenseSentinelUI(App):
 
             case Stage.LICENSE:
                 if self.license_check(input_value) and self.path_check(self.requirements_path):
-                    self.main_license = input_value
+                    self.main_license = input_value  # assign canonical license
                     self.stage = Stage.ANALYZING
                     await self._start_analysis(self.requirements_path)
+
                 else:
                     self.stage = Stage.LICENSE
                     # invalid license
@@ -321,6 +424,9 @@ class LicenseSentinelUI(App):
                 return
 
             case Stage.ANALYZING:
+                await self._unmount_log_console()
+                await self._mount_input_bar()
+                self._setting_up_suggestions = False
                 send_button = self.query_one("#send", Button)
                 input_widget = self.query_one("#path", Input)
                 input_widget.placeholder = COMMANDS_PLACEHOLDER
@@ -480,8 +586,7 @@ class LicenseSentinelUI(App):
 
         # Mount suggestions FIRST, before modifying input
         # (changing input value triggers Input.Changed event)
-        if self.suggestions_list is None:
-            await self._mount_suggestions()
+        await self._mount_suggestions()  # _ensure_suggestions to mount suggestions
 
     async def _mount_suggestions(self) -> None:
         """Create and mount the suggestions ListView as an overlay."""
@@ -496,7 +601,12 @@ class LicenseSentinelUI(App):
 
         # Set the reference AFTER mount is complete
         self.suggestions_list = suggestions_widget
-        self.filtered_commands = list(self.commands)
+        self.filtered_suggestions = []
+
+    # async def _ensure_suggestions(self) -> None:
+    #    """Mount the suggestions overlay if it is not already available."""
+    #    if self.suggestions_list is None:
+    #        await self._mount_suggestions()
 
     async def _update_suggestions(self, search_term: str) -> None:
         """Update the suggestions list based on the search term."""
@@ -504,35 +614,124 @@ class LicenseSentinelUI(App):
             return
 
         search_lower = search_term.lower().strip()
+        pool = self._suggestions_pool_for_stage()
+
+        if not pool:
+            self.suggestions_list.add_class("hidden")
+            return
 
         # Hide suggestions if input is empty
         if not search_lower:
             self.suggestions_list.add_class("hidden")
             return
-
-        self.filtered_commands = [
-            cmd for cmd in self.commands if search_lower in cmd.lower()
+        # è una lista di stringhe
+        self.filtered_suggestions = [
+            item for item in pool if search_lower in item.lower()
         ]
 
         # Clear and repopulate the list
         self.suggestions_list.clear()
-        for cmd in self.filtered_commands:
-            item = ListItem(Static(cmd), classes="suggestion-item")
+        self._suggestion_data.clear()
+        for item_value in self.filtered_suggestions:
+            item = ListItem(Static(item_value), classes="suggestion-item")
+            # store value for click/enter selection
+            self._suggestion_data[id(item)] = item_value
             self.suggestions_list.append(item)
 
         # Show suggestions if there are any filtered commands
-        if self.filtered_commands:
+        if self.filtered_suggestions:
             self.suggestions_list.remove_class("hidden")
         else:
             self.suggestions_list.add_class("hidden")
 
         self.suggestions_list.refresh(layout=True)
 
+    def _suggestions_pool_for_stage(self) -> list[str]:
+        """Return the correct suggestions list depending on the current stage."""
+        if self.stage == Stage.LICENSE:
+            return self.license_names
+        if self.stage in (Stage.INTERACTIVE, Stage.ANALYZING):
+            return self.commands
+        return []
+
+    def _apply_suggestion(self, value: str) -> None:
+        """Fill the input with the selected suggestion and hide the overlay."""
+        if not value:
+            return
+        input_widget = self.query_one("#path", Input)
+        input_widget.value = value
+        input_widget.cursor_position = len(value)
+        input_widget.focus()
+        # clear any previous error state
+        self._set_input_error(False)
+        if self.suggestions_list:
+            self.suggestions_list.add_class("hidden")
+
+    def highlight_suggestion(self, event) -> None:
+        """Highlight the suggestion at the given index."""
+        if self.suggestions_list is None:
+            return
+
+        # Remove highlight from previous item
+        if self._last_highlighted_item is not None:
+            try:
+                self._last_highlighted_item.remove_class("--highlight")
+            except Exception:
+                pass
+            self._last_highlighted_item = None
+
+        # Apply highlight to newly highlighted item
+        item = getattr(event, "item", None)
+        if item is not None:
+            try:
+                item.add_class("--highlight")
+                self._last_highlighted_item = item
+            except Exception:
+                self._last_highlighted_item = None
+
+    def _update_pypi_table(self, package_name: str) -> None:
+        """Update the PyPI metadata table based on the selected package."""
+
+        table = self.query_one(".pypi-block DataTable", DataTable)
+        table.clear()
+
+        if not package_name:
+            return
+        metadata = self.fetcher.get_package_metadata(package_name)
+        if not metadata:
+            return
+
+        declared_license = metadata.license_type or "N/A"
+        declered_link = metadata.link or "N/A"
+        table.add_row(package_name, declared_license, declered_link)
+
 
 # =================================================================================#
 #                                   Logic                                          #
 # =================================================================================#
 
+    def _load_license_names(self) -> list[str]:
+        """Load license names from license_names.txt (or matrix.json as fallback)."""
+        data_dir = Path(__file__).resolve().parent.parent / "data"
+        txt_path = data_dir / "license_names.txt"
+        if txt_path.exists():
+            try:
+                with txt_path.open(encoding="utf-8") as file:
+                    return sorted(
+                        {line.strip() for line in file if line.strip()})
+            except Exception:
+                pass
+
+        matrix_path = data_dir / "matrix.json"
+        try:
+            with matrix_path.open(encoding="utf-8") as file:
+                data = json.load(file)
+            return sorted(
+                {lic.get("name")
+                 for lic in data.get("licenses", []) if lic.get("name")}
+            )
+        except Exception:
+            return []
 
     def path_check(self, path: str | None) -> bool:
         """Check if the input path is valid (non-empty).
@@ -547,17 +746,20 @@ class LicenseSentinelUI(App):
         path_obj = Path(path.strip())
         return bool(Connectivity.check_file_exists(path_obj))
 
+    def _canonical_license(self, license_str: str) -> str | None:
+        """Return the canonical license name if it exists in the matrix."""
+        if not license_str or not license_str.strip():
+            return None
+        return self._license_lookup.get(license_str.strip().lower())
+
     def license_check(self, license_str: str) -> bool:
         """Check if the input license is valid (and non-empty).
-ò
+
             license (str): The input license to validate.
         Returns:
             bool: True if the license is valid, False otherwise.
         """
-        if not license_str or not license_str.strip():
-            return False
-
-        return True
+        return self._canonical_license(license_str) is not None
 
 
 if __name__ == "__main__":
