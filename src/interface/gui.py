@@ -147,12 +147,13 @@ class LicenseSentinelUI(App):
 
     def _pypi_table(self) -> DataTable:
         table = DataTable()
-        table.add_columns("Pacchetto", "Licenza dichiarata")
+        table.add_columns("Package", "Declared License", "Source code")
+
         return table
 
     def _scancode_table(self) -> DataTable:
         table = DataTable()
-        table.add_columns("File", "Licenza rilevata")
+        table.add_columns("File", "Detected Licenses")
         return table
 
     def compose(self) -> ComposeResult:
@@ -187,8 +188,10 @@ class LicenseSentinelUI(App):
             block.border_title = "PyPI Metadata"
             block.styles.border_title_align = "right"
             with TabbedContent():
-                yield TabPane("Incompatibilities", self._pypi_table())
-                yield TabPane("Info", Static("Info PyPI..."))
+                with TabPane("Info"):
+                    yield self._pypi_table()
+                with TabPane("Incompatibilities"):
+                    yield Static("Dettagli incompatibilità tra licenze...")
 
     def _compose_scancode_section(self) -> ComposeResult:
         """Compose the ScanCode results section."""
@@ -261,6 +264,19 @@ class LicenseSentinelUI(App):
                 value = getattr(child.renderable, "plain", None)
         if value:
             self._apply_suggestion(str(value))
+
+    @on(Tree.NodeSelected)
+    @on(Tree.NodeHighlighted)
+    async def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
+        """When a tree node is selected, print its label to the console."""
+        node = getattr(event, "node", None)
+        # Skip if no node provided or if it's the root node
+        if node is None or getattr(node, "is_root", False):
+            return
+
+        label = getattr(node, "label", None)
+        label_str = str(label) if label is not None else ""
+        self._update_pypi_table(label_str)
 #
     # INVECE DI FARE UN FOR E SEGNARE L'ULTIMO EVIDENZIATO
     # VEDI SE ESISTE UNLIGHTED ITEM E RIMUOVI LA PROPRIETÀ CSS
@@ -322,7 +338,6 @@ class LicenseSentinelUI(App):
                     self._last_highlighted_item.remove_class("--highlight")
                     input_widget = self.query_one("#path", Input)
                     input_widget.focus()
-
         return
 
     @on(events.Key)
@@ -673,6 +688,22 @@ class LicenseSentinelUI(App):
                 self._last_highlighted_item = item
             except Exception:
                 self._last_highlighted_item = None
+
+    def _update_pypi_table(self, package_name: str) -> None:
+        """Update the PyPI metadata table based on the selected package."""
+
+        table = self.query_one(".pypi-block DataTable", DataTable)
+        table.clear()
+
+        if not package_name:
+            return
+        metadata = self.fetcher.get_package_metadata(package_name)
+        if not metadata:
+            return
+
+        declared_license = metadata.license_type or "N/A"
+        declered_link = metadata.link or "N/A"
+        table.add_row(package_name, declared_license, declered_link)
 
 
 # =================================================================================#

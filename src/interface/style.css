@@ -221,7 +221,7 @@ ListView:focus > ListItem.--highlight,
     padding: 1;
 }
 
-DataTable {
+.DataTable {
     border: none;
     width: 100%;
     height: 100%;

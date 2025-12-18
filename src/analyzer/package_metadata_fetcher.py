@@ -177,9 +177,22 @@ class PackageMetadataFetcher:
             A dict mapping package names to lists of dependency package names.
             Returns an empty dict if no graph was built yet.
         """
-        graph_copy = {pkg: list(deps) for pkg, deps in self.__class__.graph.items()}
+        graph_copy = {pkg: list(deps)
+                      for pkg, deps in self.__class__.graph.items()}
         graph_copy["root"] = self.dependencies
         return graph_copy
+
+    def get_package_metadata(self, package_name: str) -> PyPiMetadata | None:
+        """Get metadata for a specific package.
+
+        Args:
+            package_name: Name of the package.  
+        Returns:
+            PyPiMetadata object for the package.
+        """
+        if package_name not in self.__class__.packages_metadata:
+            raise KeyError(f"Package '{package_name}' metadata not found")
+        return copy.deepcopy(self.__class__.packages_metadata.get(package_name))
 
     def pypi_license_checker(self):
         """Placeholder for future license compatibility checker."""
