@@ -64,7 +64,7 @@ class RepoDownloader(AbstractRepoDownloader):
     def download_repos(
         self,
         repo_urls: Dict[str, str | None],
-        output_path: str,
+        output_path: Path,
         branch: str = "main",
     ) -> Dict[str, bool]:
         """Download multiple repository branches as ZIP files.
@@ -232,21 +232,26 @@ class RepoDownloader(AbstractRepoDownloader):
         them relative to the project root (two levels up from this file).
         """
         output_dir = Path(output_path)
-        path_str = str(output_dir)
-        if path_str.startswith('/') or path_str.startswith('\\'):
-            output_dir = Path(path_str.lstrip('/\\'))
+        project_root = Path(__file__).resolve().parents[1]
 
-        if not output_dir.is_absolute():
-            project_root = Path(__file__).resolve().parents[1]
-            output_dir = project_root / output_dir
+        if output_dir.is_absolute():
+            if output_dir.is_relative_to(project_root):
+                output_dir = output_dir.relative_to(project_root)
+            else:
+                # Not within project root, treat as relative name by stripping leading slashes
+                output_dir = Path(str(output_dir).lstrip('/\\'))
 
-        if not output_dir.exists():
-            output_dir.mkdir(parents=True, exist_ok=True)
-            LOGGER.info("Download directory created: %s", output_dir)
+        # Now output_dir is always relative to project_root
+        resolved_output_dir = project_root / output_dir
+
+        if not resolved_output_dir.exists():
+            resolved_output_dir.mkdir(parents=True, exist_ok=True)
+            LOGGER.info("Download directory created: %s", resolved_output_dir)
         else:
-            LOGGER.warning("Download directory already exists: %s", output_dir)
+            LOGGER.warning(
+                "Download directory already exists: %s", resolved_output_dir)
 
-        return output_dir
+        return resolved_output_dir
 
     def __enter__(self):
         """Context manager entry."""

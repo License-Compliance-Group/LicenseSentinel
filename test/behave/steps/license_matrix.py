@@ -17,9 +17,10 @@ import datetime
 
 from behave import given, when, then
 
-from src.analyzer.license_compatibility_analyzer\
+from analyzer.matrix_manager\
     import LicenseCompatibilityAnalyzer as LCA
 from src.infrastructure.connectivity import Connectivity
+
 
 @given('internet access is present')
 def step_internet_present(context):
@@ -33,11 +34,13 @@ def step_matrix_file_not_present(context):
     context.lca.delete_matrix_file()
     assert not context.lca.matrix_file_present()
 
+
 @then('download the matrix file')
 def step_download_matrix_file(context):
     context.lca.update_license_matrix()
     # Make sure the file is present
     assert context.lca.matrix_file_present()
+
 
 @given('the matrix file is present')
 def step_impl(context):
@@ -58,7 +61,7 @@ def step_impl(context):
     # Guarantee that for testing purposes
     override_datetime = datetime.datetime.fromisoformat(
         '2005-04-02T21:37:00+0000'
-        )
+    )
     online_datetime = context.lca.get_online_timestamp()
     assert online_datetime >= override_datetime
 
@@ -72,6 +75,4 @@ def step_impl(context):
     # The local and offline timestamps should be identical
     # Unless the oracle changed during the test (then just rerun)
     assert context.lca.get_local_timestamp() == \
-    context.lca.get_online_timestamp()
-
-
+        context.lca.get_online_timestamp()

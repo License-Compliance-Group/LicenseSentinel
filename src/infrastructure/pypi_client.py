@@ -104,39 +104,69 @@ class PyPiHandler(AbstractPackageManagerFetcher):
                     source_link = candidate
                     break
 
-        # Extract license from classifiers
+            license_final = self.extract_license(info)
+
+            LOGGER.info("Fetched %s.json", package)
+            return package, {
+                'license': license_final,
+                'link': source_link
+            }
+        return package, {'license': 'Unknown', 'link': None}
+
+
+    def extract_license(self, info):
+        """Extract license type when given PyPI metadata JSON
+        Looks in
+        - classifier fields
+        - dedicated license field
+        - dedicated license_expression field
+        The first found value is returned
+
+        Args:
+            info (dict[str, list[str]]): The JSON representation
+            of package metadata
+
+        Returns:
+            str: The determined license, "Unkown" if none detected
+        """
+        # ----------------------------------
+        # Extract license from classifiers  |
+        # ----------------------------------
         classifiers = info.get("classifiers", []) or []
         license_from_classifiers = None
+
         for c in classifiers:
             if c.startswith("License ::"):
                 parts = c.split("::")
                 last_part = parts[-1].strip() if parts else None
                 if last_part:
                     license_from_classifiers = last_part
-                break
+                break  # take first valid license classifier
 
-        # Extract "license" field (fallback)
+        # ----------------------------------
+        # Extract "license" field (fallback)|
+        # ----------------------------------
         license_simple = info.get("license")
         if isinstance(license_simple, str) and not license_simple.strip():
             license_simple = None
 
-        # Extract license_expression
+        # ------------------------------
+        # Extract license_expression (separate field)
+        # generalmente contiene la licenza intera
+        # ------------------------------
         license_expression = info.get("license_expression")
-        if isinstance(license_expression, str) and not license_expression.strip():
+        if isinstance(license_expression, str) and \
+        not license_expression.strip():
             license_expression = None
 
+        # ------------------------------
         # Final license selection
+        # ------------------------------
         license_final = license_from_classifiers or \
             license_simple or \
             license_expression or \
             "Unknown"
-
-        LOGGER.info("Fetched metadata for %s", package)
-        return package, {
-            'license': license_final,
-            'link': source_link
-        }
-
+        return license_final
     def fetch_package_json(self, package: str, timeout: int) -> Optional[Dict[str, Any]]:
         """Download and parse the JSON metadata for a single package from PyPI.
 

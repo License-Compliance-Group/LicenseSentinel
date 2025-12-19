@@ -8,7 +8,8 @@ This object stores:
 - link: a source / homepage / repository link (or None if unavailable)
 
 Intended usage:
-    meta = PyPiMetadata(package="requests", license_type="Apache-2.0", link="https://github.com/psf/requests")
+    meta = PyPiMetadata(package="requests", license_type="Apache-2.0",
+    link="https://github.com/psf/requests")
     print(meta.package, meta.license_type, meta.link)
 """
 from typing import Optional
@@ -19,17 +20,21 @@ class PyPiMetadata:
     Container for PyPI package metadata.
 
     Responsibilities:
-    - Hold the package name, license type and a relevant link (e.g. repository or homepage).
+    - Hold the package name, license type and a relevant link 
+    (e.g. repository or homepage).
     - Provide simple validation for the package name.
     - Expose read/write properties while keeping internal attributes private.
 
     Args:
         package (str): Package name (must be non-empty).
-        license_type (Optional[str]): License reported by PyPI (may be None).
-        link (Optional[str]): URL to package source/homepage/repository (may be None).
+        license_type (Optional[str]): License reported by PyPI
+        (may be None).
+        link (Optional[str]): URL to package source/homepage/repository
+        (may be None).
     """
 
-    def __init__(self, package: str, license_type: Optional[str], link: Optional[str]):
+    def __init__(self, package: str, license_type: Optional[str],
+                 link: Optional[str]):
         if not package:
             raise ValueError("Package cannot be empty.")
         self._package = package
@@ -58,7 +63,8 @@ class PyPiMetadata:
 
     @property
     def link(self) -> Optional[str]:
-        """Optional[str]: URL to the package's source/homepage/repository (may be None)."""
+        """Optional[str]: URL to the package's source/homepage/repository 
+        (may be None)."""
         return self._link
 
     @link.setter
@@ -66,4 +72,5 @@ class PyPiMetadata:
         self._link = value
 
     def __repr__(self) -> str:
-        return f"PyPiMetadata(package={self._package!r}, license_type={self._license_type!r}, link={self._link!r})"
+        return f"PyPiMetadata(package={self._package!r}, \
+    license_type={self._license_type!r}, link={self._link!r})"

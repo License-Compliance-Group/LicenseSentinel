@@ -1,3 +1,5 @@
+"""The main GUI class of the app.
+"""
 import asyncio
 import json
 import logging
@@ -435,7 +437,7 @@ class LicenseSentinelUI(App):
                 self.stage = Stage.INTERACTIVE
                 return
             case Stage.INTERACTIVE:
-                if (input_value):
+                if input_value:
                     print(f"Execute command: {input_value}")
                 else:
                     self._set_input_error(True)
