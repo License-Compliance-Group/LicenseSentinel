@@ -9,13 +9,13 @@ import copy
 import logging
 import re
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 
 from entities.package_manager_fetcher import AbstractPackageManagerFetcher
 from entities.abstract_dep_tree_builder import AbstractDepTreeBuilder
 from entities.abstract_repo_downloader import AbstractRepoDownloader
-from entities.pypi_metadata import PyPiMetadata
+from entities.pypi_metadata import PyPIMetadata
 
 from infrastructure.logger_formatter import LoggerFormatter
 
@@ -59,7 +59,7 @@ class PackageMetadataFetcher:
 
         self.cache_file.parent.mkdir(parents=True, exist_ok=True)
 
-    def _load_cache(self) -> Dict[str, Dict[str, str]]:
+    def _load_cache(self) -> Dict[str, Dict[str, Optional[str]]]:
         """Load metadata cache from file."""
         if self.cache_file.exists():
             try:
@@ -69,7 +69,7 @@ class PackageMetadataFetcher:
                 LOGGER.warning("Failed to load cache: %s", exc)
         return {}
 
-    def _save_cache(self, cache: Dict[str, Dict[str, str]]) -> None:
+    def _save_cache(self, cache: Dict[str, Dict[str, Optional[str]]]) -> None:
         """Save metadata cache to file."""
         try:
             with open(self.cache_file, 'w', encoding='utf-8') as f:
@@ -79,7 +79,7 @@ class PackageMetadataFetcher:
 
     def build_package_metadata(self, file_path: Path,
                                override_cache: bool = False)\
-            -> tuple[List[PyPiMetadata], dict[str, list[str]]]:
+            -> tuple[List[PyPIMetadata], dict[str, list[str]]]:
         """Build package metadata from a requirements.txt file.
 
         This is the main orchestrator that:
@@ -121,13 +121,12 @@ class PackageMetadataFetcher:
         # Step 3: Fetch PyPI metadata (batch operation with caching)
         pypi_metadata = self._load_pypi_metadata(all_packages, override_cache)
 
-        package_urls: Dict[str, str | None] = {}
         # Step 4: Build PyPiMetadata objects and prepare
-
+        package_urls: Dict[str, str | None] = {}
         for pkg_name, metadata in pypi_metadata.items():
             if pkg_name in PACKAGES_TO_SKIP:
                 continue
-            self.packages_metadata.append(PyPiMetadata(
+            self.packages_metadata.append(PyPIMetadata(
                 package=pkg_name,
                 license_type=metadata['license'],
                 link=metadata['link']
@@ -226,6 +225,7 @@ class PackageMetadataFetcher:
             all_packages.update(deps)
 
         self.graph = graph
+        self.graph["Root"] = self.dependencies
         return graph, all_packages
 
     def _load_pypi_metadata(self, packages, override_cache=False):
@@ -240,7 +240,8 @@ class PackageMetadataFetcher:
             LOGGER.info('Cache override active, redownloading everything.')
             LOGGER.info("Fetching PyPI metadata for %d packages",
                         len(packages))
-            results = self.pypi_client.get_source_links(list(packages))
+            results: Dict[str, Dict[str, Optional[str]]
+                          ] = self.pypi_client.get_source_links(list(packages))
         else:
             cache = self._load_cache()
             missing_packages = [pkg for pkg in packages
@@ -251,7 +252,8 @@ class PackageMetadataFetcher:
                     (cached: %d)",
                             len(missing_packages),
                             len(packages) - len(missing_packages))
-                results = self.pypi_client.get_source_links(missing_packages)
+                results: Dict[str, Dict[str, Optional[str]]
+                              ] = self.pypi_client.get_source_links(missing_packages)
                 # Update cache with new data
                 cache.update(results)
                 self._save_cache(cache)
@@ -322,12 +324,12 @@ class PackageMetadataFetcher:
             A dict mapping package names to lists of dependency package names.
             Returns an empty dict if no graph was built yet.
         """
-        graph_copy = {pkg: list(deps)
-                      for pkg, deps in self.graph.items()}
-        graph_copy["root"] = self.dependencies
-        return graph_copy
+        # graph_copy = {pkg: list(deps)
+        #              for pkg, deps in self.graph.items()}
+        # graph_copy["Root"] = self.dependencies
+        return copy.deepcopy(self.graph)
 
-    def get_package_metadata(self, package_name: str) -> PyPiMetadata | None:
+    def get_package_metadata(self, package_name: str) -> PyPIMetadata | None:
         """Get metadata for a specific package.
 
         Args:
@@ -339,12 +341,10 @@ class PackageMetadataFetcher:
         # Match case-insensitively to be more robust to caller variants.
         target = package_name.lower() if package_name is not None else None
         for meta in self.packages_metadata:
-            try:
-                pkg_name = getattr(meta, "package", None)
-            except Exception:
-                pkg_name = None
+            pkg_name = getattr(meta, "package", None)
             if pkg_name is None:
-                continue
+                raise ValueError(
+                    "Malformed PyPIMetadata object: missing package name")
             if pkg_name == package_name or (target and pkg_name.lower() == target):
                 return copy.deepcopy(meta)
 

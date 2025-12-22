@@ -11,7 +11,7 @@ class Connectivity:
     """Implementation of the class"""
 
     @staticmethod
-    def check_file_exists(path):
+    def check_file_exists(path: Path) -> bool:
         """Check if a file exists at the given path.
 
         Args:
@@ -19,6 +19,10 @@ class Connectivity:
         try:
             with open(path, 'r', encoding='utf-8'):
                 return True
+
+        except PermissionError:
+            logger.warning("No permission to read file: %s", path)
+            return False
         except IOError:
             return False
 

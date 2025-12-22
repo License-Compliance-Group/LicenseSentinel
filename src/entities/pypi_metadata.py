@@ -15,7 +15,7 @@ Intended usage:
 from typing import Optional
 
 
-class PyPiMetadata:
+class PyPIMetadata:
     """
     Container for PyPI package metadata.
 

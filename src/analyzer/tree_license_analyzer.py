@@ -2,6 +2,7 @@ import itertools
 from pathlib import Path
 
 import logging
+from entities.pypi_metadata import PyPIMetadata
 from infrastructure.logger_formatter import LoggerFormatter
 from analyzer import license_name_normalizer
 
@@ -76,7 +77,7 @@ class TreeAnalyzer:
     #
 
     @classmethod
-    def run_tree_compatibility_check(cls, packages_metadata, graph) -> None:
+    def run_tree_compatibility_check(cls, packages_metadata: list[PyPIMetadata], graph) -> list[tuple[str, str, str, str, tuple[str, str]]] | None:
         """  
         Run compatibility check along dependency edges instead of flat union
 
@@ -118,13 +119,18 @@ class TreeAnalyzer:
         lca.update_license_matrix()
         incompatible_edges = cls.detect_incompatible_edges(
             graph, license_by_pkg, lca)
-
+        return incompatible_edges
         # print_dependency_forest(graph, license_by_pkg, incompatible_edges)
 
         # compile_compatibility_report(incompatible_edges)
 
     @classmethod
-    def detect_incompatible_edges(cls, graph, license_by_pkg, lca=None):
+    def detect_incompatible_edges(
+        cls,
+        graph: dict[str, list[str]],
+        license_by_pkg: dict[str, str],
+        lca: LicenseCompatibilityAnalyzer | None = None
+    ) -> list[tuple[str, str, str, str, tuple[str, str]]]:
         """Detects and highlights incompatibilites within a dependency graph
 
         Args:
@@ -151,7 +157,9 @@ class TreeAnalyzer:
                     # Same license, treat as compatible
                     # even if matrix has no self-entry
                     continue
-                notice = lca.compare_licenses(lic_dep, lic_parent)
+                notice = lca.compare_licenses(
+                    lic_parent, lic_dep)  # TODO DA INVERTIRE !!!
+
                 if not notice or notice[0] != "Yes":
                     if notice[0] == 'Same':
                         logger.error('License %s/%s is incompatible with itself.',

@@ -15,7 +15,7 @@ def normalize(name: str) -> str | None:
             identifier, or None if not recognized.  
 
     """
-    # Yes ChatGPT plus is a big mapping. Deal with it.
+    # Yes ChatGPT and is a big mapping. Deal with it.
     key = name.strip().lower()
     mapping = {
         # GPL Family

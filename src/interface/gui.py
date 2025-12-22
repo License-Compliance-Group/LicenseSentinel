@@ -29,6 +29,7 @@ from infrastructure.repo_downloader import RepoDownloader
 from infrastructure.dep_tree_builder import DepTreeBuilder
 from infrastructure.connectivity import Connectivity
 from analyzer.package_metadata_fetcher import PackageMetadataFetcher
+from interface.controller import Controller
 
 ERROR_PATH_PLACEHOLDER = "❌ Invalid path!"
 PATH_PLACEHOLDER = "📄 Insert the path to the requirements.txt file"
@@ -100,18 +101,19 @@ class LicenseSentinelUI(App):
         super().__init__()
 
         # Backend components
-        self.pypi_client = PyPiHandler()
-        self.repo_downloader = RepoDownloader()
-        self.dep_builder = DepTreeBuilder()
+        # self.pypi_client = PyPiHandler()
+        # self.repo_downloader = RepoDownloader()
+        # self.dep_builder = DepTreeBuilder()
         # TODO: reset fetcher on each analysis
-        self.fetcher = PackageMetadataFetcher(
-            self.pypi_client,
-            self.dep_builder,
-            self.repo_downloader
-        )
+        # self.fetcher = PackageMetadataFetcher(
+        #    self.pypi_client,
+        #    self.dep_builder,
+        #    self.repo_downloader
+        # )
+        self.controller = Controller()
         self.stage = Stage.REQUIREMENTS
-        self.requirements_path: str
-        self.main_license: str
+        # self.requirements_path: str
+        # self.main_license: str
 
         # UI components
         self.ui_tree = Tree("Dependencies")  # Tree
@@ -125,21 +127,22 @@ class LicenseSentinelUI(App):
         self._setup_logging()
 
         # Licenses (loaded from matrix.json / license_names.txt)
-        self.license_names = self._load_license_names()
-        self._license_lookup = {
-            name.lower(): name for name in self.license_names}
+        # self.license_names = self._load_license_names()
+        # self._license_lookup = {
+        #    name.lower(): name for name in self.license_names}
 
         # Suggestion system
         self.suggestions_list: ListView | None = None
         self._setting_up_suggestions = False
-        self.commands: list[str] = [
-            "scan <package_name>",
-            "analyze dependencies",
-            "show licenses",
-            "export report",
-            "clear cache",
-            "quit",
-        ]
+        # QUEST SOTTO VA NEL CONTROLLER
+        # self.commands: list[str] = [
+        #    "scan <package_name>",
+        #    "analyze dependencies",
+        #    "show licenses",
+        #    "export report",
+        #    "clear cache",
+        #    "quit",
+        # ]
         self.filtered_suggestions: list[str] = []
         self._suggestion_data: dict[int, str] = {}
         # Internal flag to avoid double-moving the ListView on a single keypress -> see handle key in suggestions
@@ -149,7 +152,7 @@ class LicenseSentinelUI(App):
 
     def _pypi_table(self) -> DataTable:
         table = DataTable()
-        table.add_columns("Package", "Declared License", "Source code")
+        table.add_columns("Package  ", "Declared License    ", "Source code")
 
         return table
 
@@ -351,29 +354,10 @@ class LicenseSentinelUI(App):
             return
 
         await self.process_stage_input("")
-        # Clear flag - setup complete
-        # focus the input for convenience
-        # input_widget = self.query_one("#path", Input)
-        # send_button = self.query_one("#send", Button)
-        # input_widget.placeholder = COMMANDS_PLACEHOLDER
-        # send_button.label = "Execute ▶"
-        # Stay in ANALYZING stage
-        # self.stage = Stage.ANALYZING (already set)
-
-        # Set value AFTER suggestions are ready (this triggers Input.Changed)
-        # input_widget.value = ""
-
-        # Clear flag - setup complete
-        # self._setting_up_suggestions = False
-
-        # focus the input for convenience
-        # input_widget.focus()
-
 
 # =================================================================================#
 #                                   Helpers                                        #
 # =================================================================================#
-
 
     async def process_stage_input(self, input_value: str) -> None:
         """Handle the three-step input flow and trigger analysis when ready.
@@ -394,13 +378,13 @@ class LicenseSentinelUI(App):
 
         match self.stage:
             case Stage.REQUIREMENTS:
-                if self.path_check(input_value):
-                    self.requirements_path = input_value
+                if Controller.path_check(input_value):
+                    self.controller.requirements_path = input_value
                     self.stage = Stage.LICENSE
                     self.query_one(
                         "#path", Input).placeholder = LICENSE_PLACEHOLDER
                     print(self.stage)
-                    print(self.requirements_path)
+                    print(self.controller.requirements_path)
                     self.query_one("#send", Button).label = "Analyze 📊"
                     self.query_one("#path", Input).value = ""
                     # clear error state
@@ -414,10 +398,10 @@ class LicenseSentinelUI(App):
                 return
 
             case Stage.LICENSE:
-                if self.license_check(input_value) and self.path_check(self.requirements_path):
-                    self.main_license = input_value  # assign canonical license
+                if Controller.license_check(input_value) and Controller.path_check(self.controller.requirements_path):
+                    self.controller.main_license = input_value  # assign canonical license
                     self.stage = Stage.ANALYZING
-                    await self._start_analysis(self.requirements_path)
+                    await self._start_analysis(self.controller.requirements_path)
 
                 else:
                     self.stage = Stage.LICENSE
@@ -465,7 +449,7 @@ class LicenseSentinelUI(App):
         """Common logic to start the analysis for a package string."""
         input_widget = self.query_one("#path", Input)
 
-        if not requirements_path or not self.path_check(requirements_path) or self.stage != Stage.ANALYZING:
+        if not requirements_path or not Controller.path_check(requirements_path) or self.stage != Stage.ANALYZING:
             # show error state
             # In realtà dovrebbe essere impossibile arrivarci metti un RISE
             input_widget.value = ""
@@ -484,10 +468,11 @@ class LicenseSentinelUI(App):
         # Mostra spinner
         self.spinner.remove_class("hidden")
         self.refresh()
-
+        path_obj = Path(requirements_path)
+        print("Starting analysis for:", path_obj)
         # Esegui il backend in un thread separato
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self.fetcher.build_package_metadata, requirements_path)
+        await loop.run_in_executor(None, self.controller.start_analysis, path_obj)
 
         # Nascondi spinner
         self.spinner.add_class("hidden")
@@ -496,8 +481,8 @@ class LicenseSentinelUI(App):
             self.log_view.write_line(ANALYSIS_COMPLETE)
 
         # Aggiorna il Tree nella GUI
-        graph = self.fetcher.get_graph()
-        self.update_dependency_tree("root", graph)
+        root, graph = self.controller.get_graph()
+        self.update_dependency_tree(root, graph)
 
 # =================================================================================#
 #                                   View Updaters                                  #
@@ -616,8 +601,9 @@ class LicenseSentinelUI(App):
             return
 
         search_lower = search_term.lower().strip()
+        # Metti il loading nell'input per le licenze
         pool = self._suggestions_pool_for_stage()
-
+        # Termina il loading
         if not pool:
             self.suggestions_list.add_class("hidden")
             return
@@ -651,9 +637,9 @@ class LicenseSentinelUI(App):
     def _suggestions_pool_for_stage(self) -> list[str]:
         """Return the correct suggestions list depending on the current stage."""
         if self.stage == Stage.LICENSE:
-            return self.license_names
+            return Controller.load_license_names()  # le chiede al controller
         if self.stage in (Stage.INTERACTIVE, Stage.ANALYZING):
-            return self.commands
+            return self.controller.get_commands()  # le chiede al controller
         return []
 
     def _apply_suggestion(self, value: str) -> None:
@@ -691,6 +677,10 @@ class LicenseSentinelUI(App):
             except Exception:
                 self._last_highlighted_item = None
 
+# ==================================================================================#
+#                        License Compatibility Explanations                        #
+# ==================================================================================#
+
     def _update_pypi_table(self, package_name: str) -> None:
         """Update the PyPI metadata table based on the selected package."""
 
@@ -699,73 +689,17 @@ class LicenseSentinelUI(App):
 
         if not package_name:
             return
-        metadata = self.fetcher.get_package_metadata(package_name)
+        metadata = self.controller.get_package_metadata(package_name)
         if not metadata:
             return
-
+        package_name = metadata.package or "N/A"
         declared_license = metadata.license_type or "N/A"
         declered_link = metadata.link or "N/A"
         table.add_row(package_name, declared_license, declered_link)
-
-
-# =================================================================================#
-#                                   Logic                                          #
-# =================================================================================#
-
-    def _load_license_names(self) -> list[str]:
-        """Load license names from license_names.txt (or matrix.json as fallback)."""
-        data_dir = Path(__file__).resolve().parent.parent / "data"
-        txt_path = data_dir / "license_names.txt"
-        if txt_path.exists():
-            try:
-                with txt_path.open(encoding="utf-8") as file:
-                    return sorted(
-                        {line.strip() for line in file if line.strip()})
-            except Exception:
-                pass
-
-        matrix_path = data_dir / "matrix.json"
-        try:
-            with matrix_path.open(encoding="utf-8") as file:
-                data = json.load(file)
-            return sorted(
-                {lic.get("name")
-                 for lic in data.get("licenses", []) if lic.get("name")}
-            )
-        except Exception:
-            return []
-
-    def path_check(self, path: str | None) -> bool:
-        """Check if the input path is valid (non-empty).
-
-        Args:
-            path (str): The input path to validate.
-        Returns:
-            bool: True if the path is valid, False otherwise.
-        """
-        if not path or not path.strip():
-            return False
-        path_obj = Path(path.strip())
-        return bool(Connectivity.check_file_exists(path_obj))
-
-    def _canonical_license(self, license_str: str) -> str | None:
-        """Return the canonical license name if it exists in the matrix."""
-        if not license_str or not license_str.strip():
-            return None
-        return self._license_lookup.get(license_str.strip().lower())
-
-    def license_check(self, license_str: str) -> bool:
-        """Check if the input license is valid (and non-empty).
-
-            license (str): The input license to validate.
-        Returns:
-            bool: True if the license is valid, False otherwise.
-        """
-        return self._canonical_license(license_str) is not None
 
 
 if __name__ == "__main__":
     LicenseSentinelUI().run()
 
 
-#  C:\Users\Dabaduck\Desktop\LicensesChecker\src\requirements.txt
+#  C:\Users\Dabaduck\Desktop\LicensesChecker\requirements.txt
