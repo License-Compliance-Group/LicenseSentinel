@@ -137,7 +137,7 @@ class PackageMetadataFetcher:
                     len(self.packages_metadata))
 
         # Step 5: download sources (only for packages with valid repo links)
-        self._download_sources(package_urls, override_cache)
+        self.download_sources(package_urls, override_cache)
 
         # Step 6: compare against scancode
         # This is a separate concern and has been moved to
@@ -159,7 +159,7 @@ class PackageMetadataFetcher:
 
         return self.packages_metadata, graph
 
-    def _download_sources(self, package_urls, override_cache=False):
+    def download_sources(self, package_urls: Dict[str, str | None], override_cache=False):
         """Private function. Downloads package sources from given URLs,
         utilizing a cache where appriopriate.
 
@@ -175,7 +175,7 @@ class PackageMetadataFetcher:
             filtered_repo_urls = {pkg: url for pkg,
                                   url in package_urls.items() if url}
         else:
-            filtered_repo_urls = {}
+            filtered_repo_urls: Dict[str, str | None] = {}
             for pkg, url in package_urls.items():
                 zip_path = Path.joinpath(
                     Path(DOWNLOAD_DIRECTORY), f'{pkg}.zip')

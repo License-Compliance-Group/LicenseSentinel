@@ -1,5 +1,6 @@
 """The main file of the project"""
 import os
+import sys
 from pathlib import Path
 import logging
 import json
@@ -14,9 +15,9 @@ from analyzer import license_name_normalizer as normalizer
 from infrastructure.pypi_client import PyPiHandler
 from infrastructure.repo_downloader import RepoDownloader
 from infrastructure.dep_tree_builder import DepTreeBuilder
-from infrastructure.connectivity import Connectivity
 from infrastructure.logger_formatter import LoggerFormatter
-
+from infrastructure.scancode_runner import ScanCodeRunner
+# from infrastructure.license_comparator import LicenseComparator
 
 logger = LoggerFormatter.initialize(__name__, logging.DEBUG)
 
@@ -26,12 +27,21 @@ MATRIX_PATH = DATA_DIR / "matrix.json"
 DEFAULT_REQUIREMENTS = PROJECT_ROOT / "requirements.txt"
 PACKAGES_TO_SKIP = ("pip", "pipdeptree")
 
-COMMANDS: list[str] = [
+COMMANDS_SUGGESTIONS: list[str] = [
     "scan <package_name>",
-    "analyze dependencies",
-    "show licenses",
-    "export report",
-    "clear cache",
+    #    "analyze dependencies",
+    #    "show licenses",
+    #    "export report",
+    #    "clear cache",
+    "quit",
+]
+
+COMMANDS: list[str] = [
+    "scan",
+    #    "analyze dependencies",
+    #    "show licenses",
+    #    "export report",
+    #    "clear cache",
     "quit",
 ]
 
@@ -82,6 +92,10 @@ class Controller:
         """Set the main license."""
         self._main_license = new_license
 
+    def get_commands_suggestions(self) -> list[str]:
+        """Return the list of available commands."""
+        return COMMANDS_SUGGESTIONS
+
     def get_commands(self) -> list[str]:
         """Return the list of available commands."""
         return COMMANDS
@@ -93,7 +107,10 @@ class Controller:
                 "Must execute start_analysis() before using this method")
         # Rimuovi la licenza se presente
         package_name = package_name.split(" ")[0]
-        return self.orchestrator.get_package_metadata(package_name)
+        try:
+            return self.orchestrator.get_package_metadata(package_name)
+        except KeyError:
+            return None
 
     def get_graph(self) -> tuple[str, dict[str, list[str]]]:
         """Ritorna la root e il grafo delle dipendenze con licenze aggiunte al nome del pacchetto."""
@@ -106,11 +123,6 @@ class Controller:
         # Rimuovi i pacchetti da skippare dal grafo
         for pkg_to_skip in PACKAGES_TO_SKIP:
             original_graph.pop(pkg_to_skip, None)
-        # Rimuovi anche dalle liste di dipendenze
-        # for deps in original_graph.values():
-        #    for pkg_to_skip in PACKAGES_TO_SKIP:
-        #        while pkg_to_skip in deps:
-        #            deps.remove(pkg_to_skip)
 
         # 1. Costruisci il mapping: nome_originale -> nome_con_licenza
         name_mapping: dict[str, str] = {}
@@ -138,6 +150,19 @@ class Controller:
             graph_with_licenses[new_key] = new_deps
 
         return root, graph_with_licenses
+
+    def get_incompatibilities(self, package_name) -> list[tuple[str, str, str, str, tuple[str, str]]]:
+        """Ritorna le incompatibilità per il package richiesto."""
+        if self.incompatible_edges is None:
+            raise RuntimeError(
+                "Must execute start_analysis() before using this method")
+        package_name = package_name.split(" ")[0]
+        incompatibilities = [
+            (parent, parent_license, child, child_license, compatibility_info)
+            for parent, parent_license, child, child_license, compatibility_info in self.incompatible_edges
+            if parent == package_name
+        ]
+        return incompatibilities
 
     def start_analysis(self, file_path: Path, ignore_cache: bool = False) -> None:
         """The main function of the project."""
@@ -248,7 +273,25 @@ class Controller:
         print("incompatible_edges"+str(self.incompatible_edges))
         return
 
-    # SCANCODE
+    def start_scancode_analysis(self, package_name: str, ignore_cache: bool = False) -> bool:
+        """Start the Scancode analysis to verify PyPI metadata integrity."""
+        if self.orchestrator is None:
+            raise RuntimeError(
+                "Must execute start_analysis() before using this method")
+        pkg_metadata = self.get_package_metadata(package_name)
+
+        if pkg_metadata is None or pkg_metadata.link is None:
+            # logger.warning(
+            print("No repository link found for package: %s", package_name)
+            return False
+        print("Downloading sources for package:", pkg_metadata.package)
+        self.orchestrator.download_sources(
+            {pkg_metadata.package: pkg_metadata.link},
+            override_cache=ignore_cache)
+        return True
+        # lancio la scan
+        #
+
     # def explain_discrepancies(discrepancies):
     #    logger.info('Verifying PyPI/Scancode integrity...')
     #    scan_engine_instance = scancode_runner.ScanCodeRunner()
@@ -257,16 +300,48 @@ class Controller:
     #        scan_engine_instance
     #    )
 
-    #    discrepancies, doubts = license_comparator_instance.compare_license_trees(
-    #        ignore_cache)
-    #    if discrepancies:
-    #        tree_analyzer.explain_discrepancies(discrepancies)
-    #    if doubts:
-    #        tree_analyzer.explain_doubts(doubts)
+     #   discrepancies, doubts = license_comparator_instance.compare_license_trees(
+     #       ignore_cache)
+     #   if discrepancies:
+     #       tree_analyzer.explain_discrepancies(discrepancies)
+     #   if doubts:
+     #       tree_analyzer.explain_doubts(doubts)
+     #   logger.info('Tree cross-check finished with %s errors and %s warnings.',
+     #               len(discrepancies), len(doubts))
 
-    #    logger.info('Tree cross-check finished with %s errors and %s warnings.',
-    #                len(discrepancies), len(doubts))
+    def execute_command(self, command: str) -> None:
+        """Execute the given command."""
+        cmd_parts = command.strip().split(" ", 1)
+        cmd = cmd_parts[0].lower()
+        print("cmd_parts:", cmd_parts)
+        if cmd == "scan":
+            if len(cmd_parts) != 2:
+                logger.error("Usage: scan <package_name>")
+                return
+            package_name = cmd_parts[1]
+            self.start_scancode_analysis(package_name)
+        elif cmd == "quit":
+            logger.info("Exiting the application.")
+            sys.exit()
+        else:
+            logger.error("Unknown command: %s", command)
 
+    def is_valid_command(self, command: str) -> bool:
+        """Check if the given command is valid."""
+        cmd_parts = command.strip().split(" ", 1)
+        if not cmd_parts or not cmd_parts[0]:
+            return False
+        cmd = cmd_parts[0].lower()
+        match cmd:
+            case "scan":
+                # scan requires a package name argument
+                pkg_exist = self.get_package_metadata(cmd_parts[1].strip())
+                return len(cmd_parts) == 2 and pkg_exist is not None
+            case "quit":
+                # quit doesn't require arguments
+                return True
+            case _:
+                return False
     # =================================================================================#
     #                                   Logic                                          #
     # =================================================================================#

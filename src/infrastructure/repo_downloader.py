@@ -261,7 +261,7 @@ class RepoDownloader(AbstractRepoDownloader):
         """Context manager exit - automatically cleanup executor."""
         self.executor.shutdown(wait=True)
 
-    def download_repo(self, repo_url: str, pkg_name, branch: str, output_path: str) -> bool:
+    def download_repo(self, repo_url: str, pkg_name, branch: str, output_path: Path) -> bool:
         """Download a single repository branch as a ZIP file.
         """
 

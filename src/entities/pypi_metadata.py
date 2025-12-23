@@ -39,7 +39,7 @@ class PyPIMetadata:
             raise ValueError("Package cannot be empty.")
         self._package = package
         self._license_type = license_type
-        self._link = link
+        self._link: str | None = link
 
     @property
     def package(self) -> str:

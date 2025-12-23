@@ -1,7 +1,6 @@
 """The main GUI class of the app.
 """
 import asyncio
-import json
 import logging
 from enum import Enum, auto
 
@@ -22,13 +21,6 @@ from textual.widgets import (
     ListItem
 )
 from textual import events, on
-
-# Import del backend
-from infrastructure.pypi_client import PyPiHandler
-from infrastructure.repo_downloader import RepoDownloader
-from infrastructure.dep_tree_builder import DepTreeBuilder
-from infrastructure.connectivity import Connectivity
-from analyzer.package_metadata_fetcher import PackageMetadataFetcher
 from interface.controller import Controller
 
 ERROR_PATH_PLACEHOLDER = "❌ Invalid path!"
@@ -60,11 +52,10 @@ class TextualLogHandler(logging.Handler):
 
         def _write():
             log_widget = getattr(app, "log_view", None)
-            if log_widget:
-                try:
-                    log_widget.write_line(msg)
-                except Exception:
-                    pass
+            try:
+                log_widget.write_line(msg)
+            except Exception:
+                pass
 
         try:
             app.call_from_thread(_write)
@@ -100,25 +91,15 @@ class LicenseSentinelUI(App):
     def __init__(self):
         super().__init__()
 
-        # Backend components
-        # self.pypi_client = PyPiHandler()
-        # self.repo_downloader = RepoDownloader()
-        # self.dep_builder = DepTreeBuilder()
-        # TODO: reset fetcher on each analysis
-        # self.fetcher = PackageMetadataFetcher(
-        #    self.pypi_client,
-        #    self.dep_builder,
-        #    self.repo_downloader
-        # )
         self.controller = Controller()
         self.stage = Stage.REQUIREMENTS
-        # self.requirements_path: str
-        # self.main_license: str
 
         # UI components
         self.ui_tree = Tree("Dependencies")  # Tree
         # Spinner (Initially hidden)
         self.spinner = LoadingIndicator(id="spinner", classes="hidden")
+        self.input_spinner = LoadingIndicator(
+            id="input-spinner", classes="hidden")
         self._path_input_has_error = False
 
         # Log widget for displaying build output
@@ -126,23 +107,10 @@ class LicenseSentinelUI(App):
         self._log_handler = None
         self._setup_logging()
 
-        # Licenses (loaded from matrix.json / license_names.txt)
-        # self.license_names = self._load_license_names()
-        # self._license_lookup = {
-        #    name.lower(): name for name in self.license_names}
-
         # Suggestion system
         self.suggestions_list: ListView | None = None
         self._setting_up_suggestions = False
-        # QUEST SOTTO VA NEL CONTROLLER
-        # self.commands: list[str] = [
-        #    "scan <package_name>",
-        #    "analyze dependencies",
-        #    "show licenses",
-        #    "export report",
-        #    "clear cache",
-        #    "quit",
-        # ]
+
         self.filtered_suggestions: list[str] = []
         self._suggestion_data: dict[int, str] = {}
         # Internal flag to avoid double-moving the ListView on a single keypress -> see handle key in suggestions
@@ -151,13 +119,19 @@ class LicenseSentinelUI(App):
         self._last_highlighted_item: ListItem | None = None
 
     def _pypi_table(self) -> DataTable:
-        table = DataTable()
+        table = DataTable(id="pypi-info-table")
         table.add_columns("Package  ", "Declared License    ", "Source code")
 
         return table
 
+    def _incompatibilities_table(self) -> DataTable:
+        table = DataTable(id="incompatibilities-table")
+        table.add_columns("Package parent",
+                          "Package children", "Incompatibilities")
+        return table
+
     def _scancode_table(self) -> DataTable:
-        table = DataTable()
+        table = DataTable(id="scancode-table")
         table.add_columns("File", "Detected Licenses")
         return table
 
@@ -167,6 +141,7 @@ class LicenseSentinelUI(App):
                 with Vertical(id="input-section", classes="input-section"):
                     yield Input(placeholder=PATH_PLACEHOLDER, id="path", classes="path-input")
                 yield Button("Next ->", variant="primary", id="send", classes="analyze-button")
+            yield self.input_spinner
 
         with Vertical(classes="main-container", id="main-container"):
             with Horizontal(classes="main-row"):
@@ -196,7 +171,7 @@ class LicenseSentinelUI(App):
                 with TabPane("Info"):
                     yield self._pypi_table()
                 with TabPane("Incompatibilities"):
-                    yield Static("Dettagli incompatibilità tra licenze...")
+                    yield self._incompatibilities_table()
 
     def _compose_scancode_section(self) -> ComposeResult:
         """Compose the ScanCode results section."""
@@ -204,8 +179,8 @@ class LicenseSentinelUI(App):
             block.border_title = "ScanCode Results"
             block.styles.border_title_align = "right"
             with TabbedContent():
-                yield TabPane("File", self._scancode_table())
-                yield TabPane("Dettagli", Static("Dettagli analisi ScanCode..."))
+                yield TabPane("Scan results", self._scancode_table())
+                # yield TabPane("Dettagli", Static("Dettagli analisi ScanCode..."))
 
 # =================================================================================#
 #                                 Event Handlers                                   #
@@ -222,7 +197,7 @@ class LicenseSentinelUI(App):
             await self.process_stage_input(input_widget.value.strip())
 
     @on(Input.Submitted, "#path")
-    async def on_path_submitted(self, event) -> None:
+    async def on_path_submitted(self) -> None:
         """Handle Enter pressed in the path input to start analysis."""
         input_widget = self.query_one("#path", Input)
         await self.process_stage_input(input_widget.value.strip())
@@ -282,6 +257,7 @@ class LicenseSentinelUI(App):
         label = getattr(node, "label", None)
         label_str = str(label) if label is not None else ""
         self._update_pypi_table(label_str)
+        self._update_incompatibilities_table(label_str)
 #
     # INVECE DI FARE UN FOR E SEGNARE L'ULTIMO EVIDENZIATO
     # VEDI SE ESISTE UNLIGHTED ITEM E RIMUOVI LA PROPRIETÀ CSS
@@ -296,21 +272,17 @@ class LicenseSentinelUI(App):
 
         if self.suggestions_list is None:
             return
-        print("HIGHLIGHT EVENT TRIGGERED")
-        print(self.suggestions_list.index)
+
         # Remove highlight from previous item
         if self._last_highlighted_item is not None:
-            try:
-                self._last_highlighted_item.remove_class("--highlight")
-            except Exception:
-                pass
+            self._last_highlighted_item.remove_class(
+                "--highlight")  # was a try
             self._last_highlighted_item = None
 
         # Apply highlight to newly highlighted item
         item = getattr(event, "item", None)
         if item is not None:
             try:
-                print("APPLY HIGHLIGHT CLASS")
                 item.add_class("--highlight")
                 self._last_highlighted_item = item
             except Exception:
@@ -319,6 +291,7 @@ class LicenseSentinelUI(App):
     @on(events.Key)
     async def handle_suggestions_keypress(self, event: events.Key) -> None:
         # Only handle keys when suggestions overlay is visible
+        # or self.stage in (Stage.LICENSE, Stage.INTERACTIVE):
         if self.suggestions_list is None or self.suggestions_list.has_class("hidden"):
             return
 
@@ -378,22 +351,20 @@ class LicenseSentinelUI(App):
 
         match self.stage:
             case Stage.REQUIREMENTS:
+                # disable logging for rendering
+                logging.disable(logging.CRITICAL)
                 if Controller.path_check(input_value):
                     self.controller.requirements_path = input_value
                     self.stage = Stage.LICENSE
                     self.query_one(
                         "#path", Input).placeholder = LICENSE_PLACEHOLDER
-                    print(self.stage)
-                    print(self.controller.requirements_path)
                     self.query_one("#send", Button).label = "Analyze 📊"
                     self.query_one("#path", Input).value = ""
                     # clear error state
                     self._set_input_error(False)
                     await self._mount_suggestions()
-
                 else:
                     self.stage = Stage.REQUIREMENTS
-                    # invalid path
                     self._set_input_error(True)
                 return
 
@@ -401,8 +372,8 @@ class LicenseSentinelUI(App):
                 if Controller.license_check(input_value) and Controller.path_check(self.controller.requirements_path):
                     self.controller.main_license = input_value  # assign canonical license
                     self.stage = Stage.ANALYZING
+                    logging.disable(logging.NOTSET)  # re-enable logging
                     await self._start_analysis(self.controller.requirements_path)
-
                 else:
                     self.stage = Stage.LICENSE
                     # invalid license
@@ -410,6 +381,10 @@ class LicenseSentinelUI(App):
                 return
 
             case Stage.ANALYZING:
+                # Carica il tree ottenuto da _start_analysis
+                root, graph = self.controller.get_graph()
+                self.update_dependency_tree(root, graph)
+                # Smonta la vecchia interfaccia e passa alla INTERACTIVE
                 await self._unmount_log_console()
                 await self._mount_input_bar()
                 self._setting_up_suggestions = False
@@ -420,11 +395,12 @@ class LicenseSentinelUI(App):
                 input_widget.value = ""
                 self.stage = Stage.INTERACTIVE
                 return
+
             case Stage.INTERACTIVE:
-                if input_value:
-                    print(f"Execute command: {input_value}")
-                else:
+                if not self.controller.is_valid_command(input_value):
                     self._set_input_error(True)
+                    return
+                await self._process_command_input(input_value)
                 return
         raise ValueError(f"Unknown stage. Actual stage: {self.stage}")
 
@@ -444,6 +420,47 @@ class LicenseSentinelUI(App):
         root_logger.setLevel(logging.INFO)
 
         self._log_handler = handler
+
+    async def _process_command_input(self, command: str) -> None:
+        """Process a command input in INTERACTIVE stage."""
+        if self.stage != Stage.INTERACTIVE:
+            raise RuntimeError(
+                "Cannot process commands when not in INTERACTIVE stage.")
+
+        # Hide input bar and show spinner
+        path_container = self.query_one(".path-container", Horizontal)
+        path_container.add_class("hidden")
+        self.input_spinner.remove_class("hidden")
+
+        # Mount log console inside scancode tab if not already mounted
+        if self.log_view is None:
+            await self._mount_scancode_log_console()
+
+        # Clear previous log content
+        self.log_view.clear()
+        self.log_view.write_line(f"⚙️ Executing command: {command}")
+
+        self.log_view.focus()
+        self.refresh()
+
+        # Execute command (already async, no need for executor)
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self.controller.execute_command, command)
+
+        # Give time for logs to be processed from the queue
+
+        # Hide spinner and show input bar again
+        self.input_spinner.add_class("hidden")
+        path_container.remove_class("hidden")
+
+        if self.log_view:
+            self.log_view.write_line(
+                "\n✅ Command execution complete!")
+
+        # Clear input
+        input_widget = self.query_one("#path", Input)
+        input_widget.value = ""
+        input_widget.focus()
 
     async def _start_analysis(self, requirements_path: str) -> None:
         """Common logic to start the analysis for a package string."""
@@ -469,7 +486,7 @@ class LicenseSentinelUI(App):
         self.spinner.remove_class("hidden")
         self.refresh()
         path_obj = Path(requirements_path)
-        print("Starting analysis for:", path_obj)
+
         # Esegui il backend in un thread separato
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self.controller.start_analysis, path_obj)
@@ -479,10 +496,10 @@ class LicenseSentinelUI(App):
 
         if self.log_view:
             self.log_view.write_line(ANALYSIS_COMPLETE)
-
+        self.refresh()
         # Aggiorna il Tree nella GUI
-        root, graph = self.controller.get_graph()
-        self.update_dependency_tree(root, graph)
+        # root, graph = self.controller.get_graph()
+        # self.update_dependency_tree(root, graph)
 
 # =================================================================================#
 #                                   View Updaters                                  #
@@ -554,12 +571,25 @@ class LicenseSentinelUI(App):
         try:
             await self.log_view.remove()
         except Exception:
-            try:
-                self.log_view.remove()  # fallback if sync
-            except Exception:
-                pass
+            self.log_view.remove()  # fallback if sync
+
         self.log_view = None
         return
+
+    async def _mount_scancode_log_console(self) -> None:
+        """Create and mount the log console widget inside the scancode tab."""
+        scancode_block = self.query_one(".scancode-block", Vertical)
+        tabbed_content = scancode_block.query_one(TabbedContent)
+        # Create log widget (reuse log_view)
+        self.log_view = Log(classes="scancode-log", id="scancode-log")
+        # self.log_view.border_title = "Scan Console"
+        # Mount inside a new TabPane
+        tabbed_content.add_pane(TabPane("Console", self.log_view))
+
+
+# =================================================================================#
+#                         Suggestions System                                       #
+# =================================================================================#
 
     async def _mount_input_bar(self) -> None:
         """Create and mount the input bar for commands."""
@@ -589,11 +619,6 @@ class LicenseSentinelUI(App):
         # Set the reference AFTER mount is complete
         self.suggestions_list = suggestions_widget
         self.filtered_suggestions = []
-
-    # async def _ensure_suggestions(self) -> None:
-    #    """Mount the suggestions overlay if it is not already available."""
-    #    if self.suggestions_list is None:
-    #        await self._mount_suggestions()
 
     async def _update_suggestions(self, search_term: str) -> None:
         """Update the suggestions list based on the search term."""
@@ -639,7 +664,7 @@ class LicenseSentinelUI(App):
         if self.stage == Stage.LICENSE:
             return Controller.load_license_names()  # le chiede al controller
         if self.stage in (Stage.INTERACTIVE, Stage.ANALYZING):
-            return self.controller.get_commands()  # le chiede al controller
+            return self.controller.get_commands_suggestions()  # le chiede al controller
         return []
 
     def _apply_suggestion(self, value: str) -> None:
@@ -655,17 +680,14 @@ class LicenseSentinelUI(App):
         if self.suggestions_list:
             self.suggestions_list.add_class("hidden")
 
-    def highlight_suggestion(self, event) -> None:
+    def _highlight_suggestion(self, event) -> None:
         """Highlight the suggestion at the given index."""
         if self.suggestions_list is None:
             return
 
         # Remove highlight from previous item
         if self._last_highlighted_item is not None:
-            try:
-                self._last_highlighted_item.remove_class("--highlight")
-            except Exception:
-                pass
+            self._last_highlighted_item.remove_class("--highlight")
             self._last_highlighted_item = None
 
         # Apply highlight to newly highlighted item
@@ -684,7 +706,7 @@ class LicenseSentinelUI(App):
     def _update_pypi_table(self, package_name: str) -> None:
         """Update the PyPI metadata table based on the selected package."""
 
-        table = self.query_one(".pypi-block DataTable", DataTable)
+        table = self.query_one("#pypi-info-table", DataTable)
         table.clear()
 
         if not package_name:
@@ -696,6 +718,27 @@ class LicenseSentinelUI(App):
         declared_license = metadata.license_type or "N/A"
         declered_link = metadata.link or "N/A"
         table.add_row(package_name, declared_license, declered_link)
+
+    def _update_incompatibilities_table(self, package_name: str) -> None:
+        """Update the license incompatibilities table based on the selected package."""
+
+        table = self.query_one("#incompatibilities-table", DataTable)
+        table.clear()
+
+        if not package_name:
+            return
+
+        incompatibilities = self.controller.get_incompatibilities(package_name)
+        if not incompatibilities:
+            return
+
+        for parent, parent_license, child, child_license, compatibility_info in incompatibilities:
+            parent_str = f"{parent} ({parent_license})" if parent and parent_license else parent or "N/A"
+            child_str = f"{child} ({child_license})" if child and child_license else child or "N/A"
+        # compatibility_info is a tuple like ('No', 'explanation message')
+            issues_str = compatibility_info[1] if compatibility_info and len(
+                compatibility_info) > 1 else "N/A"
+            table.add_row(parent_str, child_str, issues_str)
 
 
 if __name__ == "__main__":
