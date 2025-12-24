@@ -648,12 +648,13 @@ class LicenseSentinelUI(App):
         """
         input_widget = self.query_one("#path", Input)
 
-        if Controller.path_check(requirements_path) or self.stage != Stage.ANALYZING:
+        if not Controller.path_check(requirements_path) or self.stage != Stage.ANALYZING:
             # show error state
             # In realtà dovrebbe essere impossibile arrivarci metti un RISE
-            input_widget.value = ""
-            self._set_input_error(True)
-            return
+            raise RuntimeError("Invalid state or requirements path.")
+            # input_widget.value = ""
+            # self._set_input_error(True)
+            # return
 
         # clear any previous error state
         self._set_input_error(False)
@@ -837,7 +838,6 @@ class LicenseSentinelUI(App):
 # =================================================================================#
 #                         Suggestions System                                       #
 # =================================================================================#
-
 
     async def _mount_input_bar(self) -> None:
         """Display input bar and initialize suggestion system.
