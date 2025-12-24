@@ -24,6 +24,7 @@ from textual.widgets import (
 )
 from textual import events, on
 from interface.controller import Controller
+from interface.ui_state import Stage, AnalysisState, SuggestionState
 
 ERROR_PATH_PLACEHOLDER = "❌ Invalid path!"
 PATH_PLACEHOLDER = "📄 Insert the path to the requirements.txt file"
@@ -91,19 +92,19 @@ class TextualLogHandler(logging.Handler):
             print(f"[DEBUG] Exception in call_from_thread: {e}")
 
 
-class Stage(Enum):
-    """Application workflow stages.
+# class Stage(Enum):
+#    """Application workflow stages.
 
-    Represents the different phases of the license analysis workflow:
-    - REQUIREMENTS: User enters path to requirements.txt file
-    - LICENSE: User selects the main repository license
-    - ANALYZING: Background analysis in progress
-    - INTERACTIVE: Analysis complete, user can execute commands
-    """
-    REQUIREMENTS = auto()
-    LICENSE = auto()
-    ANALYZING = auto()
-    INTERACTIVE = auto()
+    # Represents the different phases of the license analysis workflow:
+    # - REQUIREMENTS: User enters path to requirements.txt file
+    # - LICENSE: User selects the main repository license
+    # - ANALYZING: Background analysis in progress
+    # - INTERACTIVE: Analysis complete, user can execute commands
+    # """
+    # REQUIREMENTS = auto()
+    # LICENSE = auto()
+    # ANALYZING = auto()
+    # INTERACTIVE = auto()
 
 
 class LicenseSentinelUI(App):
@@ -139,18 +140,14 @@ class LicenseSentinelUI(App):
         infrastructure. Initializes the application in REQUIREMENTS stage.
         """
         super().__init__()
-
-        # Clean up ALL loggers BEFORE creating controller
-        # (which imports modules that create their own loggers)
-        self._cleanup_all_loggers()
-
         self.controller = Controller()
+
+        # Use state objects instead of individual attributes
         self.stage = Stage.REQUIREMENTS
+        self.suggestion_state = SuggestionState()
 
         # UI components
-        self.ui_tree = Tree(DEPENDENCY_TREE_TITLE,
-                            id="dependency-tree")  # Tree
-        # Spinner (Initially hidden)
+        self.ui_tree = Tree(DEPENDENCY_TREE_TITLE, id="dependency-tree")
         self.spinner = LoadingIndicator(id="spinner", classes="hidden")
         self.input_spinner = LoadingIndicator(
             id="input-spinner", classes="hidden")
@@ -159,18 +156,9 @@ class LicenseSentinelUI(App):
         # Log widget for displaying build output
         self.log_view: Log | None = None
         self._log_handler = None
+
+        self._cleanup_all_loggers()
         self._setup_logging()
-
-        # Suggestion system
-        self.suggestions_list: ListView | None = None
-        self._setting_up_suggestions = False
-
-        self.filtered_suggestions: list[str] = []
-        self._suggestion_data: dict[int, str] = {}
-        # Internal flag to avoid double-moving the ListView on a single keypress -> see handle key in suggestions
-        self._suppress_list_move = False
-        # Track last highlighted item so we can detect deselection
-        self._last_highlighted_item: ListItem | None = None
 
     def _pypi_table(self) -> DataTable:
         """Create and configure the PyPI metadata table.
@@ -315,8 +303,8 @@ class LicenseSentinelUI(App):
 
         # Update suggestions when in LICENSE or INTERACTIVE stage (but not during setup)
         if (self.stage in (Stage.LICENSE, Stage.INTERACTIVE) and
-            self.suggestions_list is not None and
-                not self._setting_up_suggestions):
+            self.suggestion_state.suggestions_list is not None and
+                not self.suggestion_state.setting_up):
             await self._update_suggestions(event.input.value)
 
     async def on_mouse_down(self, event: events.MouseDown) -> None:
@@ -350,7 +338,7 @@ class LicenseSentinelUI(App):
         Args:
             event: ListView selection event containing the selected item.
         """
-        value = self._suggestion_data.get(id(event.item))
+        value = self.suggestion_state.suggestion_data.get(id(event.item))
         if not value:
             # Fallback: try to read text content from Static widget
             child = getattr(event.item, "children", [None])[0]
@@ -396,24 +384,24 @@ class LicenseSentinelUI(App):
             event: ListView highlight event containing the highlighted item.
         """
 
-        if self.suggestions_list is None:
+        if self.suggestion_state.suggestions_list is None:
             return
 
         # Remove highlight from previous item
-        if self._last_highlighted_item is not None:
-            self._last_highlighted_item.remove_class(
+        if self.suggestion_state.last_highlighted_item is not None:
+            self.suggestion_state.last_highlighted_item.remove_class(
                 "--highlight")  # was a try
-            self._last_highlighted_item = None
+            self.suggestion_state.last_highlighted_item = None
 
         # Apply highlight to newly highlighted item
         item = getattr(event, "item", None)
         if item is not None:
             try:
                 item.add_class("--highlight")
-                self._last_highlighted_item = item
+                self.suggestion_state.last_highlighted_item = item
             except (AttributeError, RuntimeError):
                 # Widget might not support CSS classes or be in invalid state
-                self._last_highlighted_item = None
+                self.suggestion_state.last_highlighted_item = None
 
     @on(events.Key)
     async def handle_suggestions_keypress(self, event: events.Key) -> None:
@@ -426,7 +414,7 @@ class LicenseSentinelUI(App):
             event: Key press event.
         """
         # Only handle keys when suggestions overlay is visible
-        if self.suggestions_list is None or self.suggestions_list.has_class("hidden"):
+        if self.suggestion_state.suggestions_list is None or self.suggestion_state.suggestions_list.has_class("hidden"):
             return
 
         # Handle DOWN key from input to move focus to suggestions
@@ -434,20 +422,22 @@ class LicenseSentinelUI(App):
         if key in ("down", "arrow_down"):
             input_widget = self.query_one("#path", Input)
             if input_widget.has_focus:
-                self.suggestions_list.focus()
-                if hasattr(self.suggestions_list, "index"):
-                    self.suggestions_list.index = 0
-                    if self._last_highlighted_item is not None:
-                        self._last_highlighted_item.add_class("--highlight")
+                self.suggestion_state.suggestions_list.focus()
+                if hasattr(self.suggestion_state.suggestions_list, "index"):
+                    self.suggestion_state.suggestions_list.index = 0
+                    if self.suggestion_state.last_highlighted_item is not None:
+                        self.suggestion_state.last_highlighted_item.add_class(
+                            "--highlight")
 
             return
         # If first item is highlighted and user presses UP, move focus back to input
         if key in ("up", "arrow_up"):
             suggestion_widget = self.query_one("#suggestions", ListView)
-            if suggestion_widget.has_focus and self.suggestions_list.index == 0:
+            if suggestion_widget.has_focus and self.suggestion_state.suggestions_list.index == 0:
                 # Remove highlight from current (first) item
-                if self._last_highlighted_item is not None:
-                    self._last_highlighted_item.remove_class("--highlight")
+                if self.suggestion_state.last_highlighted_item is not None:
+                    self.suggestion_state.last_highlighted_item.remove_class(
+                        "--highlight")
                     input_widget = self.query_one("#path", Input)
                     input_widget.focus()
         return
@@ -526,7 +516,7 @@ class LicenseSentinelUI(App):
                 # Smonta la vecchia interfaccia e passa alla INTERACTIVE
                 await self._unmount_log_console()
                 await self._mount_input_bar()
-                self._setting_up_suggestions = False
+                self.suggestion_state.setting_up = False
                 send_button = self.query_one("#send", Button)
                 input_widget = self.query_one("#path", Input)
                 input_widget.placeholder = COMMANDS_PLACEHOLDER
@@ -851,7 +841,7 @@ class LicenseSentinelUI(App):
             path_container.remove_class("hidden")
 
         # Set flag to prevent Input.Changed from triggering during setup
-        self._setting_up_suggestions = True
+        self.suggestion_state.setting_up = True
 
         # Mount suggestions FIRST, before modifying input
         # (changing input value triggers Input.Changed event)
@@ -863,7 +853,7 @@ class LicenseSentinelUI(App):
         Initializes the ListView widget that displays filtered suggestions
         below the input field.
         """
-        if self.suggestions_list is not None:
+        if self.suggestion_state.suggestions_list is not None:
             return
 
         suggestions_widget = ListView(
@@ -873,8 +863,8 @@ class LicenseSentinelUI(App):
         await input_section.mount(suggestions_widget)
 
         # Set the reference AFTER mount is complete
-        self.suggestions_list = suggestions_widget
-        self.filtered_suggestions = []
+        self.suggestion_state.suggestions_list = suggestions_widget
+        self.suggestion_state.filtered_suggestions = []
 
     async def _update_suggestions(self, search_term: str) -> None:
         """Filter and display suggestions matching the search term.
@@ -885,7 +875,7 @@ class LicenseSentinelUI(App):
         Args:
             search_term: User input to filter suggestions against.
         """
-        if self.suggestions_list is None:
+        if self.suggestion_state.suggestions_list is None:
             return
 
         search_lower = search_term.lower().strip()
@@ -893,34 +883,33 @@ class LicenseSentinelUI(App):
         pool = self._suggestions_pool_for_stage()
         # Termina il loading
         if not pool:
-            self.suggestions_list.add_class("hidden")
+            self.suggestion_state.suggestions_list.add_class("hidden")
             return
 
         # Hide suggestions if input is empty
         if not search_lower:
-            self.suggestions_list.add_class("hidden")
+            self.suggestion_state.suggestions_list.add_class("hidden")
             return
         # è una lista di stringhe
-        self.filtered_suggestions = [
+        self.suggestion_state.filtered_suggestions = [
             item for item in pool if search_lower in item.lower()
         ]
 
         # Clear and repopulate the list
-        self.suggestions_list.clear()
-        self._suggestion_data.clear()
-        for item_value in self.filtered_suggestions:
+        self.suggestion_state.suggestions_list.clear()
+        self.suggestion_state.suggestion_data.clear()
+        for item_value in self.suggestion_state.filtered_suggestions:
             item = ListItem(Static(item_value), classes="suggestion-item")
             # store value for click/enter selection
-            self._suggestion_data[id(item)] = item_value
-            self.suggestions_list.append(item)
-
+            self.suggestion_state.suggestion_data[id(item)] = item_value
+            self.suggestion_state.suggestions_list.append(item)
         # Show suggestions if there are any filtered commands
-        if self.filtered_suggestions:
-            self.suggestions_list.remove_class("hidden")
+        if self.suggestion_state.filtered_suggestions:
+            self.suggestion_state.suggestions_list.remove_class("hidden")
         else:
-            self.suggestions_list.add_class("hidden")
+            self.suggestion_state.suggestions_list.add_class("hidden")
 
-        self.suggestions_list.refresh(layout=True)
+        self.suggestion_state.suggestions_list.refresh(layout=True)
 
     def _suggestions_pool_for_stage(self) -> list[str]:
         """Get stage-appropriate suggestion pool.
@@ -952,8 +941,8 @@ class LicenseSentinelUI(App):
         input_widget.focus()
         # clear any previous error state
         self._set_input_error(False)
-        if self.suggestions_list:
-            self.suggestions_list.add_class("hidden")
+        if self.suggestion_state.suggestions_list:
+            self.suggestion_state.suggestions_list.add_class("hidden")
 
     def _highlight_suggestion(self, event) -> None:
         """Apply visual highlight to suggestion item.
@@ -964,23 +953,24 @@ class LicenseSentinelUI(App):
         Args:
             event: Event containing the item to highlight.
         """
-        if self.suggestions_list is None:
+        if self.suggestion_state.suggestions_list is None:
             return
 
         # Remove highlight from previous item
-        if self._last_highlighted_item is not None:
-            self._last_highlighted_item.remove_class("--highlight")
-            self._last_highlighted_item = None
+        if self.suggestion_state.last_highlighted_item is not None:
+            self.suggestion_state.last_highlighted_item.remove_class(
+                "--highlight")
+            self.suggestion_state.last_highlighted_item = None
 
         # Apply highlight to newly highlighted item
         item = getattr(event, "item", None)
         if item is not None:
             try:
                 item.add_class("--highlight")
-                self._last_highlighted_item = item
+                self.suggestion_state.last_highlighted_item = item
             except (AttributeError, RuntimeError):
                 # Widget might not support CSS classes or be in invalid state
-                self._last_highlighted_item = None
+                self.suggestion_state.last_highlighted_item = None
 
 # ==================================================================================#
 #                        License Compatibility Explanations                        #
