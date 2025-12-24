@@ -11,13 +11,13 @@ from analyzer.package_metadata_fetcher import PackageMetadataFetcher
 from analyzer.matrix_manager import LicenseCompatibilityAnalyzer
 from analyzer.tree_license_analyzer import TreeAnalyzer
 from analyzer import license_name_normalizer as normalizer
+from analyzer.license_comparator import LicenseComparator
 
 from infrastructure.pypi_client import PyPiHandler
 from infrastructure.repo_downloader import RepoDownloader
 from infrastructure.dep_tree_builder import DepTreeBuilder
 from infrastructure.logger_formatter import LoggerFormatter
 from infrastructure.scancode_runner import ScanCodeRunner
-# from infrastructure.license_comparator import LicenseComparator
 
 logger = LoggerFormatter.initialize(__name__, logging.DEBUG)
 
@@ -49,12 +49,29 @@ COMMANDS: list[str] = [
 
 
 class Controller:
+    """Main controller class for license compatibility analysis.
+
+    Orchestrates the entire workflow of dependency analysis, license extraction,
+    compatibility checking, and source code scanning. This class serves as the
+    primary interface for the license checking application.
+
+    Attributes:
+        _license_names: Class-level cache of valid license names.
+        _license_lookup: Class-level dictionary mapping lowercase license names to canonical names.
+        orchestrator: Handles package metadata fetching and dependency resolution.
+        incompatible_edges: List of detected license incompatibilities between packages.
+    """
 
     _license_names: list[str] = []
     _license_lookup: dict[str, str] = {}
 
     def __init__(self):
-        # SCARICA IL MATRIX JSON
+        """Initialize the Controller with empty state.
+
+        Sets up internal data structures for requirements tracking, license analysis,
+        and dependency graph management. The orchestrator and analysis results are
+        initialized as None and populated during analysis execution.
+        """
 
         self._requirements_path: str
         self._main_license: str
@@ -93,15 +110,35 @@ class Controller:
         self._main_license = new_license
 
     def get_commands_suggestions(self) -> list[str]:
-        """Return the list of available commands."""
+        """Return the list of available command suggestions for autocomplete.
+
+        Returns:
+            List of command strings with parameter placeholders for UI suggestions.
+        """
         return COMMANDS_SUGGESTIONS
 
     def get_commands(self) -> list[str]:
-        """Return the list of available commands."""
+        """Return the list of valid command names.
+
+        Returns:
+            List of base command strings without parameters.
+        """
         return COMMANDS
 
     def get_package_metadata(self, package_name: str) -> PyPIMetadata | None:
-        """Ritorna un oggetto PyPIMetadata per il package richiesto."""
+        """Retrieve PyPI metadata for the specified package.
+
+        Strips any license suffix from the package name before lookup.
+
+        Args:
+            package_name: Name of the package, optionally with license suffix.
+
+        Returns:
+            PyPIMetadata object containing package information, or None if not found.
+
+        Raises:
+            RuntimeError: If start_analysis() has not been called yet.
+        """
         if self.orchestrator is None:
             raise RuntimeError(
                 "Must execute start_analysis() before using this method")
@@ -113,7 +150,19 @@ class Controller:
             return None
 
     def get_graph(self) -> tuple[str, dict[str, list[str]]]:
-        """Ritorna la root e il grafo delle dipendenze con licenze aggiunte al nome del pacchetto."""
+        """Return the dependency graph with license information appended to package names.
+
+        Constructs a modified dependency graph where each package name is suffixed
+        with its license in parentheses (e.g., "requests (Apache-2.0)").
+
+        Returns:
+            Tuple containing:
+                - Root package name with its license
+                - Dictionary mapping package names (with licenses) to their dependencies
+
+        Raises:
+            RuntimeError: If start_analysis() has not been called yet.
+        """
         if self.orchestrator is None:
             raise RuntimeError(
                 "Must execute start_analysis() before using this method")
@@ -152,7 +201,24 @@ class Controller:
         return root, graph_with_licenses
 
     def get_incompatibilities(self, package_name) -> list[tuple[str, str, str, str, tuple[str, str]]]:
-        """Ritorna le incompatibilità per il package richiesto."""
+        """Retrieve all license incompatibilities for the specified package.
+
+        Returns incompatibilities where the package is the parent in the dependency tree.
+
+        Args:
+            package_name: Name of the package to check, optionally with license suffix.
+
+        Returns:
+            List of tuples, each containing:
+                - Parent package name
+                - Parent license
+                - Child package name
+                - Child license
+                - Compatibility info tuple (verdict, explanation)
+
+        Raises:
+            RuntimeError: If start_analysis() has not been called yet.
+        """
         if self.incompatible_edges is None:
             raise RuntimeError(
                 "Must execute start_analysis() before using this method")
@@ -165,11 +231,21 @@ class Controller:
         return incompatibilities
 
     def start_analysis(self, file_path: Path, ignore_cache: bool = False) -> None:
-        """The main function of the project."""
+        """Execute comprehensive license analysis on a requirements file.
 
-        # set to True to force redownload/rebuild of everything
+        Main workflow:
+        1. Loads and resolves dependencies from the requirements file
+        2. Fetches metadata and licenses from PyPI for each package
+        3. Analyzes the dependency tree for license incompatibilities
+        4. Stores results for later retrieval via getter methods
 
-        print(PROJECT_ROOT)
+        Args:
+            file_path: Path to the requirements.txt or similar dependency file.
+            ignore_cache: If True, bypass cached data and fetch fresh metadata.
+
+        Returns:
+            None. Results are stored in instance attributes and accessed via getters.
+        """
 
         logger.debug("Working directory: %s", os.getcwd())
         if not file_path.exists():
@@ -188,6 +264,7 @@ class Controller:
 
         metadata_items, graph = self.orchestrator.build_package_metadata(
             file_path,
+            self.main_license,
             ignore_cache
         )
         if not metadata_items:
@@ -204,9 +281,10 @@ class Controller:
                         f"{metadata.license_type:<40}", metadata.link)
 
         tree_analyzer = TreeAnalyzer()
-        # TODO return incompatible edges e mettili d'istanza
+
         self.incompatible_edges = tree_analyzer.run_tree_compatibility_check(
             metadata_items, graph)
+        # TODO: used for "testing", remove
         self.incompatible_edges.extend([
             (
                 "myapp",
@@ -273,44 +351,66 @@ class Controller:
         print("incompatible_edges"+str(self.incompatible_edges))
         return
 
-    def start_scancode_analysis(self, package_name: str, ignore_cache: bool = False) -> bool:
-        """Start the Scancode analysis to verify PyPI metadata integrity."""
+    # -> bool:
+    def start_scancode_analysis(self, package_name: str, ignore_cache: bool = False):
+        """Perform ScanCode analysis on package source code to verify license accuracy.
+
+        Downloads the package source repository and scans it with ScanCode to detect
+        licenses directly from the codebase. Compares results against PyPI metadata
+        to identify discrepancies and dubious entries.
+
+        Args:
+            package_name: Name of the package to scan.
+            ignore_cache: If True, re-download sources and re-scan even if cached.
+
+        Returns:
+            True if analysis completed successfully, False if repository link not found.
+
+        Raises:
+            RuntimeError: If start_analysis() has not been called yet.
+        """
         if self.orchestrator is None:
             raise RuntimeError(
                 "Must execute start_analysis() before using this method")
         pkg_metadata = self.get_package_metadata(package_name)
-
+        print("pkg_metadata:", pkg_metadata)
         if pkg_metadata is None or pkg_metadata.link is None:
-            # logger.warning(
-            print("No repository link found for package: %s", package_name)
-            return False
-        print("Downloading sources for package:", pkg_metadata.package)
+            logger.warning(
+                "No repository link found for package: %s", package_name)
+            return None, None
+
         self.orchestrator.download_sources(
             {pkg_metadata.package: pkg_metadata.link},
             override_cache=ignore_cache)
-        return True
-        # lancio la scan
-        #
+        # TODO: correggere LicenseComparator per accettare anche singoli oggetti
+        # HACK: LicenseComparator accetta solo ogetti iterabili e non singoli oggetti -> list con 1 elemento
+        shameful_solution: list[PyPIMetadata] = [pkg_metadata]
+        scan_engine = ScanCodeRunner()
+        license_comparator = LicenseComparator(
+            shameful_solution,
+            scan_engine
+        )
+        # TODO: gestire il view del risultato
+        discrepancies, doubts = license_comparator.compare_license_trees(
+            ignore_cache)
+        print("discrepancies:", discrepancies)
+        print("doubts:", doubts)
 
-    # def explain_discrepancies(discrepancies):
-    #    logger.info('Verifying PyPI/Scancode integrity...')
-    #    scan_engine_instance = scancode_runner.ScanCodeRunner()
-    #    license_comparator_instance = LicenseComparator(
-    #        metadata_items,
-    #        scan_engine_instance
-    #    )
-
-     #   discrepancies, doubts = license_comparator_instance.compare_license_trees(
-     #       ignore_cache)
-     #   if discrepancies:
-     #       tree_analyzer.explain_discrepancies(discrepancies)
-     #   if doubts:
-     #       tree_analyzer.explain_doubts(doubts)
-     #   logger.info('Tree cross-check finished with %s errors and %s warnings.',
-     #               len(discrepancies), len(doubts))
+        return discrepancies, doubts
 
     def execute_command(self, command: str) -> None:
-        """Execute the given command."""
+        """Parse and execute a user command.
+
+        Supported commands:
+        - scan <package_name>: Run ScanCode analysis on the specified package
+        - quit: Exit the application
+
+        Args:
+            command: The full command string including arguments.
+
+        Returns:
+            None. Side effects include logging and potential application exit.
+        """
         cmd_parts = command.strip().split(" ", 1)
         cmd = cmd_parts[0].lower()
         print("cmd_parts:", cmd_parts)
@@ -327,7 +427,18 @@ class Controller:
             logger.error("Unknown command: %s", command)
 
     def is_valid_command(self, command: str) -> bool:
-        """Check if the given command is valid."""
+        """Validate command syntax and arguments.
+
+        Checks if the command is recognized and has the correct number and type
+        of arguments. For 'scan' commands, also verifies that the package exists
+        in the current analysis.
+
+        Args:
+            command: The full command string to validate.
+
+        Returns:
+            True if the command is valid and can be executed, False otherwise.
+        """
         cmd_parts = command.strip().split(" ", 1)
         if not cmd_parts or not cmd_parts[0]:
             return False
@@ -364,7 +475,15 @@ class Controller:
     # Da correggere i path della matrice e del file license_names.txt
     @classmethod
     def load_license_names(cls) -> list[str]:
-        """Load license names from matrix.json into class-level caches."""
+        """Load valid license names from the compatibility matrix.
+
+        Reads the matrix.json file, extracts all license names, and populates
+        class-level caches for efficient lookup. Updates the matrix from remote
+        sources before loading.
+
+        Returns:
+            Sorted list of all valid license names, or empty list if loading fails.
+        """
         lca = LicenseCompatibilityAnalyzer(path=MATRIX_PATH)
         lca.update_license_matrix()
         try:
@@ -383,11 +502,16 @@ class Controller:
 
     @classmethod
     def license_check(cls, license_str: str) -> bool:
-        """Check if the input license is valid (and non-empty).
+        """Validate whether a license name exists in the compatibility matrix.
 
-            license (str): The input license to validate.
+        Performs case-insensitive lookup against the loaded license database.
+        Automatically loads the license matrix on first use.
+
+        Args:
+            license_str: The license name to validate.
+
         Returns:
-            bool: True if the license is valid, False otherwise.
+            True if the license exists in the matrix, False otherwise or if empty.
         """
         if not license_str or not license_str.strip():
             return False

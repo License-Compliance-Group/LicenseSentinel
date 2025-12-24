@@ -77,9 +77,8 @@ class PackageMetadataFetcher:
         except OSError as exc:
             LOGGER.warning("Failed to save cache: %s", exc)
 
-    def build_package_metadata(self, file_path: Path,
-                               override_cache: bool = False)\
-            -> tuple[List[PyPIMetadata], dict[str, list[str]]]:
+    def build_package_metadata(self, file_path: Path, root_license: str = "N/A",
+                               override_cache: bool = False) -> tuple[List[PyPIMetadata], dict[str, list[str]]]:
         """Build package metadata from a requirements.txt file.
 
         This is the main orchestrator that:
@@ -133,11 +132,18 @@ class PackageMetadataFetcher:
             ))
             package_urls[pkg_name] = metadata["link"]
 
+        # Add root package (the project under analysis) metadata
+        self.packages_metadata.append(PyPIMetadata(
+            package="Root",
+            license_type=root_license,
+            link=None
+        ))
         LOGGER.info("Successfully fetched metadata for %d packages",
                     len(self.packages_metadata))
 
+        # TODO: Ripulire i commenti
         # Step 5: download sources (only for packages with valid repo links)
-        self.download_sources(package_urls, override_cache)
+        # self.download_sources(package_urls, override_cache)
 
         # Step 6: compare against scancode
         # This is a separate concern and has been moved to
@@ -175,13 +181,13 @@ class PackageMetadataFetcher:
             filtered_repo_urls = {pkg: url for pkg,
                                   url in package_urls.items() if url}
         else:
+            print(package_urls, "inner")
             filtered_repo_urls: Dict[str, str | None] = {}
             for pkg, url in package_urls.items():
                 zip_path = Path.joinpath(
                     Path(DOWNLOAD_DIRECTORY), f'{pkg}.zip')
                 LOGGER.debug('Looking for cached .zip at %s', zip_path)
-                if url \
-                        and not Path.exists(zip_path):
+                if url and not Path.exists(zip_path):
                     filtered_repo_urls[pkg] = url
                 else:
                     LOGGER.debug(
@@ -196,7 +202,14 @@ class PackageMetadataFetcher:
             for pkg, success in down_results.items():
                 LOGGER.info("Download %s: %s", pkg, success)
         else:
-            LOGGER.info("No valid repository links found, skipping downloads")
+            cached_count = sum(1 for pkg, url in package_urls.items()
+                               if url and Path.exists(Path.joinpath(Path(DOWNLOAD_DIRECTORY), f'{pkg}.zip')))
+            if cached_count > 0:
+                LOGGER.info(
+                    "%d packages already cached, skipping downloads", cached_count)
+            else:
+                LOGGER.info(
+                    "No valid repository links found, skipping downloads")
 
     def _deptree_handler(self, dependencies):
         """Private function. 

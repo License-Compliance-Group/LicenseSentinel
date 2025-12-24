@@ -158,7 +158,7 @@ class TreeAnalyzer:
                     # even if matrix has no self-entry
                     continue
                 notice = lca.compare_licenses(
-                    lic_parent, lic_dep)  # TODO DA INVERTIRE !!!
+                    lic_parent, lic_dep)  # TODO INVERT HERE FOR TESTING
 
                 if not notice or notice[0] != "Yes":
                     if notice[0] == 'Same':
