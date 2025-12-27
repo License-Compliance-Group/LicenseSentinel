@@ -285,68 +285,68 @@ class Controller:
         self.incompatible_edges = tree_analyzer.run_tree_compatibility_check(
             metadata_items, graph)
         # TODO: used for "testing", remove
-        self.incompatible_edges.extend([
-            (
-                "myapp",
-                "MIT",
-                "gnuplot",
-                "GPL-3.0-only",
-                (
-                    "No",
-                    "Software under a copyleft license such as the GPL-3.0-only license normally cannot be redistributed under a non-copyleft license such as the MIT license, except if it were explicitly permitted in the licenses."
-                )
-            ),
-            (
-                "backend-service",
-                "Apache-2.0",
-                "database-core",
-                "AGPL-3.0-only",
-                (
-                    "No",
-                    "Software under a copyleft license such as the AGPL-3.0-only license normally cannot be redistributed under a non-copyleft license such as the Apache-2.0 license, except if it were explicitly permitted in the licenses."
-                )
-            ),
-            (
-                "frontend-ui",
-                "BSD-3-Clause",
-                "auth-lib",
-                "LGPL-3.0-only",
-                (
-                    "No",
-                    "Software under a copyleft license such as the LGPL-3.0-only license normally cannot be redistributed under a non-copyleft license such as the BSD-3-Clause license, except if it were explicitly permitted in the licenses."
-                )
-            ),
-            (
-                "analytics",
-                "0BSD",
-                "report-engine",
-                "MPL-2.0",
-                (
-                    "No",
-                    "Software under a copyleft license such as the MPL-2.0 license normally cannot be redistributed under a non-copyleft license such as the 0BSD license, except if it were explicitly permitted in the licenses."
-                )
-            ),
-            (
-                "cli-tool",
-                "ISC",
-                "storage-layer",
-                "EPL-2.0",
-                (
-                    "No",
-                    "Software under a copyleft license such as the EPL-2.0 license normally cannot be redistributed under a non-copyleft license such as the ISC license, except if it were explicitly permitted in the licenses."
-                )
-            ),
-            (
-                "image-processor",
-                "Zlib",
-                "compression-engine",
-                "CDDL-1.1",
-                (
-                    "No",
-                    "Software under a copyleft license such as the CDDL-1.1 license normally cannot be redistributed under a non-copyleft license such as the Zlib license, except if it were explicitly permitted in the licenses."
-                )
-            ),
-        ])
+        # self.incompatible_edges.extend([
+        #    (
+        #        "myapp",
+        #        "MIT",
+        #        "gnuplot",
+        #        "GPL-3.0-only",
+        #        (
+        #            "No",
+        #            "Software under a copyleft license such as the GPL-3.0-only license normally cannot be redistributed under a non-copyleft license such as the MIT license, except if it were explicitly permitted in the licenses."
+        #        )
+        #    ),
+        #    (
+        #        "backend-service",
+        #        "Apache-2.0",
+        #        "database-core",
+        #        "AGPL-3.0-only",
+        #        (
+        #            "No",
+        #            "Software under a copyleft license such as the AGPL-3.0-only license normally cannot be redistributed under a non-copyleft license such as the Apache-2.0 license, except if it were explicitly permitted in the licenses."
+        #        )
+        #    ),
+        #    (
+        #        "frontend-ui",
+        #        "BSD-3-Clause",
+        #        "auth-lib",
+        #        "LGPL-3.0-only",
+        #        (
+        #            "No",
+        #            "Software under a copyleft license such as the LGPL-3.0-only license normally cannot be redistributed under a non-copyleft license such as the BSD-3-Clause license, except if it were explicitly permitted in the licenses."
+        #        )
+        #    ),
+        #    (
+        #        "analytics",
+        #        "0BSD",
+        #       "report-engine",
+        #        "MPL-2.0",
+        #        (
+        #            "No",
+        #            "Software under a copyleft license such as the MPL-2.0 license normally cannot be redistributed under a non-copyleft license such as the 0BSD license, except if it were explicitly permitted in the licenses."
+        #        )
+        #    ),
+        #    (
+        #        "cli-tool",
+        #        "ISC",
+        #        "storage-layer",
+        #        "EPL-2.0",
+        #        (
+        #            "No",
+        #            "Software under a copyleft license such as the EPL-2.0 license normally cannot be redistributed under a non-copyleft license such as the ISC license, except if it were explicitly permitted in the licenses."
+        #        )
+        #    ),
+        #    (
+        #        "image-processor",
+        #        "Zlib",
+        #        "compression-engine",
+        #        "CDDL-1.1",
+        #        (
+        #            "No",
+        #            "Software under a copyleft license such as the CDDL-1.1 license normally cannot be redistributed under a non-copyleft license such as the Zlib license, except if it were explicitly permitted in the licenses."
+        #        )
+        #    ),
+        # ])
 
         print("incompatible_edges"+str(self.incompatible_edges))
         return

@@ -4,27 +4,17 @@ import asyncio
 import logging
 import textwrap
 from pathlib import Path
-from enum import Enum, auto
 
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import (
-    Input,
-    Button,
-    Static,
-    Tree,
-    DataTable,
-    TabbedContent,
-    TabPane,
-    LoadingIndicator,
-    Log,
-    ListView,
-    ListItem
+    Input, Button, Static, Tree, DataTable, TabbedContent,
+    TabPane, LoadingIndicator, Log, ListView, ListItem
 )
 from textual import events, on
 from interface.controller import Controller
-from interface.ui_state import Stage, AnalysisState, SuggestionState
+from interface.ui_state import Stage, SuggestionState
 
 ERROR_PATH_PLACEHOLDER = "❌ Invalid path!"
 PATH_PLACEHOLDER = "📄 Insert the path to the requirements.txt file"
@@ -92,21 +82,6 @@ class TextualLogHandler(logging.Handler):
             print(f"[DEBUG] Exception in call_from_thread: {e}")
 
 
-# class Stage(Enum):
-#    """Application workflow stages.
-
-    # Represents the different phases of the license analysis workflow:
-    # - REQUIREMENTS: User enters path to requirements.txt file
-    # - LICENSE: User selects the main repository license
-    # - ANALYZING: Background analysis in progress
-    # - INTERACTIVE: Analysis complete, user can execute commands
-    # """
-    # REQUIREMENTS = auto()
-    # LICENSE = auto()
-    # ANALYZING = auto()
-    # INTERACTIVE = auto()
-
-
 class LicenseSentinelUI(App):
     """Main GUI application for license compatibility analysis.
 
@@ -114,28 +89,23 @@ class LicenseSentinelUI(App):
     analyzing Python package dependencies and their license compatibility. The
     application guides users through a multi-stage workflow: requirements input,
     license selection, dependency analysis, and interactive exploration.
-
-    Attributes:
-        controller: Backend controller managing analysis operations.
-        stage: Current workflow stage (REQUIREMENTS, LICENSE, ANALYZING, INTERACTIVE).
-        ui_tree: Tree widget displaying package dependency hierarchy.
-        spinner: Loading indicator for dependency tree analysis.
-        input_spinner: Loading indicator for input bar operations.
-        log_view: Log widget displaying analysis output and command results.
-        suggestions_list: ListView providing autocomplete suggestions.
-        filtered_suggestions: Current list of filtered suggestion items.
-        _path_input_has_error: Flag indicating input validation error state.
-        _setting_up_suggestions: Flag preventing suggestion updates during setup.
-        _suggestion_data: Mapping of ListItem IDs to suggestion values.
-        _last_highlighted_item: Reference to currently highlighted suggestion item.
     """
-    # THEME = "harlequin"
-    # self.theme = "tokyo-night"
+    # CSS
     CSS_PATH = "style.css"
+
+    # Widget IDs
+    ID_PATH_INPUT = "path"
+    ID_SEND_BUTTON = "send"
+    ID_TREE = "dependency-tree"
+    ID_SUGGESTIONS = "suggestions"
+
+    # Table IDs
+    ID_PYPI_TABLE = "pypi-info-table"
+    ID_INCOMPATIBILITIES_TABLE = "incompatibilities-table"
+    ID_SCANCODE_TABLE = "scancode-table"
 
     def __init__(self):
         """Initialize the LicenseSentinel UI application.
-
         Sets up the UI components, controller, logging system, and suggestion
         infrastructure. Initializes the application in REQUIREMENTS stage.
         """
@@ -147,7 +117,7 @@ class LicenseSentinelUI(App):
         self.suggestion_state = SuggestionState()
 
         # UI components
-        self.ui_tree = Tree(DEPENDENCY_TREE_TITLE, id="dependency-tree")
+        self.ui_tree = Tree(DEPENDENCY_TREE_TITLE, id=self.ID_TREE)
         self.spinner = LoadingIndicator(id="spinner", classes="hidden")
         self.input_spinner = LoadingIndicator(
             id="input-spinner", classes="hidden")
@@ -155,29 +125,28 @@ class LicenseSentinelUI(App):
 
         # Log widget for displaying build output
         self.log_view: Log | None = None
-        self._log_handler = None
+        # self._log_handler = None
 
         self._cleanup_all_loggers()
         self._setup_logging()
 
     def _pypi_table(self) -> DataTable:
         """Create and configure the PyPI metadata table.
-
         Returns:
             DataTable: Configured table with columns for package info, license, and source URL.
         """
-        table = DataTable(id="pypi-info-table")
+        table = DataTable(id=self.ID_PYPI_TABLE)
         table.add_columns("Package  ", "Declared License    ", "Source code")
 
         return table
 
     def _incompatibilities_table(self) -> DataTable:
         """Create and configure the license incompatibilities table.
-
         Returns:
-            DataTable: Configured table with columns for parent/child packages and compatibility explanations.
+            DataTable: Configured table with columns for parent/child packages
+            and compatibility explanations.
         """
-        table = DataTable(id="incompatibilities-table")
+        table = DataTable(id=self.ID_INCOMPATIBILITIES_TABLE)
         table.add_columns("Package parent",
                           "Package children", "Explanation")
 
@@ -185,17 +154,15 @@ class LicenseSentinelUI(App):
 
     def _scancode_table(self) -> DataTable:
         """Create and configure the ScanCode results table.
-
         Returns:
             DataTable: Configured table with columns for file paths and detected licenses.
         """
-        table = DataTable(id="scancode-table")
+        table = DataTable(id=self.ID_SCANCODE_TABLE)
         table.add_columns("File", "Detected Licenses")
         return table
 
     def compose(self) -> ComposeResult:
         """Compose the application layout and widgets.
-
         Yields:
             Widgets comprising the complete UI layout including input bar,
             dependency tree, PyPI metadata tables, and ScanCode results.
@@ -203,8 +170,8 @@ class LicenseSentinelUI(App):
         with Vertical(id="top-section", classes="top-section"):
             with Horizontal(classes="path-container"):
                 with Vertical(id="input-section", classes="input-section"):
-                    yield Input(placeholder=PATH_PLACEHOLDER, id="path", classes="path-input")
-                yield Button("Next ->", variant="primary", id="send", classes="analyze-button")
+                    yield Input(placeholder=PATH_PLACEHOLDER, id=self.ID_PATH_INPUT, classes="path-input")
+                yield Button("Next ->", variant="primary", id=self.ID_SEND_BUTTON, classes="analyze-button")
             yield self.input_spinner
 
         with Vertical(classes="main-container", id="main-container"):
@@ -214,7 +181,6 @@ class LicenseSentinelUI(App):
 
     def _compose_dependency_section(self) -> ComposeResult:
         """Compose the dependency tree section.
-
         Yields:
             Vertical container with tree widget and loading spinner.
         """
@@ -226,7 +192,6 @@ class LicenseSentinelUI(App):
 
     def _compose_right_column(self) -> ComposeResult:
         """Compose the right column with PyPI and ScanCode sections.
-
         Yields:
             Vertical container with PyPI metadata and ScanCode result sections.
         """
@@ -236,7 +201,6 @@ class LicenseSentinelUI(App):
 
     def _compose_pypi_section(self) -> ComposeResult:
         """Compose the PyPI metadata section with tabbed content.
-
         Yields:
             Vertical container with tabs for package info and incompatibilities.
         """
@@ -251,7 +215,6 @@ class LicenseSentinelUI(App):
 
     def _compose_scancode_section(self) -> ComposeResult:
         """Compose the ScanCode results section with tabbed content.
-
         Yields:
             Vertical container with tab for scan results.
         """
@@ -266,7 +229,7 @@ class LicenseSentinelUI(App):
 #                                 Event Handlers                                   #
 # =================================================================================#
 
-    @on(Button.Pressed, "#send")
+    @on(Button.Pressed, f"#{ID_SEND_BUTTON}")
     async def handle_check_button(self, event: Button.Pressed) -> None:
         """Handle the send/analyze/execute button press.
 
@@ -275,20 +238,20 @@ class LicenseSentinelUI(App):
         Args:
             event: Button press event from the send button.
         """
-        if event.button.id == "send":
-            input_widget = self.query_one("#path", Input)
+        if event.button.id == self.ID_SEND_BUTTON:
+            input_widget = self.query_one(f"#{self.ID_PATH_INPUT}", Input)
             await self.process_stage_input(input_widget.value.strip())
 
-    @on(Input.Submitted, "#path")
+    @on(Input.Submitted, f"#{ID_PATH_INPUT}")
     async def on_path_submitted(self) -> None:
         """Handle Enter key press in the input field.
 
         Delegates to process_stage_input with the current input value.
         """
-        input_widget = self.query_one("#path", Input)
+        input_widget = self.query_one(f"#{self.ID_PATH_INPUT}", Input)
         await self.process_stage_input(input_widget.value.strip())
 
-    @on(Input.Changed, "#path")
+    @on(Input.Changed, f"#{ID_PATH_INPUT}")
     async def on_path_input_changed(self, event: Input.Changed) -> None:
         """Handle input text changes.
 
@@ -318,18 +281,15 @@ class LicenseSentinelUI(App):
         """
         if not self._path_input_has_error:
             return
-
-        path_input = self.query_one("#path", Input)
+        path_input = self.query_one(f"#{self.ID_PATH_INPUT}", Input)
         path_container = self.query_one(".path-container", Horizontal)
-
         # If click landed on the input or on its container, don't clear yet
         if event.widget is path_input or event.widget is path_container:
             return
-
         # otherwise clear the error state
         self._set_input_error(False)
 
-    @on(ListView.Selected, "#suggestions")
+    @on(ListView.Selected, f"#{ID_SUGGESTIONS}")
     async def on_suggestion_selected(self, event: ListView.Selected) -> None:
         """Handle suggestion selection from the dropdown list.
 
@@ -367,13 +327,8 @@ class LicenseSentinelUI(App):
 
         self._update_pypi_table(label_str)
         self._update_incompatibilities_table(label_str)
-#
-    # INVECE DI FARE UN FOR E SEGNARE L'ULTIMO EVIDENZIATO
-    # VEDI SE ESISTE UNLIGHTED ITEM E RIMUOVI LA PROPRIETÀ CSS
-    # oppure per ogni elemento selezionato salvalo come previous
-    # e rimuovi la classe da quello vecchio
 
-    @on(ListView.Highlighted, "#suggestions")
+    @on(ListView.Highlighted, f"#{ID_SUGGESTIONS}")
     async def on_suggestion_highlighted(self, event: ListView.Highlighted) -> None:
         """Handle suggestion highlight changes for keyboard navigation.
 
@@ -386,13 +341,11 @@ class LicenseSentinelUI(App):
 
         if self.suggestion_state.suggestions_list is None:
             return
-
         # Remove highlight from previous item
         if self.suggestion_state.last_highlighted_item is not None:
             self.suggestion_state.last_highlighted_item.remove_class(
                 "--highlight")  # was a try
             self.suggestion_state.last_highlighted_item = None
-
         # Apply highlight to newly highlighted item
         item = getattr(event, "item", None)
         if item is not None:
@@ -414,13 +367,14 @@ class LicenseSentinelUI(App):
             event: Key press event.
         """
         # Only handle keys when suggestions overlay is visible
-        if self.suggestion_state.suggestions_list is None or self.suggestion_state.suggestions_list.has_class("hidden"):
+        if (self.suggestion_state.suggestions_list is None or
+                self.suggestion_state.suggestions_list.has_class("hidden")):
             return
 
         # Handle DOWN key from input to move focus to suggestions
         key = event.key.lower()
         if key in ("down", "arrow_down"):
-            input_widget = self.query_one("#path", Input)
+            input_widget = self.query_one(f"#{self.ID_PATH_INPUT}", Input)
             if input_widget.has_focus:
                 self.suggestion_state.suggestions_list.focus()
                 if hasattr(self.suggestion_state.suggestions_list, "index"):
@@ -432,34 +386,52 @@ class LicenseSentinelUI(App):
             return
         # If first item is highlighted and user presses UP, move focus back to input
         if key in ("up", "arrow_up"):
-            suggestion_widget = self.query_one("#suggestions", ListView)
+            suggestion_widget = self.query_one(
+                f"#{self.ID_SUGGESTIONS}", ListView)
             if suggestion_widget.has_focus and self.suggestion_state.suggestions_list.index == 0:
                 # Remove highlight from current (first) item
                 if self.suggestion_state.last_highlighted_item is not None:
                     self.suggestion_state.last_highlighted_item.remove_class(
                         "--highlight")
-                    input_widget = self.query_one("#path", Input)
+                    input_widget = self.query_one(
+                        f"#{self.ID_PATH_INPUT}", Input)
                     input_widget.focus()
         return
 
     @on(events.Key)
     async def console_enter_key(self, event: events.Key) -> None:
         """Handle Enter key during ANALYZING stage.
-
         Transitions from analysis log view to interactive command mode.
-
         Args:
             event: Key press event.
         """
         # Only act on Enter and when the log console is mounted/visible
         if event.key.lower() != "enter" or self.stage != Stage.ANALYZING or not self.log_view:
             return
-
         await self.process_stage_input("")
 
 # =================================================================================#
-#                                   Helpers                                        #
+#                                   State Handling                                 #
 # =================================================================================#
+
+    def _validate_stage_input(self, input_value: str) -> bool:
+        """Validate input based on current stage.
+
+        Returns:
+            bool: True if input is valid for the current stage, False otherwise.
+        """
+        match self.stage:
+            case Stage.REQUIREMENTS:
+                return Controller.path_check(input_value)
+            case Stage.LICENSE:
+                return Controller.license_check(input_value)
+            case Stage.ANALYZING:
+                return True  # no input expected during analysis
+            case Stage.INTERACTIVE:
+                return self.controller.is_valid_command(input_value)
+            case _:
+                raise RuntimeError(
+                    f"Invalid stage for input validation: {self.stage}")
 
     async def process_stage_input(self, input_value: str) -> None:
         """Process user input based on current workflow stage.
@@ -477,102 +449,62 @@ class LicenseSentinelUI(App):
             ValueError: If an unknown stage is encountered.
         """
 
+        result = self._validate_stage_input(input_value)
+        self._set_input_error(not result)
+        if not result:
+            return
         match self.stage:
             case Stage.REQUIREMENTS:
-                # disable logging for rendering
-                logging.disable(logging.CRITICAL)
-                if Controller.path_check(input_value):
-                    self.controller.requirements_path = input_value
-                    self.stage = Stage.LICENSE
-                    self.query_one(
-                        "#path", Input).placeholder = LICENSE_PLACEHOLDER
-                    self.query_one("#send", Button).label = "Analyze 📊"
-                    self.query_one("#path", Input).value = ""
-                    # clear error state
-                    self._set_input_error(False)
-                    await self._mount_suggestions()
-                else:
-                    self.stage = Stage.REQUIREMENTS
-                    self._set_input_error(True)
-                return
-
+                self.controller.requirements_path = input_value
+                await self._transition_to_license_stage()
             case Stage.LICENSE:
-                if Controller.license_check(input_value) and Controller.path_check(self.controller.requirements_path):
-                    self.controller.main_license = input_value  # assign canonical license
-                    self.stage = Stage.ANALYZING
-                    logging.disable(logging.NOTSET)  # re-enable logging
-                    await self._start_analysis(self.controller.requirements_path)
-                else:
-                    self.stage = Stage.LICENSE
-                    # invalid license
-                    self._set_input_error(True)
-                return
-
+                self.controller.main_license = input_value
+                await self._transition_to_analyzing_stage(self.controller.requirements_path)
             case Stage.ANALYZING:
-                # Carica il tree ottenuto da _start_analysis
-                root, graph = self.controller.get_graph()
-                self.update_dependency_tree(root, graph)
-                self._highlight_tree_incompatible_nodes()
-                # Smonta la vecchia interfaccia e passa alla INTERACTIVE
-                await self._unmount_log_console()
-                await self._mount_input_bar()
-                self.suggestion_state.setting_up = False
-                send_button = self.query_one("#send", Button)
-                input_widget = self.query_one("#path", Input)
-                input_widget.placeholder = COMMANDS_PLACEHOLDER
-                send_button.label = "Execute ▶"
-                input_widget.value = ""
-                self.stage = Stage.INTERACTIVE
-                return
-
+                await self._transition_to_interactive_stage()
             case Stage.INTERACTIVE:
-                if not self.controller.is_valid_command(input_value):
-                    self._set_input_error(True)
-                    return
                 await self._process_command_input(input_value)
-                return
-        raise ValueError(f"Unknown stage. Actual stage: {self.stage}")
+            case _:
+                raise ValueError(f"Unknown stage: {self.stage}")
 
-    # Da spostare nella classe di sopra
-    def _cleanup_all_loggers(self) -> None:
-        """Remove all handlers from root and child loggers.
+    async def _transition_to_license_stage(self) -> None:
+        """Configure UI for LICENSE selection stage."""
+        logging.disable(logging.CRITICAL)  # Disable logging during rendering
+        await self._mount_suggestions()
+        input_widget = self.query_one(f"#{self.ID_PATH_INPUT}", Input)
+        input_widget.placeholder = LICENSE_PLACEHOLDER
+        input_widget.value = ""
+        self.query_one(f"#{self.ID_SEND_BUTTON}", Button).label = "Analyze 📊"
+        self.stage = Stage.LICENSE
 
-        Prevents duplicate log messages by clearing existing handlers before
-        setting up the TextualLogHandler.
-        """
-        # Get root logger
-        root_logger = logging.getLogger()
-        for handler in root_logger.handlers[:]:
-            root_logger.removeHandler(handler)
+    async def _transition_to_analyzing_stage(self, requirements_path: str) -> None:
+        """Configure UI and start analysis for ANALYZING stage."""
+        logging.disable(logging.NOTSET)  # Re-enable logging for analysis
+        self.stage = Stage.ANALYZING
+        await self._start_analysis(requirements_path)
 
-        # Also clean up any child loggers that might have been created
-        for name in list(logging.Logger.manager.loggerDict.keys()):
-            logger = logging.getLogger(name)
-            for handler in logger.handlers[:]:
-                logger.removeHandler(handler)
+    async def _transition_to_interactive_stage(self) -> None:
+        """Configure UI for INTERACTIVE stage after analysis completion."""
+        root, graph = self.controller.get_graph()
+        if root is None or graph is None:
+            raise RuntimeError(
+                "Analysis did not produce a valid dependency graph.")
 
-    def _setup_logging(self) -> None:
-        """Configure logging to display in the UI Log widget.
+        self.update_dependency_tree(root, graph)
+        self._highlight_tree_incompatible_nodes()
+        await self._unmount_log_console()
+        await self._mount_input_bar()
 
-        Creates and registers a TextualLogHandler that forwards log messages
-        to the Log widget in a thread-safe manner.
-        """
-        if self._log_handler is not None:
-            return
+        self.suggestion_state.setting_up = False
+        input_widget = self.query_one(f"#{self.ID_PATH_INPUT}", Input)
+        input_widget.placeholder = COMMANDS_PLACEHOLDER
+        input_widget.value = ""
+        self.query_one(f"#{self.ID_SEND_BUTTON}", Button).label = "Execute ▶"
+        self.stage = Stage.INTERACTIVE
 
-        # Get the root logger
-        root_logger = logging.getLogger()
-
-        # Add only the Textual handler
-        handler = TextualLogHandler(lambda: self)
-        handler.setFormatter(logging.Formatter(
-            '%(asctime)s %(levelname)s [%(name)s]: %(message)s', datefmt='%H:%M:%S'))
-        handler.setLevel(logging.INFO)
-
-        root_logger.addHandler(handler)
-        root_logger.setLevel(logging.INFO)
-
-        self._log_handler = handler
+# =================================================================================#
+#                                   Helpers                                        #
+# =================================================================================#
 
     async def _process_command_input(self, command: str) -> None:
         """Execute a user command in INTERACTIVE stage.
@@ -590,6 +522,9 @@ class LicenseSentinelUI(App):
             raise RuntimeError(
                 "Cannot process commands when not in INTERACTIVE stage.")
 
+        if not self.controller.is_valid_command(command):
+            self._set_input_error(True)
+            return
         # Hide input bar and show spinner
         path_container = self.query_one(".path-container", Horizontal)
         path_container.add_class("hidden")
@@ -597,22 +532,16 @@ class LicenseSentinelUI(App):
 
         # Mount log console inside scancode tab if not already mounted
         if self.log_view is None:
-            await self._mount_scancode_log_console()
-
-        # Clear previous log content
-        if self.log_view is None:
-            raise RuntimeError("Log view is not mounted.")
-        self.log_view.clear()
-        self.log_view.write_line(f"⚙️ Executing command: {command}")
-
-        self.log_view.focus()
+            self._mount_scancode_log_console()
+        if self.log_view:
+            self.log_view.clear()
+            self.log_view.write_line(f"⚙️ Executing command: {command}")
+            self.log_view.focus()
         self.refresh()
 
         # Execute command (already async, no need for executor)
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self.controller.execute_command, command)
-
-        # Give time for logs to be processed from the queue
 
         # Hide spinner and show input bar again
         self.input_spinner.add_class("hidden")
@@ -623,7 +552,7 @@ class LicenseSentinelUI(App):
                 "\n✅ Command execution complete!")
 
         # Clear input
-        input_widget = self.query_one("#path", Input)
+        input_widget = self.query_one(f"#{self.ID_PATH_INPUT}", Input)
         input_widget.value = ""
         input_widget.focus()
 
@@ -636,15 +565,9 @@ class LicenseSentinelUI(App):
         Args:
             requirements_path: Path to requirements.txt file.
         """
-        input_widget = self.query_one("#path", Input)
 
         if not Controller.path_check(requirements_path) or self.stage != Stage.ANALYZING:
-            # show error state
-            # In realtà dovrebbe essere impossibile arrivarci metti un RISE
             raise RuntimeError("Invalid state or requirements path.")
-            # input_widget.value = ""
-            # self._set_input_error(True)
-            # return
 
         # clear any previous error state
         self._set_input_error(False)
@@ -670,9 +593,51 @@ class LicenseSentinelUI(App):
         if self.log_view:
             self.log_view.write_line(ANALYSIS_COMPLETE)
         self.refresh()
-        # Aggiorna il Tree nella GUI
-        # root, graph = self.controller.get_graph()
-        # self.update_dependency_tree(root, graph)
+
+    def _cleanup_all_loggers(self) -> None:
+        """Remove all handlers from root and child loggers.
+
+        Prevents duplicate log messages by clearing existing handlers before
+        setting up the TextualLogHandler.
+        """
+        # Get root logger
+        root_logger = logging.getLogger()
+        for handler in root_logger.handlers[:]:
+            root_logger.removeHandler(handler)
+
+        # Also clean up any child loggers that might have been created
+        for name in list(logging.Logger.manager.loggerDict.keys()):
+            logger = logging.getLogger(name)
+            for handler in logger.handlers[:]:
+                logger.removeHandler(handler)
+
+    def _setup_logging(self) -> None:
+        """Configure logging to display in the UI Log widget.
+
+        Creates and registers a TextualLogHandler that forwards log messages
+        to the Log widget in a thread-safe manner.
+        """
+        # if self._log_handler is not None:
+        #    return
+
+        # Get the root logger
+        root_logger = logging.getLogger()
+
+        # If a TextualLogHandler for this app is already registered, skip
+        for h in list(root_logger.handlers):
+            if isinstance(h, TextualLogHandler):
+                app_getter = getattr(h, "_app_getter", None)
+                if callable(app_getter) and app_getter() is self:
+                    return
+
+        # Add TextualLogHandler
+        handler = TextualLogHandler(lambda: self)
+        handler.setFormatter(logging.Formatter(
+            '%(asctime)s %(levelname)s [%(name)s]: %(message)s', datefmt='%H:%M:%S'))
+        handler.setLevel(logging.INFO)
+        root_logger.addHandler(handler)
+        root_logger.setLevel(logging.INFO)
+        # self._log_handler = handler
 
 # =================================================================================#
 #                                   View Updaters                                  #
@@ -687,7 +652,7 @@ class LicenseSentinelUI(App):
         Args:
             show_error: True to display error state, False to clear it.
         """
-        path_input = self.query_one("#path", Input)
+        path_input = self.query_one(f"#{self.ID_PATH_INPUT}", Input)
         path_container = self.query_one(".path-container", Horizontal)
 
         # Prepare placeholders according to the actual stage
@@ -787,10 +752,6 @@ class LicenseSentinelUI(App):
         """
         self.log_view = Log(classes="log-console")
         self.log_view.border_title = "Console log"
-        # self.log_view.styles.scrollbar_background = "#1e1e1e"
-        # self.log_view.styles.scrollbar_corner_color = "#1e1e1e"
-        # self.log_view.styles.scrollbar_color = "#cc8a36"
-        # self.log_view.styles.scrollbar_color_hover = "#d69a46"
         await self.mount(self.log_view, before=before_widget)
         self.log_view.write_line(ANALYSIS_STARTING)
 
@@ -810,17 +771,14 @@ class LicenseSentinelUI(App):
         self.log_view = None
         return
 
-    async def _mount_scancode_log_console(self) -> None:
-        """Create and mount command output console in ScanCode tab.
-
-        Adds a new Console tab to the ScanCode section for displaying
+    def _mount_scancode_log_console(self) -> None:
+        """Adds a new Console tab to the ScanCode section for displaying
         command execution output.
         """
         scancode_block = self.query_one(".scancode-block", Vertical)
         tabbed_content = scancode_block.query_one(TabbedContent)
         # Create log widget (reuse log_view)
         self.log_view = Log(classes="scancode-log", id="scancode-log")
-        # self.log_view.border_title = "Scan Console"
         # Mount inside a new TabPane
         tabbed_content.add_pane(TabPane("Console", self.log_view))
 
@@ -828,6 +786,7 @@ class LicenseSentinelUI(App):
 # =================================================================================#
 #                         Suggestions System                                       #
 # =================================================================================#
+
 
     async def _mount_input_bar(self) -> None:
         """Display input bar and initialize suggestion system.
@@ -857,7 +816,7 @@ class LicenseSentinelUI(App):
             return
 
         suggestions_widget = ListView(
-            id="suggestions", classes="suggestions-overlay hidden")
+            id=self.ID_SUGGESTIONS, classes="suggestions-overlay hidden")
         # Mount in the input section container, after the input
         input_section = self.query_one("#input-section", Vertical)
         await input_section.mount(suggestions_widget)
@@ -935,7 +894,7 @@ class LicenseSentinelUI(App):
         """
         if not value:
             return
-        input_widget = self.query_one("#path", Input)
+        input_widget = self.query_one(f"#{self.ID_PATH_INPUT}", Input)
         input_widget.value = value
         input_widget.cursor_position = len(value)
         input_widget.focus()
@@ -986,7 +945,7 @@ class LicenseSentinelUI(App):
             package_name: Name of package to display metadata for.
         """
 
-        table = self.query_one("#pypi-info-table", DataTable)
+        table = self.query_one(f"#{self.ID_PYPI_TABLE}", DataTable)
         table.clear()
         print(package_name, "selected")
         if not package_name:  # is None or package_name == "Dependencies":
@@ -1008,17 +967,14 @@ class LicenseSentinelUI(App):
         Args:
             package_name: Name of package to check for incompatibilities.
         """
-
-        table = self.query_one("#incompatibilities-table", DataTable)
+        table = self.query_one(
+            f"#{self.ID_INCOMPATIBILITIES_TABLE}", DataTable)
         table.clear()
-
         if not package_name:
             return
-
         incompatibilities = self.controller.get_incompatibilities(package_name)
         if not incompatibilities:
             return
-
         for parent, parent_license, child, child_license, compatibility_info in incompatibilities:
             parent_str = f"{parent} ({parent_license})" if parent and parent_license else parent or "N/A"
             child_str = f"{child} ({child_license})" if child and child_license else child or "N/A"
@@ -1029,8 +985,6 @@ class LicenseSentinelUI(App):
                 compatibility_info) > 1 else "N/A")
 
             # Build a styled cell with a label and wrapped text
-            # Highlight the parent node in the tree with full name including license
-
             badge_color = "green" if verdict.lower().startswith("yes") else "red"
             cell = Text()
             cell.append("Compatibility: ", style="bold ")
@@ -1042,6 +996,4 @@ class LicenseSentinelUI(App):
 
 if __name__ == "__main__":
     LicenseSentinelUI().run()
-
-
 #  C:\Users\Dabaduck\Desktop\LicensesChecker\requirements.txt
