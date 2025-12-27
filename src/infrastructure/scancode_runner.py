@@ -26,14 +26,14 @@ from pathlib import Path
 from entities.scan_engine import ScanEngine
 from infrastructure.logger_formatter import LoggerFormatter
 from infrastructure.connectivity import Connectivity as io
-import infrastructure.license_name_normalizer as normalizer
+import analyzer.license_name_normalizer as normalizer
 
 
 LOGGER = LoggerFormatter.initialize("scancode_runner", logging.INFO)
 
 SCANCOMMAND_ALL = [
     "scancode",
-     '-l',
+    '-l',
     '--include',
     'LICENSE',
     '--include',
@@ -45,9 +45,9 @@ SCANCOMMAND_ALL = [
     '--ignore',
     'LICENSE_*',
     '--max-depth',
-    '3', # Either a LICENSE file, or a LICENSE dir
+    '3',  # Either a LICENSE file, or a LICENSE dir
     '--license-score',
-    '80', # only take 100% certain picks for now
+    '80',  # only take 100% certain picks for now
     '--tallies',
     '--json-pp',
     '-'
@@ -71,7 +71,7 @@ class ScanCodeRunner(ScanEngine):
         defaults to False
         :return: Parsed JSON dict from ScanCode output, or None on failure.
         """
-        cache_dir = Path("src/data/scancode-results")
+        cache_dir = Path("/data/scancode-results")
         cache_path = cache_dir / f"{pkg}-scancode-result.json"
 
         # Check if cache exists
@@ -116,7 +116,8 @@ class ScanCodeRunner(ScanEngine):
                         json.dump(scan_results, f)
                     LOGGER.debug("Cached ScanCode results for %s", pkg)
                 except IOError as e:
-                    LOGGER.warning("Failed to save cached results for %s: %s", pkg, e)
+                    LOGGER.warning(
+                        "Failed to save cached results for %s: %s", pkg, e)
                 return scan_results
             except json.JSONDecodeError as e:
                 LOGGER.error(
@@ -148,8 +149,7 @@ class ScanCodeRunner(ScanEngine):
             LOGGER.error('This version of the analyzer requires the\
                 --tallies flag to be active. Enable it and try again.')
             return ("Unknown",)
-        tallies = full_output['tallies']\
-                    ['detected_license_expression']
+        tallies = full_output['tallies']['detected_license_expression']
         # attach the most popular license (which should be the only one
         # but you never know)
         if not tallies:
@@ -164,7 +164,7 @@ class ScanCodeRunner(ScanEngine):
         license_names = []
         for tally in tallies:
             license_name = tally['value']
-            LOGGER.debug("%s : %s",pkg, license_name)
+            LOGGER.debug("%s : %s", pkg, license_name)
             if license_name is not None:
                 # tallies containing 'AND' mean multiple licenses
                 # a project depending on such solution has to be
@@ -177,17 +177,18 @@ class ScanCodeRunner(ScanEngine):
         return tuple(map(
             normalizer.normalize,
             set(license_names)
-            ))
+        ))
 
 
 def main() -> None:
     """Example main to demonstrate usage (adjust path before running)."""
     example_path = Path(
-        "src/tmpvenv/repo_downloads/parse.zip")
+        "/tmpvenv/repo_downloads/parse.zip")
     engine = ScanCodeRunner()
-    licenses = engine.scan_for_license(example_path,'parse',True)
+    licenses = engine.scan_for_license(example_path, 'parse', True)
     for lic in licenses:
         print(lic)
+
 
 if __name__ == "__main__":
     main()

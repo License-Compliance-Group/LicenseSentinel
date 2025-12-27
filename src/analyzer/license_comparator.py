@@ -5,17 +5,18 @@ from pathlib import Path
 from entities.scan_engine import ScanEngine
 from entities.abstract_license_comparator import AbstractLicenseComparator
 from infrastructure.logger_formatter import LoggerFormatter
-from infrastructure import license_name_normalizer as normalizer
+from analyzer import license_name_normalizer as normalizer
 
 logger = LoggerFormatter.initialize(__name__,
-LoggerFormatter.DEBUG)
+                                    LoggerFormatter.DEBUG)
+
 
 class LicenseComparator(AbstractLicenseComparator):
     """The license comparator class definition.
     Does not raise."""
+
     def __init__(self, tree_a, scan_engine: ScanEngine,
-                 download_dir = \
-                 Path.joinpath(Path.cwd(), 'src', 'tmpvenv','repo_downloads')):
+                 download_dir=Path.joinpath(Path.cwd(), 'tmpvenv', 'repo_downloads')):
         """_summary_
 
         Args:
@@ -58,35 +59,35 @@ class LicenseComparator(AbstractLicenseComparator):
         for name, pypi_name in self.tree_a.items():
             if not name in self.tree_b:
                 discrepancies.append(f'Package {name} missing from '
-            'either tree')
+                                     'either tree')
                 continue
             scan_names = self.tree_b[name]
             if len(scan_names) > 1:
                 logger.debug('More than one license declared for %s'
-                    'in alternative tree, proceeding with caution.', name)
+                             'in alternative tree, proceeding with caution.', name)
                 if pypi_name in scan_names:
                     doubts.append((name, pypi_name, scan_names))
                     continue
                 discrepancies.append((name, pypi_name, scan_names))
                 continue
             if pypi_name == 'Unknown'\
-                or scan_names[0] == 'Unknown':
+                    or scan_names[0] == 'Unknown':
                 doubts.append((name, pypi_name, scan_names[0]))
                 continue
             if pypi_name != scan_names[0]:
                 # Handle 'WITH' exceptions
                 if pypi_name.lower() \
-                in scan_names[0].lower().split('with')[0]:
+                        in scan_names[0].lower().split('with')[0]:
                     logger.warning('Dubious entry: %s - %s/%s',
-                                name,
-                                pypi_name,
-                                scan_names[0])
+                                   name,
+                                   pypi_name,
+                                   scan_names[0])
                     doubts.append(name, pypi_name, scan_names[0])
                 else:
                     logger.warning('Incompatible entry: %s - %s/%s',
-                                name,
-                                pypi_name,
-                                scan_names[0])
+                                   name,
+                                   pypi_name,
+                                   scan_names[0])
                     discrepancies.append((name, pypi_name, (scan_names[0],)))
         return discrepancies, doubts
 
@@ -101,14 +102,14 @@ class LicenseComparator(AbstractLicenseComparator):
         tree_b = {}
         for pkg_name in self.tree_a:
             tree_b[pkg_name] = \
-            self.scan_engine.scan_for_license(
+                self.scan_engine.scan_for_license(
                 Path.joinpath(self.download_dir, pkg_name + '.zip'),
                 pkg_name,
                 override_cache
-                )
+            )
         # 6.2. do the actual comparison
         if not tree_b:
             logger.error('Scanning engine met a problem and was unable '
-                        'to determine licenses, skipping cross-check.')
+                         'to determine licenses, skipping cross-check.')
             return None
         return tree_b
