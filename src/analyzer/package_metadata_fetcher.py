@@ -78,7 +78,7 @@ class PackageMetadataFetcher:
             LOGGER.warning("Failed to save cache: %s", exc)
 
     def build_package_metadata(self, file_path: Path, root_license: str = "N/A",
-                               override_cache: bool = False) -> tuple[List[PyPIMetadata], dict[str, list[str]]]:
+                               override_cache: bool = True) -> tuple[List[PyPIMetadata], dict[str, list[str]]]:
         """Build package metadata from a requirements.txt file.
 
         This is the main orchestrator that:
@@ -103,7 +103,8 @@ class PackageMetadataFetcher:
         # Step 1: Parse requirements file
         self.dependencies = self._parse_requirements_file(file_path)
         if not self.dependencies:
-            return [], {}
+            raise RuntimeError(
+                "No dependencies found - check requirements.txt file")
 
         # Step 2: Build dependency tree
         # (single pass - no intermediate function)
@@ -238,7 +239,15 @@ class PackageMetadataFetcher:
             all_packages.update(deps)
 
         self.graph = graph
+        # HACK: add root dependencies and remove pipdeptree entry if present
+        # This should be handled by dep_builder, but for now we do it here
         self.graph["Root"] = self.dependencies
+        # Used by pipdeptree internally, remove from graph
+        # If used by other packages well...
+        self.graph.pop("pipdeptree", None)
+        self.graph.pop("setuptools", None)
+        self.graph.pop("packaging", None)
+
         return graph, all_packages
 
     def _load_pypi_metadata(self, packages, override_cache=False):
