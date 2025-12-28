@@ -157,10 +157,10 @@ class LicenseSentinelUI(App):
     def _scancode_table(self) -> DataTable:
         """Create and configure the ScanCode results table.
         Returns:
-            DataTable: Configured table with columns for package name, discrepancies, and doubts.
+            DataTable: Configured table with columns for package name, PyPI license, and detected licenses.
         """
         table = DataTable(id=self.ID_SCANCODE_TABLE)
-        table.add_columns("Package Name", "Discrepancies", "Doubts")
+        table.add_columns("Package Name", "PyPI License", "Detected Licenses")
         return table
 
     def compose(self) -> ComposeResult:
@@ -743,8 +743,13 @@ class LicenseSentinelUI(App):
         root.remove_children()
 
         def add_nodes(parent, pkg):
-            for dep in graph.get(pkg, []):
-                add_nodes(parent.add(dep), dep)
+            deps = graph.get(pkg, [])
+            for dep in deps:
+                # Check if this dependency has children
+                has_children = len(graph.get(dep, [])) > 0
+                # Add node with allow_expand based on whether it has children
+                child_node = parent.add(dep, allow_expand=has_children)
+                add_nodes(child_node, dep)
 
         add_nodes(root, root_pkg)
         root.expand_all()
@@ -836,6 +841,7 @@ class LicenseSentinelUI(App):
 # =================================================================================#
 #                         Suggestions System                                       #
 # =================================================================================#
+
 
     async def _mount_input_bar(self) -> None:
         """Display input bar and initialize suggestion system.
@@ -1070,34 +1076,74 @@ class LicenseSentinelUI(App):
         doubts = result.data.get("doubts", [])
         print("discrepancies:"+str(discrepancies))
         print("doubts:"+str(doubts))
-        # (' packaging' , 'apache—2.O' ,' , 'apache—2. ' ))
+
+        # Format: [(pkg_name, pypi_license, detected_licenses), ...]
         if package_name.lower() == "all":
-            # Display all packages with their discrepancies and doubts
-            # discrepancies and doubts are lists of package names
-            all_packages = set(discrepancies) | set(doubts)
+            # Combine all discrepancies and doubts
+            all_results = {}
 
-            if all_packages:
-                for pkg in sorted(all_packages):
-                    # Check if package has discrepancies or doubts
-                    has_discrepancy = "Yes" if pkg in discrepancies else "No"
-                    has_doubt = "Yes" if pkg in doubts else "No"
+            # Process discrepancies
+            for item in discrepancies:
+                pkg, pypi_lic, detected = item
+                all_results[pkg] = (pypi_lic, detected)
 
-                    table.add_row(pkg, has_discrepancy, has_doubt, height=None)
+            # Process doubts (may override or add to existing)
+            for item in doubts:
+                pkg, pypi_lic, detected = item
+                if pkg not in all_results:
+                    all_results[pkg] = (pypi_lic, detected)
+
+            if all_results:
+                for pkg in sorted(all_results.keys()):
+                    pypi_lic, detected = all_results[pkg]
+                    # Format detected licenses
+                    if isinstance(detected, tuple):
+                        detected_str = ", ".join(detected)
+                    elif detected == "Unknown":
+                        detected_str = "Unknown"
+                    else:
+                        detected_str = str(detected)
+
+                    table.add_row(pkg, pypi_lic, detected_str, height=None)
             else:
                 # No packages with issues
                 table.add_row(
                     "All Packages",
-                    "No discrepancies",
-                    "No doubts"
+                    "No issues found",
+                    "N/A"
                 )
         else:
             # Display single package results
+            found = False
 
-            has_discrepancy = "Yes" if package_name in discrepancies else "No discrepancies found"
-            has_doubt = "Yes" if package_name in doubts else "No doubts found"
+            # Check in discrepancies first
+            for item in discrepancies:
+                pkg, pypi_lic, detected = item
+                if pkg == package_name:
+                    detected_str = ", ".join(detected) if isinstance(
+                        detected, tuple) else str(detected)
+                    table.add_row(pkg, pypi_lic, detected_str, height=None)
+                    found = True
+                    break
 
-            table.add_row(package_name, has_discrepancy,
-                          has_doubt, height=None)
+            # Check in doubts if not found
+            if not found:
+                for item in doubts:
+                    pkg, pypi_lic, detected = item
+                    if pkg == package_name:
+                        if isinstance(detected, tuple):
+                            detected_str = ", ".join(detected)
+                        elif detected == "Unknown":
+                            detected_str = "Unknown"
+                        else:
+                            detected_str = str(detected)
+                        table.add_row(pkg, pypi_lic, detected_str, height=None)
+                        found = True
+                        break
+
+            if not found:
+                table.add_row(package_name, "N/A",
+                              "No scan results", height=None)
 
 
 if __name__ == "__main__":

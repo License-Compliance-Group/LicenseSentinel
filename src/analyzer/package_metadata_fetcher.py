@@ -112,7 +112,8 @@ class PackageMetadataFetcher:
         LOGGER.info("Building dependency tree for %d root packages",
                     len(self.dependencies))
         try:
-            graph, all_packages = self._deptree_handler(self.dependencies)
+            self.graph, all_packages = self._deptree_handler(self.dependencies)
+
             LOGGER.info("Discovered %d total packages", len(all_packages))
         except RuntimeError as exc:
             LOGGER.error("Failed to build dependency tree: %s", exc)
@@ -139,6 +140,7 @@ class PackageMetadataFetcher:
             license_type=root_license,
             link=None
         ))
+        self.graph["Root"] = self.dependencies
         LOGGER.info("Successfully fetched metadata for %d packages",
                     len(self.packages_metadata))
 
@@ -164,7 +166,7 @@ class PackageMetadataFetcher:
         # Possibly let the option "scan all packages" be a separate button that the user
         # can press if he wants to scan everything at once.
 
-        return self.packages_metadata, graph
+        return copy.deepcopy(self.packages_metadata), copy.deepcopy(self.graph)
 
     def download_sources(self, package_urls: Dict[str, str | None], override_cache=False):
         """Private function. Downloads package sources from given URLs,
@@ -238,15 +240,15 @@ class PackageMetadataFetcher:
         for deps in graph.values():
             all_packages.update(deps)
 
-        self.graph = graph
+        # self.graph = graph
         # HACK: add root dependencies and remove pipdeptree entry if present
         # This should be handled by dep_builder, but for now we do it here
-        self.graph["Root"] = self.dependencies
+        # self.graph["Root"] = self.dependencies
         # Used by pipdeptree internally, remove from graph
         # If used by other packages well...
-        self.graph.pop("pipdeptree", None)
-        self.graph.pop("setuptools", None)
-        self.graph.pop("packaging", None)
+        # self.graph.pop("pipdeptree", None)
+        # self.graph.pop("setuptools", None)
+        # self.graph.pop("packaging", None)
 
         return graph, all_packages
 
