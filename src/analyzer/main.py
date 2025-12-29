@@ -57,7 +57,7 @@ def main() -> None:
     metadata_items, graph = package_metadata_fetcher_instance\
         .build_package_metadata(
             file_path,
-            ignore_cache
+            # ignore_cache
         )
 
     if not metadata_items:
