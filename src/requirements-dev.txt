@@ -4,3 +4,4 @@ pylint
 requests
 behave
 textual
+coverage
