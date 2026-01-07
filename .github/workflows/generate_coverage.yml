@@ -5,12 +5,17 @@ name: Create coverage
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: [ "main", "develop", "automate-coverage-testing"]
   pull_request:
     branches: [ "main", "develop" ]
 
 jobs:
+  setup-venv:
+    uses: ./.github/workflows/setup-venv.yml
+    with:
+      python-version: ${{ matrix.python-version }}
   build:
+    needs: setup-venv
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -18,20 +23,6 @@ jobs:
         python-version: ["3.11", "3.12"]
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/cache@v4
-      id: cache-venv  # name for referring later
-      with:
-        path: ./.venv/  # what we cache: the virtualenv
-        # The cache key depends on requirements.txt
-        key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements*.txt') }}
-        restore-keys: ${{ runner.os }}-venv-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install venv on cache miss
-      run: python src/scripts/venv_setup.py --recreate
-      if: steps.cache-venv.outputs.cache-hit != 'true'
     - name: Measure coverage with coverage
       run: |
         . ./.venv/bin/activate && coverage run -m unittest discover

@@ -3,25 +3,18 @@ name: Pylint
 on: [push]
 
 jobs:
-
+  setup-venv:
+    uses: ./.github/workflows/setup-venv.yml
+    with:
+      python-version: ${{ matrix.python-version }}
   build:
+    needs: setup-venv
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/cache@v4
-      id: cache-venv  # name for referring later
-      with:
-        path: ./.venv/  # what we cache: the virtualenv
-        # The cache key depends on requirements.txt
-        key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements*.txt') }}
-        restore-keys: ${{ runner.os }}-venv-
-        # Build a virtualenv, but only if it doesn't already exist
-    - name: Setup venv on cache miss
-      run: python src/scripts/venv_setup.py --recreate
-      if: steps.cache-venv.outputs.cache-hit != 'true'
     - name: Analysing the code with pylint
       run: |
         . ./.venv/bin/activate && pylint src --source-roots=.
