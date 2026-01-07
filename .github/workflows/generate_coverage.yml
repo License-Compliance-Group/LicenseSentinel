@@ -31,7 +31,8 @@ jobs:
         key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements*.txt') }}
         restore-keys: ${{ runner.os }}-venv-
         # Build a virtualenv, but only if it doesn't already exist
-      run: python -m venv ./.venv && . ./.venv/bin/activate && pip install -r requirements.txt
+    - name: Install venv on cache miss
+      run: python -m ./src/scripts/venv_setup.py
       if: steps.cache-venv.outputs.cache-hit != 'true'
     - name: Measure coverage with coverage
       run: |
