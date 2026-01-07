@@ -1,14 +1,4 @@
-# Librerie principali
-requests==2.31.0        
-numpy>=1.24.0           # Per calcoli numerici, almeno versione 1.24.0
-pandas<=2.1.0           # Per la gestione di dati tabulari
-
-# Librerie opzionali
-matplotlib              # Per creare grafici
-scikit-learn==1.3.0     # Libreria di machine learning
-flask
-textual>=6.3.0          # TUI
-
-# Dev libs
 pylint 
 unittest
+requests
+behave
