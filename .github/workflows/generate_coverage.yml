@@ -10,10 +10,10 @@ on:
     branches: [ "main", "develop" ]
 
 jobs:
+  strategy:
+    matrix:
+      python-version: ["3.11", "3.12"]
   setup-venv:
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12"]
     uses: ./.github/workflows/setup_venv.yml
     with:
       python-version: ${{ matrix.python-version }}
