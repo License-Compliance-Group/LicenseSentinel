@@ -25,6 +25,10 @@ jobs:
     - name: Install venv on cache miss
       run: python src/scripts/venv_setup.py --recreate
       if: steps.cache-venv.outputs.cache-hit != 'true'
+    - name: Ensure a venv exists
+      # This will do nothing if venv has just been recreated.
+      run: python src/scripts/venv_setup.py
+      if: steps.cache-venv.outputs.cache-hit == 'true'
     - name: Upload venv artifact
       uses: actions/upload-artifact@v4
       with:
