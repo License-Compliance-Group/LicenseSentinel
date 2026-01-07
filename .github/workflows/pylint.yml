@@ -8,7 +8,7 @@ jobs:
     with:
       python-version: ${{ matrix.python-version }}
   build:
-    needs: setup-venv
+    needs: cache-venv
     runs-on: ubuntu-latest
     strategy:
       matrix:

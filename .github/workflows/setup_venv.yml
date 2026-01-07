@@ -15,9 +15,9 @@ jobs:
     - uses: actions/cache@v4
       id: cache-venv
       with:
-        path: ./.venv/
+        path: |
+          ./.venv/
         key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements*.txt') }}
-        restore-keys: ${{ runner.os }}-venv-
     - name: Set up Python ${{ inputs.python-version }}
       uses: actions/setup-python@v3
       with:
