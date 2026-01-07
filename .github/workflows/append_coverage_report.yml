@@ -15,7 +15,7 @@ jobs:
         # run if both: a report was generated AND the report file exists
         if: ${{ (github.event.workflow_run.conclusion == 'success') && (hashFiles('test/reports/coverage.xml') != '')}}
         steps:
-          - name:  'Append report'
+          - name: 'Append report'
             uses: orgoro/coverage@v3.2
             with:
                 coverageFile: test/reports/coverage.xml
