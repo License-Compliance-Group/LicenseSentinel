@@ -3,6 +3,7 @@ name: Pylint
 on: [push]
 
 jobs:
+
   build:
     runs-on: ubuntu-latest
     strategy:
@@ -15,10 +16,7 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pylint
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      uses: ./.github/workflows/cache_dependencies.yml
     - name: Analysing the code with pylint
       run: |
-        pylint src --source-roots=.
+        . ./.venv/bin/activate && pylint src --source-roots=.
