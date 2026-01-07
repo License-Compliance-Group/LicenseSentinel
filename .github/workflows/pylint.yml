@@ -1,18 +1,24 @@
 name: Pylint
 
+env:
+  PYTHON_VERSIONS: '["3.11", "3.12"]'
+
 on: [push]
 
 jobs:
-  strategy:
-      matrix:
-        python-version: ["3.11", "3.12"]
   setup-venv:
+    strategy:
+      matrix:
+        python-version: ${{ fromJSON(env.PYTHON_VERSIONS) }}
     uses: ./.github/workflows/setup_venv.yml
     with:
       python-version: ${{ matrix.python-version }}
   build:
     needs: setup-venv
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ${{ fromJSON(env.PYTHON_VERSIONS) }}
     steps:
     - uses: actions/checkout@v4
     - uses: actions/download-artifact@v4

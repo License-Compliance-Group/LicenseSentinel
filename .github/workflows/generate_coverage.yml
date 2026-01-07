@@ -1,7 +1,10 @@
 # This workflow will install Python dependencies, run unit tests and create a coverage report
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: Create coverage 
+name: Create coverage
+
+env:
+  PYTHON_VERSIONS: '["3.11", "3.12"]'
 
 on:
   push:
@@ -10,10 +13,10 @@ on:
     branches: [ "main", "develop" ]
 
 jobs:
-  strategy:
-    matrix:
-      python-version: ["3.11", "3.12"]
   setup-venv:
+    strategy:
+      matrix:
+        python-version: ${{ fromJSON(env.PYTHON_VERSIONS) }}
     uses: ./.github/workflows/setup_venv.yml
     with:
       python-version: ${{ matrix.python-version }}
@@ -22,6 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      matrix:
+        python-version: ${{ fromJSON(env.PYTHON_VERSIONS) }}
     steps:
     - uses: actions/checkout@v4
     - uses: actions/download-artifact@v4

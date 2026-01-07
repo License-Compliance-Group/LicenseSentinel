@@ -1,5 +1,8 @@
 name: Setup venv with cache
 
+env:
+  PYTHON_VERSIONS: '["3.11", "3.12"]'
+
 on:
   workflow_call:
     inputs:
