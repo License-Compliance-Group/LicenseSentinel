@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ${{ fromJSON(vars.PYTHON_VERSIONS) }}
+        python-version: ${{ fromJSON(env.PYTHON_VERSIONS) }}
     steps:
     - uses: actions/checkout@v4
     - uses: actions/cache@v4
