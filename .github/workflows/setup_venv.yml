@@ -33,4 +33,6 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: venv-${{ inputs.python-version }}
-        path: ~/.venv/**
+        path: ./.venv/
+        include-hidden-files: 'true'
+        overwrite: 'true'
