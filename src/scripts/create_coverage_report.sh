@@ -15,9 +15,13 @@ echo "Working in folder $cwd"
 branch=$(git branch --show-current)
 echo "Working on branch $branch"
 
+echo "Removing outdated results..."
+coverage erase
+
 echo "Executing tests..."
-coverage run $omit -m pytest
+coverage run $omit --m pytest
 echo "Generating coverage report..."
+mkdir -p test/reports
 if [ ! -d "test/reports" ]; then
     echo "Target directory does not exist, is the project root correct?"
     exit 1

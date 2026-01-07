@@ -14,8 +14,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import requests
 from requests.exceptions import RequestException
 
-from entities.package_manager_fetcher import AbstractPackageManagerFetcher
-from infrastructure.logger_formatter import LoggerFormatter
+from src.entities.package_manager_fetcher import AbstractPackageManagerFetcher
+from src.infrastructure.logger_formatter import LoggerFormatter
 
 LOGGER = LoggerFormatter.initialize("pypi_client", logging.INFO)
 

@@ -48,9 +48,6 @@ class TestFullCompatibilityCalc(unittest.TestCase):
                                                             'gpl-3.0-only'])
         self.assertEqual(result[0], "No")
 
-import unittest
-from src.analyzer.license_compatibility_analyzer import LicenseCompatibilityAnalyzer
-
 class TestLicenseCompatibilityAnalyzerClass(unittest.TestCase):
     """Unit tests for LicenseCompatibilityAnalyzer class."""
 

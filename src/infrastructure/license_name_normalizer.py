@@ -13,6 +13,8 @@ def normalize(name: str) -> str | None:
             identifier, or None if not recognized.  
 
     """
+    if name is None:
+        return ''
     key = name.strip().lower()
     mapping = {
         # GPL Family

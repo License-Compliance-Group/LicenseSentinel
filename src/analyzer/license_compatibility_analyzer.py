@@ -9,8 +9,8 @@ from abc import abstractmethod, ABC
 from datetime import datetime
 from time import time
 
-from infrastructure.connectivity import Connectivity as io
-from infrastructure.logger_formatter import LoggerFormatter
+from src.infrastructure.connectivity import Connectivity as io
+from src.infrastructure.logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__,
 LoggerFormatter.INFO)
 class CompatibilityCalcStrategy(ABC): # pylint: disable=too-few-public-methods
