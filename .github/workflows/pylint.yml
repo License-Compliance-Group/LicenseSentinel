@@ -10,6 +10,7 @@ jobs:
       matrix:
         python-version: ["3.11", "3.12"]
     steps:
+    - uses: actions/checkout@v4
     - uses: actions/cache@v4
       id: cache-venv  # name for referring later
       with:
@@ -19,7 +20,6 @@ jobs:
         restore-keys: ${{ runner.os }}-venv-
         # Build a virtualenv, but only if it doesn't already exist
     - name: Setup venv on cache miss
-      uses: actions/checkout@v4
       run: python -m $(pwd)/src/scripts/venv_setup.py
       if: steps.cache-venv.outputs.cache-hit != 'true'
     - name: Analysing the code with pylint
