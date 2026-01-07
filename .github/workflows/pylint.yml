@@ -20,7 +20,7 @@ jobs:
         restore-keys: ${{ runner.os }}-venv-
         # Build a virtualenv, but only if it doesn't already exist
     - name: Setup venv on cache miss
-      run: python src/scripts/venv_setup.py
+      run: python src/scripts/venv_setup.py --recreate
       if: steps.cache-venv.outputs.cache-hit != 'true'
     - name: Analysing the code with pylint
       run: |
