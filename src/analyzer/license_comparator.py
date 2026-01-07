@@ -82,7 +82,7 @@ class LicenseComparator(AbstractLicenseComparator):
                                    name,
                                    pypi_name,
                                    scan_names[0])
-                    doubts.append(name, pypi_name, scan_names[0])
+                    doubts.append((name, pypi_name, scan_names[0]))
                 else:
                     logger.warning('Incompatible entry: %s - %s/%s',
                                    name,
