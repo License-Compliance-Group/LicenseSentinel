@@ -43,6 +43,14 @@ class LicenseSentinelUI(App):
         self.spinner = LoadingIndicator(
             id="spinner", classes="hidden")
     def compose(self) -> ComposeResult:
+        """The base composable method of the program.
+
+        Returns:
+            ComposeResult: The result of the composition.
+
+        Yields:
+            Iterator[ComposeResult]: Async intermediate composition results
+        """
         with Horizontal(classes="urlbar"):
             yield Input(placeholder="Inserisci un package PyPI "\
                 "(es: flask)", id="url", classes="url-input")
