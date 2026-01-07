@@ -10,8 +10,7 @@ jobs:
       matrix:
         python-version: ["3.11", "3.12"]
     steps:
-    - name: Handle dependency caching
-      uses: actions/cache@v2
+    - uses: actions/cache@v4
       id: cache-venv  # name for referring later
       with:
         path: ./.venv/  # what we cache: the virtualenv

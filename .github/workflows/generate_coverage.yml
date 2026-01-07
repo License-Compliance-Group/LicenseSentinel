@@ -18,18 +18,19 @@ jobs:
       matrix:
         python-version: ["3.11", "3.12"]
     steps:
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Handle dependency caching
-      uses: actions/cache@v2
+    - uses: actions/cache@v4
       id: cache-venv  # name for referring later
       with:
         path: ./.venv/  # what we cache: the virtualenv
         # The cache key depends on requirements.txt
         key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements*.txt') }}
         restore-keys: ${{ runner.os }}-venv-
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Handle dependency caching
+      
         # Build a virtualenv, but only if it doesn't already exist
     - name: Install venv on cache miss
       run: python -m ./src/scripts/venv_setup.py
