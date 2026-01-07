@@ -30,7 +30,7 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install venv on cache miss
-      run: python -m $(pwd)/src/scripts/venv_setup.py
+      run: python src/scripts/venv_setup.py
       if: steps.cache-venv.outputs.cache-hit != 'true'
     - name: Measure coverage with coverage
       run: |
