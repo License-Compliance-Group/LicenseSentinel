@@ -4,15 +4,15 @@ on: [push]
 
 jobs:
   setup-venv:
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
     uses: ./.github/workflows/setup_venv.yml
     with:
       python-version: ${{ matrix.python-version }}
   build:
     needs: setup-venv
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12"]
     steps:
     - uses: actions/checkout@v4
     - uses: actions/download-artifact@v4
