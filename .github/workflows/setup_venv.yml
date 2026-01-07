@@ -25,3 +25,8 @@ jobs:
     - name: Install venv on cache miss
       run: python src/scripts/venv_setup.py --recreate
       if: steps.cache-venv.outputs.cache-hit != 'true'
+    - name: Upload venv artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: venv-${{ inputs.python-version }}
+        path: ./.venv/

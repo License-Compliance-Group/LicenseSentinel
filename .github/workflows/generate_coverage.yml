@@ -15,7 +15,7 @@ jobs:
     with:
       python-version: ${{ matrix.python-version }}
   build:
-    needs: cache-venv
+    needs: setup-venv
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -23,6 +23,10 @@ jobs:
         python-version: ["3.11", "3.12"]
     steps:
     - uses: actions/checkout@v4
+    - uses: actions/download-artifact@v4
+      with:
+        name: venv-${{ matrix.python-version }}
+        path: ./.venv/
     - name: Measure coverage with coverage
       run: |
         . ./.venv/bin/activate
