@@ -1,66 +1,66 @@
 import logging
-import pytest
+import unittest
 from src.infrastructure.logger_formatter import LoggerFormatter
 
 
-class TestLoggerFormatterClass():
+class TestLoggerFormatterClass(unittest.TestCase):
     """Unit tests for LoggerFormatter class."""
+
     def test_formatter_builds(self):
         """Ensure default config of LoggerFormatter works."""
         formatter = LoggerFormatter.initialize(__name__)
-        assert formatter is not None \
-            and formatter.getEffectiveLevel() == LoggerFormatter.DEFAULT
+        self.assertIsNotNone(formatter)
+        self.assertEqual(formatter.getEffectiveLevel(), LoggerFormatter.DEFAULT)
 
     def test_formatter_builds_custom_level(self):
         """Ensure passing a custom intended level works."""
-        formatter = LoggerFormatter.initialize(__name__,LoggerFormatter.CRITICAL)
-        assert formatter.getEffectiveLevel() == LoggerFormatter.CRITICAL
+        formatter = LoggerFormatter.initialize(__name__, LoggerFormatter.CRITICAL)
+        self.assertEqual(formatter.getEffectiveLevel(), LoggerFormatter.CRITICAL)
 
     def test_formatter_not_builds_wrong_level(self):
         """Ensure a logger is not initialized when incorrect level is passed"""
-        with pytest.raises(ValueError):
+        with self.assertRaises(ValueError):
             LoggerFormatter.initialize(__name__, "definitely wrong")
 
     def test_formatter_not_builds_wrong_name(self):
-        """Ensure a logger is not initialized when incorrect name is passed""" 
-        with pytest.raises(ValueError): 
+        """Ensure a logger is not initialized when incorrect name is passed"""
+        with self.assertRaises(ValueError):
             LoggerFormatter.initialize(None)
 
     def test_format_debug_color(self):
         """Ensure DEBUG logs are formatted with grey color."""
         formatter = LoggerFormatter()
         record = logging.LogRecord("name", logging.DEBUG, "pathname",
-        1, "msg", (), None)
+                                   1, "msg", (), None)
         formatted = formatter.format(record)
-        assert LoggerFormatter.grey in formatted
-        assert LoggerFormatter.reset in formatted
+        self.assertIn(LoggerFormatter.grey, formatted)
+        self.assertIn(LoggerFormatter.reset, formatted)
 
     def test_format_error_color(self):
         """Ensure ERROR logs are formatted with red color."""
         formatter = LoggerFormatter()
         record = logging.LogRecord("name", logging.ERROR, "pathname",
-        1, "msg", (), None)
+                                   1, "msg", (), None)
         formatted = formatter.format(record)
-        assert LoggerFormatter.red in formatted
-        assert LoggerFormatter.reset in formatted
+        self.assertIn(LoggerFormatter.red, formatted)
+        self.assertIn(LoggerFormatter.reset, formatted)
 
     def test_logger_has_handler(self):
         """Ensure initialized logger has a handler with LoggerFormatter."""
         logger = LoggerFormatter.initialize("test_logger_handler")
-        assert len(logger.handlers) > 0
+        self.assertGreater(len(logger.handlers), 0)
         handler = logger.handlers[-1]
-        assert isinstance(handler, logging.StreamHandler)
-        assert isinstance(handler.formatter, LoggerFormatter)
+        self.assertIsInstance(handler, logging.StreamHandler)
+        self.assertIsInstance(handler.formatter, LoggerFormatter)
 
     def test_logger_survives_multiple_inits(self):
         """Multiple initialize() calls should not affect functionality."""
         logger = LoggerFormatter.initialize("test_logger_handler",
-        LoggerFormatter.INFO)
+                                            LoggerFormatter.INFO)
         logger = LoggerFormatter.initialize("test_logger_handler",
-        LoggerFormatter.DEBUG)
+                                            LoggerFormatter.DEBUG)
         logger = LoggerFormatter.initialize("test_logger_handler",
-        LoggerFormatter.INFO)
+                                            LoggerFormatter.INFO)
         logger = LoggerFormatter.initialize("test_logger_handler",
-        LoggerFormatter.CRITICAL)
-        assert logger.getEffectiveLevel() == LoggerFormatter.CRITICAL
-        
+                                            LoggerFormatter.CRITICAL)
+        self.assertEqual(logger.getEffectiveLevel(), LoggerFormatter.CRITICAL)
