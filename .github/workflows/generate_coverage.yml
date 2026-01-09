@@ -52,6 +52,7 @@ jobs:
         # This prevents local reports from leaking into the repo
         add: |
           - test/reports/coverage-${{ matrix.python-version }}.xml --force
+        pull: '--rebase' # This allows for more than one version to be used within a single run
         message: 'Append a coverage report'
     - name: Check coverage file exists
       run: if [ ! -f test/reports/coverage-${{ matrix.python-version }}.xml ]; then echo "Coverage file not found"; exit 1; fi
