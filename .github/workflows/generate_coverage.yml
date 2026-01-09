@@ -48,6 +48,8 @@ jobs:
       with:
         new_branch: ${{ steps.extract_branch.outputs.branch }} # push to branch that pr comes FROM, not the target
         default_author: github_actions
+        # The file is in the .gitignore
+        # This prevents local reports from leaking into the repo
         add: |
-          - test/reports/coverage.xml
+          - test/reports/coverage.xml --force
         message: 'Append a coverage report'
