@@ -53,3 +53,13 @@ jobs:
         add: |
           - test/reports/coverage-${{ matrix.python-version }}.xml --force
         message: 'Append a coverage report'
+    - name: Check coverage file exists
+      run: if [ ! -f test/reports/coverage-${{ matrix.python-version }}.xml ]; then echo "Coverage file not found"; exit 1; fi
+    - name: 'Append report'
+      uses: kamilok04/coverage-with-title@main
+      with:
+        coverageFile: test/reports/coverage-${{ matrix.python-version }}.xml
+        token: ${{ secrets.GITHUB_TOKEN }}
+        title: 'Python (${{ matrix.python-version }}) Coverage Report'
+        thresholdAll: 0.8
+
