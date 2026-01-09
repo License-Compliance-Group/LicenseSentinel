@@ -82,7 +82,7 @@ jobs:
     - name: Check coverage file exists
       run: if [ ! -f test/reports/coverage-${{ matrix.python-version }}.xml ]; then echo "Coverage file not found"; exit 1; fi
     - name: 'Append report'
-      uses: kamilok04/coverage-with-title@main
+      uses: kamilok04/coverage-with-title@0
       with:
         coverageFile: test/reports/coverage-${{ matrix.python-version }}.xml
         token: ${{ secrets.GITHUB_TOKEN }}
