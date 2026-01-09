@@ -51,5 +51,5 @@ jobs:
         # The file is in the .gitignore
         # This prevents local reports from leaking into the repo
         add: |
-          - test/reports/coverage.xml --force
+          - test/reports/coverage-${{ matrix.python-version }}.xml --force
         message: 'Append a coverage report'

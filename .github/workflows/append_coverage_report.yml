@@ -12,12 +12,16 @@ on:
 jobs:
     on-success:
         runs-on: ubuntu-latest
+        strategy:
+          matrix:
+            python-version: ${{ fromJSON(vars.PYTHON_VERSIONS) }}
         # run if both: a report was generated AND the report file exists
-        if: ${{ (github.event.workflow_run.conclusion == 'success') && (hashFiles('test/reports/coverage.xml') != '')}}
+        if: ${{ (github.event.workflow_run.conclusion == 'success') && (hashFiles('test/reports/coverage-${{ matrix.python-version }}.xml') != '')}}
         steps:
           - name: 'Append report'
-            uses: orgoro/coverage@v3.2
+            uses: kamilok04/coverage-with-title@main
             with:
                 coverageFile: test/reports/coverage.xml
                 token: ${{ secrets.GITHUB_TOKEN }}
+                title: 'Python (${{ matrix.python-version }}) Coverage Report'
                 thresholdAll: 0.8
