@@ -215,4 +215,4 @@ __marimo__/
 # Ignore raw data files
 src/data/**
 src/tmpvenv/**
-test/reports/coverage.xml
+test/reports/*
