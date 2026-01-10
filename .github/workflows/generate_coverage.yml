@@ -54,20 +54,6 @@ jobs:
       shell: bash
       run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
       id: extract_branch
-    - name: Download coverage reports
-      uses: actions/download-artifact@v4
-      with:
-        pattern: coverage-report-*
-        path: downloaded-reports
-    - name: Copy reports to test/reports
-      run: cp downloaded-reports/coverage-report-*/coverage-*.xml test/reports/
-    - name: Commit reports to the repo
-      uses: EndBug/add-and-commit@v9
-      with:
-        new_branch: ${{ steps.extract_branch.outputs.branch }}
-        default_author: github_actions
-        add: test/reports/coverage-*.xml --force
-        message: 'Append coverage reports'
 
   comment:
     # Share the reports as comments.
@@ -82,9 +68,10 @@ jobs:
     - name: Check coverage file exists
       run: if [ ! -f test/reports/coverage-${{ matrix.python-version }}.xml ]; then echo "Coverage file not found"; exit 1; fi
     - name: 'Append report'
-      uses: dorny/test-reporter@v1
+      uses: dorny/test-reporter@v2
       with:
+        artifact: /coverage-report-(.*)/
         name: 'Python (${{ matrix.python-version }}) Coverage Report'
         path: test/reports/coverage-${{ matrix.python-version }}.xml
-        reporter: cobertura
+        reporter: python-xunit
         comment-on: commit
