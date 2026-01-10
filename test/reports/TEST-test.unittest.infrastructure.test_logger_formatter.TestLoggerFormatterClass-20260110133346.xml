@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="test.unittest.infrastructure.test_logger_formatter.TestLoggerFormatterClass-20260110133346" tests="8" file="test/unittest/infrastructure/test_logger_formatter.py" time="0.002" timestamp="2026-01-10T13:33:58" failures="0" errors="0" skipped="0">
+	<testcase classname="test.unittest.infrastructure.test_logger_formatter.TestLoggerFormatterClass" name="test_format_debug_color" time="0.001" timestamp="2026-01-10T13:33:58" file="test/unittest/infrastructure/test_logger_formatter.py" line="30">
+		<!--Ensure DEBUG logs are formatted with grey color.-->
+	</testcase>
+	<testcase classname="test.unittest.infrastructure.test_logger_formatter.TestLoggerFormatterClass" name="test_format_error_color" time="0.000" timestamp="2026-01-10T13:33:58" file="test/unittest/infrastructure/test_logger_formatter.py" line="39">
+		<!--Ensure ERROR logs are formatted with red color.-->
+	</testcase>
+	<testcase classname="test.unittest.infrastructure.test_logger_formatter.TestLoggerFormatterClass" name="test_formatter_builds" time="0.000" timestamp="2026-01-10T13:33:58" file="test/unittest/infrastructure/test_logger_formatter.py" line="9">
+		<!--Ensure default config of LoggerFormatter works.-->
+	</testcase>
+	<testcase classname="test.unittest.infrastructure.test_logger_formatter.TestLoggerFormatterClass" name="test_formatter_builds_custom_level" time="0.000" timestamp="2026-01-10T13:33:58" file="test/unittest/infrastructure/test_logger_formatter.py" line="15">
+		<!--Ensure passing a custom intended level works.-->
+	</testcase>
+	<testcase classname="test.unittest.infrastructure.test_logger_formatter.TestLoggerFormatterClass" name="test_formatter_not_builds_wrong_level" time="0.000" timestamp="2026-01-10T13:33:58" file="test/unittest/infrastructure/test_logger_formatter.py" line="20">
+		<!--Ensure a logger is not initialized when incorrect level is passed-->
+	</testcase>
+	<testcase classname="test.unittest.infrastructure.test_logger_formatter.TestLoggerFormatterClass" name="test_formatter_not_builds_wrong_name" time="0.000" timestamp="2026-01-10T13:33:58" file="test/unittest/infrastructure/test_logger_formatter.py" line="25">
+		<!--Ensure a logger is not initialized when incorrect name is passed-->
+	</testcase>
+	<testcase classname="test.unittest.infrastructure.test_logger_formatter.TestLoggerFormatterClass" name="test_logger_has_handler" time="0.000" timestamp="2026-01-10T13:33:58" file="test/unittest/infrastructure/test_logger_formatter.py" line="48">
+		<!--Ensure initialized logger has a handler with LoggerFormatter.-->
+	</testcase>
+	<testcase classname="test.unittest.infrastructure.test_logger_formatter.TestLoggerFormatterClass" name="test_logger_survives_multiple_inits" time="0.000" timestamp="2026-01-10T13:33:58" file="test/unittest/infrastructure/test_logger_formatter.py" line="56">
+		<!--Multiple initialize() calls should not affect functionality.-->
+	</testcase>
+</testsuite>
