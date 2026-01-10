@@ -71,7 +71,6 @@ jobs:
       uses: dorny/test-reporter@v2
       with:
         artifact: /coverage-report-(.*)/
-        name: 'Python (${{ matrix.python-version }}) Coverage Report'
-        path: test/reports/coverage-${{ matrix.python-version }}.xml
+        name: 'Python ($1) Coverage Report'
+        path: test/reports/coverage-*.xml
         reporter: python-xunit
-        comment-on: commit
