@@ -64,6 +64,6 @@ jobs:
       uses: dorny/test-reporter@v2
       with:
         artifact: /coverage-report-(.*)/
-        name: 'Python ($1) Coverage Report'
+        name: 'Python $1 Coverage Report'
         path: coverage-*.xml
         reporter: python-xunit
