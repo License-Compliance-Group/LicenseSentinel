@@ -82,9 +82,9 @@ jobs:
     - name: Check coverage file exists
       run: if [ ! -f test/reports/coverage-${{ matrix.python-version }}.xml ]; then echo "Coverage file not found"; exit 1; fi
     - name: 'Append report'
-      uses: kamilok04/coverage-with-title@main
+      uses: dorny/test-reporter@v1
       with:
-        coverageFile: test/reports/coverage-${{ matrix.python-version }}.xml
-        token: ${{ secrets.GITHUB_TOKEN }}
-        title: 'Python (${{ matrix.python-version }}) Coverage Report'
-        thresholdAll: 0.8
+        name: 'Python (${{ matrix.python-version }}) Coverage Report'
+        path: test/reports/coverage-${{ matrix.python-version }}.xml
+        reporter: cobertura
+        comment-on: commit
