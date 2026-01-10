@@ -5,3 +5,4 @@ requests
 behave
 textual
 coverage
+unittest-xml-reporting
