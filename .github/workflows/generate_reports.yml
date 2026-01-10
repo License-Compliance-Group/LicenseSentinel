@@ -139,5 +139,5 @@ jobs:
         
     - name: Post unit test comment
       run: |
-        REPORT="${{ steps.append-unit.outputs.report }}"
+        REPORT="${{ steps.append-unit.outputs.* }}"
         gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -f body="$REPORT"
