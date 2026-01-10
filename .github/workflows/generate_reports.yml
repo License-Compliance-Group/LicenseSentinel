@@ -119,8 +119,6 @@ jobs:
     - uses: actions/checkout@v4
     - name: Check coverage file exists
       run: if [ ! -f test/reports/coverage-${{ matrix.python-version }}.xml ]; then echo "Coverage file not found"; exit 1; fi
-    - name: Check unit test file exists
-      run: if [ ! -f test/reports/unit-${{ matrix.python-version }}.xml ]; then echo "Unit test file not found"; exit 1; fi
     - name: 'Append coverage report'
       uses: kamilok04/coverage-with-title@main
       with:
@@ -131,7 +129,7 @@ jobs:
     - name: 'Append unit test report'
       uses: dorny/test-reporter@v2
       with:
+        artifact: 'unit-report-${{ matrix.python-version }}'
         name: 'Python (${{ matrix.python-version }}) Unit Test Report'
-        path: test/reports/unit-${{ matrix.python-version }}.xml
         reporter: java-junit
         comment-on: commit
