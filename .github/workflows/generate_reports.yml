@@ -127,9 +127,15 @@ jobs:
         title: 'Python (${{ matrix.python-version }}) Coverage Report'
         thresholdAll: 0.8
     - name: 'Append unit test report'
+      id: append-unit
       uses: dorny/test-reporter@v2
       with:
         artifact: 'unit-report-${{ matrix.python-version }}'
         name: 'Python (${{ matrix.python-version }}) Unit Test Report'
         path: '*.xml' # The version granularity is guaranteed by the artifact
         reporter: python-xunit
+        
+    - name: Post unit test comment
+      run: |
+        REPORT="${{ steps.append-unit.outputs.report }}"
+        gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -f body="$REPORT"
