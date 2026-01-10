@@ -61,9 +61,7 @@ jobs:
     needs: commit
     steps:
     - name: 'Append report'
-      uses: |
-        dorny/test-reporter@v2
-        actions/checkout@v4
+      uses: dorny/test-reporter@v2
       with:
         artifact: /coverage-report-(.*)/
         name: 'Python ($1) Coverage Report'
