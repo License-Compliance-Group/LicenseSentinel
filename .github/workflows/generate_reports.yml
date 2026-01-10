@@ -9,7 +9,7 @@ on:
   pull_request:
     branches: [ "main", "develop" ]
 env:
-  GH_TOKEN: ${{ secrets.commenter_token }}
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   generate-coverage:
