@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="test.unittest.analyzer.test_license_analyzer.TestNormalizeLicenseName-20260111161816" tests="4" file="test/unittest/analyzer/test_license_analyzer.py" time="0.001" timestamp="2026-01-11T16:18:20" failures="0" errors="0" skipped="0">
+	<testcase classname="test.unittest.analyzer.test_license_analyzer.TestNormalizeLicenseName" name="test_case_insensitive" time="0.000" timestamp="2026-01-11T16:18:20" file="test/unittest/analyzer/test_license_analyzer.py" line="17">
+		<!--Test case insensitive matching.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_analyzer.TestNormalizeLicenseName" name="test_known_licenses" time="0.000" timestamp="2026-01-11T16:18:20" file="test/unittest/analyzer/test_license_analyzer.py" line="10">
+		<!--Test mapping of known license strings.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_analyzer.TestNormalizeLicenseName" name="test_spdx_like" time="0.000" timestamp="2026-01-11T16:18:20" file="test/unittest/analyzer/test_license_analyzer.py" line="29">
+		<!--Test already SPDX-like licenses.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_analyzer.TestNormalizeLicenseName" name="test_unknown_license" time="0.000" timestamp="2026-01-11T16:18:20" file="test/unittest/analyzer/test_license_analyzer.py" line="22">
+		<!--Test handling of unknown licenses.
+        Should return lower-case license name-->
+	</testcase>
+</testsuite>
