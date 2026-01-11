@@ -7,7 +7,7 @@ on:
   push:
     branches: [ "main", "develop", "automate-coverage-testing"]
   pull_request:
-    branches: [ "main", "develop" ]
+    branches: [ "main", "develop", "automate-coverage-testing" ]
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
