@@ -71,12 +71,13 @@ jobs:
     - name: Generate unit test XML
       run: |
         . ./.venv/bin/activate
-        python -m xmlrunner discover -o test/reports/unit-${{ matrix.python-version }}.xml
+        python -m xmlrunner discover -o test/reports/unit-${{ matrix.python-version }} --outsuffix ''
+      # Keep only the most recent tests for now, if that changes, remove the outsuffix part
     - name: Upload unit test report
       uses: actions/upload-artifact@v4
       with:
         name: unit-report-${{ matrix.python-version }}
-        path: test/reports/unit-${{ matrix.python-version }}.xml
+        path: test/reports/unit-${{ matrix.python-version }}
 
   commit:
     runs-on: ubuntu-latest
@@ -139,5 +140,5 @@ jobs:
         
     - name: Post unit test comment
       run: |
-        REPORT="${{ steps.append-unit.outputs.* }}"
+        REPORT="${{ steps.append-unit.outputs.body }}"
         gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -f body="$REPORT"
