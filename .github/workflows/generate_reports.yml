@@ -139,4 +139,4 @@ jobs:
         
     - name: Post unit test comment
       run: |
-        gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -F body=$(printf '%q\n' '''${{ steps.append-unit.outputs.body }}''')
+        gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -F body=$(printf '%q' '''${{ steps.append-unit.outputs.body }}''')
