@@ -139,5 +139,4 @@ jobs:
         
     - name: Post unit test comment
       run: |
-        BODY_FILE="${{ steps.append-unit.outputs.body }}"
-        gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -F body="@$BODY_FILE"
+        gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -F body=$(printf '%s\n' "${{ steps.append-unit.outputs.body }}")
