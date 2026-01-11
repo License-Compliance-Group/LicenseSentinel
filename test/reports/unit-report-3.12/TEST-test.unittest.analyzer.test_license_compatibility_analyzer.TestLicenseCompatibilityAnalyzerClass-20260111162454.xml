@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass-20260111162454" tests="34" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" time="4.006" timestamp="2026-01-11T16:25:02" failures="0" errors="0" skipped="0">
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_analyzer_builds" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="65">
+		<!--Ensure default config of LicenseCompatibilityAnalyzer works.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_calculate_license_compatibility" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="352">
+		<!--Test calculate_license_compatibility.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_check_timestamp_local_newer" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="201">
+		<!--Test check_timestamp when local timestamp is newer.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_check_timestamp_no_matrix" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="181">
+		<!--Test check_timestamp with no license matrix.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_check_timestamp_none_online" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="213">
+		<!--Test check_timestamp when online timestamp is None.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_check_timestamp_online_newer" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="189">
+		<!--Test check_timestamp when online timestamp is newer.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_compare_licenses_compatible" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="325">
+		<!--Test compare_licenses with compatible licenses.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_compare_licenses_unknown_license_a" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="344">
+		<!--Test compare_licenses with unknown license A.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_compare_licenses_unknown_license_b" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="335">
+		<!--Test compare_licenses with unknown license B.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_compat_calc_strategy_property" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="82">
+		<!--Test compat_calc_strategy property getter and setter.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_delete_matrix_file_exists" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="134">
+		<!--Test delete_matrix_file when file exists.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_delete_matrix_file_not_exists" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="142">
+		<!--Test delete_matrix_file when file does not exist.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_download_wrapper_multiple_attempts" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="169">
+		<!--Test download_wrapper with multiple attempts.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_download_wrapper_no_internet" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="161">
+		<!--Test download_wrapper with no internet.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_download_wrapper_success" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="149">
+		<!--Test download_wrapper with successful download.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_extract_raw_licenses_no_files" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="318">
+		<!--Test extract_raw_licenses with no files in JSON.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_extract_raw_licenses_read_fail" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="311">
+		<!--Test extract_raw_licenses when safe_read fails.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_extract_raw_licenses_success" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="303">
+		<!--Test extract_raw_licenses with success.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_get_local_timestamp" time="0.000" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="224">
+		<!--Test get_local_timestamp.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_get_online_timestamp" time="0.002" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="230">
+		<!--Test get_online_timestamp.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_get_online_timestamp_none" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="239">
+		<!--Test get_online_timestamp when download fails.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_init_custom_path" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="70">
+		<!--Test __init__ with custom path.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_init_custom_strategy" time="0.001" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="76">
+		<!--Test __init__ with custom strategy.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_last_comparison_result_property" time="0.000" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="88">
+		<!--Test last_comparison_result property getter and setter.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_license_matrix_property_getter_cached" time="0.000" timestamp="2026-01-11T16:24:58" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="112">
+		<!--Test license_matrix property getter when cached.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_license_matrix_property_getter_empty" time="3.835" timestamp="2026-01-11T16:25:01" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="94">
+		<!--Test license_matrix property getter when empty.
+        Should retrieve online file.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_license_matrix_property_getter_empty_offline" time="0.001" timestamp="2026-01-11T16:25:01" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="102">
+		<!--Test license_matrix property getter when empty.
+        Assume no connectivity, should return an empty string-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_license_matrix_property_setter" time="0.000" timestamp="2026-01-11T16:25:01" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="118">
+		<!--Test license_matrix property setter.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_matrix_file_present_false" time="0.000" timestamp="2026-01-11T16:25:01" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="130">
+		<!--Test matrix_file_present when file does not exist.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_matrix_file_present_true" time="0.000" timestamp="2026-01-11T16:25:01" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="124">
+		<!--Test matrix_file_present when file exists.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_update_license_matrix_offline_json_error" time="0.047" timestamp="2026-01-11T16:25:01" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="259">
+		<!--Test update_license_matrix with offline JSON error.
+        Assume offline file is broken, should download from online-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_update_license_matrix_offline_success" time="0.002" timestamp="2026-01-11T16:25:01" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="246">
+		<!--Test update_license_matrix with offline success (updated file).-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_update_license_matrix_online_fail" time="0.043" timestamp="2026-01-11T16:25:01" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="278">
+		<!--Test update_license_matrix with online fail.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestLicenseCompatibilityAnalyzerClass" name="test_update_license_matrix_online_success" time="0.057" timestamp="2026-01-11T16:25:02" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="287">
+		<!--Test update_license_matrix with online success.-->
+	</testcase>
+</testsuite>
