@@ -99,9 +99,6 @@ jobs:
       with:
         pattern: unit-report-*
         path: downloaded-reports
-    - name: Wipe obsolete reports
-      run: |
-        if [ -d test/reports ]; then rm -r test/reports/TEST*; fi
     - name: Copy reports to test/reports
       run: tar -cpC downloaded-reports . | tar -xpC test/reports
     - name: Commit reports to the repo
@@ -110,7 +107,6 @@ jobs:
         new_branch: ${{ steps.extract_branch.outputs.branch }}
         default_author: github_actions
         add: test/reports/*.xml --force
-        pull: '--rebase'
         message: 'Append reports'
 
   comment:
@@ -134,7 +130,7 @@ jobs:
         thresholdAll: 0.8
     - name: 'Append unit test report'
       id: append-unit
-      uses: kamilok04/test-reporter-body-hijack@main
+      uses: dorny/test-reporter@v2
       with:
         artifact: 'unit-report-${{ matrix.python-version }}'
         name: 'Python (${{ matrix.python-version }}) Unit Test Report'
@@ -142,6 +138,6 @@ jobs:
         reporter: python-xunit
         
     - name: Post unit test comment
-      # Escape the Markdown
       run: |
-        gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -f body="$(<${{ steps.append-unit.outputs.body }})"
+        BODY_FILE="${{ steps.append-unit.outputs.body }}"
+        gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -F body="@$BODY_FILE"
