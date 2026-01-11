@@ -102,7 +102,7 @@ jobs:
     - name: Wipe obsolete reports
       run: |
         if [ -d test/reports ];
-        then rm -r test/reports/* && git rm test/reports/*;
+        then git rm -r test/reports/*;
         fi
         mkdir -p test/reports
     - name: Copy reports to test/reports
@@ -147,7 +147,7 @@ jobs:
     - name: Post unit test comment
       run: |
         echo "Adding unit test report as a comment"
-        sanitized_content=$(echo "${{ steps.append-unit.outputs.body }}" | sed -E 's/([|`*_{}\[\]\(\)#+\-!])/\\\1/g; s/✅/\\u2705/g; s/❌/\\u274C/g')
+        sanitized_content={$(echo "${{ steps.append-unit.outputs.body }}" | sed -E 's/([|`*_{}\[\]\(\)#+\-!])/\\\1/g; s/✅/\\u2705/g; s/❌/\\u274C/g');} 2> /dev/null
         echo "$sanitized_content" > body-comment.md
         gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -F body=@body-comment.md
 
