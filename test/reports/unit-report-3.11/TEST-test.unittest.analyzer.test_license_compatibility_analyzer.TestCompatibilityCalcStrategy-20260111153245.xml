@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="test.unittest.analyzer.test_license_compatibility_analyzer.TestCompatibilityCalcStrategy-20260111153245" tests="1" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" time="0.000" timestamp="2026-01-11T15:32:50" failures="0" errors="0" skipped="0">
+	<testcase classname="test.unittest.analyzer.test_license_compatibility_analyzer.TestCompatibilityCalcStrategy" name="test_abstract_method" time="0.000" timestamp="2026-01-11T15:32:50" file="test/unittest/analyzer/test_license_compatibility_analyzer.py" line="20">
+		<!--Test that CompatibilityCalcStrategy cannot be instantiated.-->
+	</testcase>
+</testsuite>
