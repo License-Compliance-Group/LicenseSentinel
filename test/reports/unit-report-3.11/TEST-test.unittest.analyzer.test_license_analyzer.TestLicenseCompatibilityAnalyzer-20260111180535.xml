@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="test.unittest.analyzer.test_license_analyzer.TestLicenseCompatibilityAnalyzer-20260111180535" tests="3" file="test/unittest/analyzer/test_license_analyzer.py" time="6.074" timestamp="2026-01-11T18:05:41" failures="0" errors="0" skipped="0">
+	<testcase classname="test.unittest.analyzer.test_license_analyzer.TestLicenseCompatibilityAnalyzer" name="test_calculate_compatibility" time="6.073" timestamp="2026-01-11T18:05:41" file="test/unittest/analyzer/test_license_analyzer.py" line="52">
+		<!--Test calculating compatibility for multiple licenses.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_analyzer.TestLicenseCompatibilityAnalyzer" name="test_compare_licenses_same" time="0.001" timestamp="2026-01-11T18:05:41" file="test/unittest/analyzer/test_license_analyzer.py" line="41">
+		<!--Test comparing identical licenses.-->
+	</testcase>
+	<testcase classname="test.unittest.analyzer.test_license_analyzer.TestLicenseCompatibilityAnalyzer" name="test_compare_licenses_unknown" time="0.000" timestamp="2026-01-11T18:05:41" file="test/unittest/analyzer/test_license_analyzer.py" line="47">
+		<!--Test comparing unknown licenses.-->
+	</testcase>
+</testsuite>

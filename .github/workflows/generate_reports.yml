@@ -164,7 +164,8 @@ jobs:
         )
         echo "$sanitized_content" > body-comment.md
         if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-          gh api repos/$GITHUB_REPOSITORY/issues/$GITHUB_EVENT_NUMBER/comments -F body=@body-comment.md
+          PR_NUMBER=$(jq -r .number $GITHUB_EVENT_PATH)
+          gh api repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments -F body=@body-comment.md
         else
           gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -F body=@body-comment.md
         fi
