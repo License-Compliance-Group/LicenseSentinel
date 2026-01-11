@@ -104,6 +104,7 @@ jobs:
         if [ -d test/reports ];
         then rm -r test/reports/* && git rm test/reports/*;
         fi
+        mkdir -p test/reports
     - name: Copy reports to test/reports
       run: tar -cpC downloaded-reports . | tar -xpC test/reports
     - name: Commit reports to the repo
