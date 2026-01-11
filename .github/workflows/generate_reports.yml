@@ -99,6 +99,9 @@ jobs:
       with:
         pattern: unit-report-*
         path: downloaded-reports
+    - name: Wipe obsolete reports
+      run: |
+        if [ -d test/reports ]; then rm -r test/reports/TEST*; fi
     - name: Copy reports to test/reports
       run: tar -cpC downloaded-reports . | tar -xpC test/reports
     - name: Commit reports to the repo
@@ -107,6 +110,7 @@ jobs:
         new_branch: ${{ steps.extract_branch.outputs.branch }}
         default_author: github_actions
         add: test/reports/*.xml --force
+        pull: '--rebase'
         message: 'Append reports'
 
   comment:
