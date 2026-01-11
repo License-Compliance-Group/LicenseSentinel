@@ -12,6 +12,15 @@ env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
+  enforce-pr-strategy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Copy the config file
+      run: |
+        cp .gitconfig .git/config
+      if: github.event_name == 'pull_request'
+
   generate-coverage:
     runs-on: ubuntu-latest
     strategy:
@@ -166,7 +175,7 @@ jobs:
         if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
           PR_NUMBER=$(jq -r .number $GITHUB_EVENT_PATH)
           TITLE="Python (${{ matrix.python-version }}) Unit Test Report"
-          EXISTING_COMMENT_ID=$(gh api repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments | jq -r ".[] | select(.body | startswith(\"## $TITLE\")) | .id" | head -1)
+          EXISTING_COMMENT_ID=$(gh api repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments | jq -r ".[] | select(.body | startswith(\"### $TITLE\")) | {id: .id, created_at: .created_at} | sort_by(.created_at) | reverse | first | .id")
           if [ -n "$EXISTING_COMMENT_ID" ]; then
             gh api repos/$GITHUB_REPOSITORY/issues/comments/$EXISTING_COMMENT_ID -X PATCH -F body=@body-comment.md
           else
