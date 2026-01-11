@@ -89,6 +89,9 @@ jobs:
       shell: bash
       run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
       id: extract_branch
+    - name: Checkout source branch
+      run: git checkout ${{ steps.extract_branch.outputs.branch }}
+      if: github.event_name == 'pull_request'
     - name: Download coverage reports
       uses: actions/download-artifact@v4
       with:
@@ -109,10 +112,6 @@ jobs:
         mkdir -p test/reports
     - name: Copy reports to test/reports
       run: tar -cpC downloaded-reports . | tar -xpC test/reports
-    - name: Pull before pushing
-      run: |
-        remote_repo="https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-        git pull "$remote_repo" ${{ steps.extract_branch.outputs.branch }} --no-rebase 
     - name: Commit reports to the repo
       uses: EndBug/add-and-commit@v9
       with:
