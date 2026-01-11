@@ -12,15 +12,6 @@ env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-  enforce-pr-strategy:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Copy the config file
-      run: |
-        cp .gitconfig .git/config
-      if: github.event_name == 'pull_request'
-
   generate-coverage:
     runs-on: ubuntu-latest
     strategy:
