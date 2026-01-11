@@ -158,7 +158,7 @@ jobs:
     - name: Post unit test comment
       run: |
         echo "Adding unit test report as a comment"
-        sanitized_content=$(cat << 'EOF' | sed -E 's/([|`*_{}\[\]\(\)#+\-!])/\\\1/g; s/✅/\\u2705/g; s/❌/\\u274C/g'
+        sanitized_content=$(cat << 'EOF' | sed -E 's/([|`*_{}\[\]\(\)#+\-!])/\\\1/g'
         ${{ steps.append-unit.outputs.body }}
         EOF
         )

@@ -1,1 +1,1 @@
-test/reports/*.xml merge=keep-theirs
+test/reports/**/*.xml merge=keep-theirs
