@@ -1,0 +1,2 @@
+[merge "keep-theirs"]
+    driver = src/scripts/git-merge-keep-theirs.sh %O %A %B
