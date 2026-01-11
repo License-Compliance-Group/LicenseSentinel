@@ -68,11 +68,13 @@ jobs:
     - name: Install venv on cache miss
       run: python src/scripts/venv_setup.py --recreate
       if: steps.cache-venv.outputs.cache-hit != 'true'
+    - name: Wipe obsolete reports
+      run: |
+        rm -r test/reports/unit-${{ matrix.python-version }}
     - name: Generate unit test XML
       run: |
         . ./.venv/bin/activate
-        python -m xmlrunner discover -o test/reports/unit-${{ matrix.python-version }} --outsuffix ''
-      # Keep only the most recent tests for now, if that changes, remove the outsuffix part
+        python -m xmlrunner discover -o test/reports/unit-${{ matrix.python-version }}
     - name: Upload unit test report
       uses: actions/upload-artifact@v4
       with:
