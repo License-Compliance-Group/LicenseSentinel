@@ -139,4 +139,8 @@ jobs:
         
     - name: Post unit test comment
       run: |
-        gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -F body=$(printf '%q' '''${{ steps.append-unit.outputs.body }}''')
+        echo "Adding unit test report as a comment"
+        echo "${{ steps.append-unit.outputs.body }}" > body-comment.md
+        gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -F body=@body-comment.md
+
+
