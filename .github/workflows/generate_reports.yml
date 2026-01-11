@@ -130,7 +130,7 @@ jobs:
         thresholdAll: 0.8
     - name: 'Append unit test report'
       id: append-unit
-      uses: dorny/test-reporter@v2
+      uses: kamilok04/test-reporter-body-hijack@main
       with:
         artifact: 'unit-report-${{ matrix.python-version }}'
         name: 'Python (${{ matrix.python-version }}) Unit Test Report'
