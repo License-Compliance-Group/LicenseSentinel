@@ -1,2 +1,3 @@
 [merge "keep-theirs"]
+    name = Always keeps the more incoming version
     driver = src/scripts/git-merge-keep-theirs.sh %O %A %B
