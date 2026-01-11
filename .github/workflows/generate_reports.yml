@@ -128,7 +128,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Check coverage file exists
-      run: if [ ! -f test/reports/coverage-${{ matrix.python-version }}.xml ]; then echo "Coverage file not found"; exit 1; fi
+      run: |
+        if [ ! -f test/reports/coverage-report-${{ matrix.python-version }}/coverage-${{ matrix.python-version }}.xml ]; 
+        then echo "Coverage file not found"; exit 1; 
+        fi
     - name: 'Append coverage report'
       uses: kamilok04/coverage-with-title@main
       with:
