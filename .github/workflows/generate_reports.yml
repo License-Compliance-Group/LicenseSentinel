@@ -101,7 +101,7 @@ jobs:
         pattern: unit-report-*
         path: downloaded-reports
     - name: Copy reports to test/reports
-      run: cp downloaded-reports/*/*.xml test/reports/
+      run: cp -f downloaded-reports/*/*.xml test/reports/
     - name: Commit reports to the repo
       uses: EndBug/add-and-commit@v9
       with:
