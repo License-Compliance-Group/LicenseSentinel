@@ -165,7 +165,13 @@ jobs:
         echo "$sanitized_content" > body-comment.md
         if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
           PR_NUMBER=$(jq -r .number $GITHUB_EVENT_PATH)
-          gh api repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments -F body=@body-comment.md
+          TITLE="Python (${{ matrix.python-version }}) Unit Test Report"
+          EXISTING_COMMENT_ID=$(gh api repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments | jq -r ".[] | select(.body | startswith(\"## $TITLE\")) | .id" | head -1)
+          if [ -n "$EXISTING_COMMENT_ID" ]; then
+            gh api repos/$GITHUB_REPOSITORY/issues/comments/$EXISTING_COMMENT_ID -X PATCH -F body=@body-comment.md
+          else
+            gh api repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments -F body=@body-comment.md
+          fi
         else
           gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -F body=@body-comment.md
         fi
