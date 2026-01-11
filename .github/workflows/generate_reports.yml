@@ -99,6 +99,11 @@ jobs:
       with:
         pattern: unit-report-*
         path: downloaded-reports
+    - name: Wipe obsolete reports
+      run: |
+        if [ -d test/reports ];
+        then rm -r test/reports/* && git rm test/reports/*;
+        fi
     - name: Copy reports to test/reports
       run: tar -cpC downloaded-reports . | tar -xpC test/reports
     - name: Commit reports to the repo
@@ -141,7 +146,7 @@ jobs:
     - name: Post unit test comment
       run: |
         echo "Adding unit test report as a comment"
-        sanitized_content=$(echo "${{ steps.append-unit.outputs.body }} | sed -E 's/([|`*_{}\[\]\(\)#+\-!])/\\\1/g; s/✅/\\u2705/g; s/❌/\\u274C/g')
+        sanitized_content=$(echo "${{ steps.append-unit.outputs.body }}" | sed -E 's/([|`*_{}\[\]\(\)#+\-!])/\\\1/g; s/✅/\\u2705/g; s/❌/\\u274C/g')
         echo "$sanitized_content" > body-comment.md
         gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -F body=@body-comment.md
 
