@@ -90,7 +90,10 @@ jobs:
       run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
       id: extract_branch
     - name: Checkout source branch
-      run: git checkout ${{ steps.extract_branch.outputs.branch }}
+      run: |
+        git remote update
+        git fetch
+        git checkout ${{ steps.extract_branch.outputs.branch }}
       if: github.event_name == 'pull_request'
     - name: Download coverage reports
       uses: actions/download-artifact@v4
