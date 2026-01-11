@@ -110,7 +110,7 @@ jobs:
     - name: Copy reports to test/reports
       run: tar -cpC downloaded-reports . | tar -xpC test/reports
     - name: Pull before pushing
-      run: git pull
+      run: git pull ${{ steps.extract_branch.outputs.branch }}
     - name: Commit reports to the repo
       uses: EndBug/add-and-commit@v9
       with:
