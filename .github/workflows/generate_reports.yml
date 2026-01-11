@@ -7,7 +7,7 @@ on:
   push:
     branches: [ "main", "develop", "automate-coverage-testing"]
   pull_request:
-    branches: [ "main", "develop" ]
+    branches: [ "main", "develop", "automate-coverage-testing" ]
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -89,6 +89,12 @@ jobs:
       shell: bash
       run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
       id: extract_branch
+    - name: Checkout source branch
+      run: |
+        git remote update
+        git fetch
+        git checkout ${{ steps.extract_branch.outputs.branch }}
+      if: github.event_name == 'pull_request'
     - name: Download coverage reports
       uses: actions/download-artifact@v4
       with:
@@ -157,4 +163,8 @@ jobs:
         EOF
         )
         echo "$sanitized_content" > body-comment.md
-        gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -F body=@body-comment.md
+        if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+          gh api repos/$GITHUB_REPOSITORY/issues/$GITHUB_EVENT_NUMBER/comments -F body=@body-comment.md
+        else
+          gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -F body=@body-comment.md
+        fi
