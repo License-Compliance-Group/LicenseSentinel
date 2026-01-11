@@ -152,6 +152,9 @@ jobs:
     - name: Post unit test comment
       run: |
         echo "Adding unit test report as a comment"
-        sanitized_content=$(sed -E 's/([|`*_{}\[\]\(\)#+\-!])/\\\1/g; s/✅/\\u2705/g; s/❌/\\u274C/g' "${{ steps.append-unit.outputs.body }}")
+        sanitized_content=$(cat << 'EOF' | sed -E 's/([|`*_{}\[\]\(\)#+\-!])/\\\1/g; s/✅/\\u2705/g; s/❌/\\u274C/g'
+        ${{ steps.append-unit.outputs.body }}
+        EOF
+        )
         echo "$sanitized_content" > body-comment.md
         gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -F body=@body-comment.md
