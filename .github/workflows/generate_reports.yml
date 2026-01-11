@@ -138,6 +138,7 @@ jobs:
         reporter: python-xunit
         
     - name: Post unit test comment
+      # Escape the Markdown
       run: |
-        REPORT="${{ steps.append-unit.outputs.body }}"
+        REPORT=${${{ steps.append-unit.outputs.body }}@A}
         gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -f body="$REPORT"
