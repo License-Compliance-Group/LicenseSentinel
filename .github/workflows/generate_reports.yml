@@ -102,7 +102,7 @@ jobs:
     - name: Wipe obsolete reports
       run: |
         if [ -d test/reports ];
-        then git rm -r test/reports/*;
+        then git rm -r test/reports/*/*;
         fi
         mkdir -p test/reports
     - name: Copy reports to test/reports
