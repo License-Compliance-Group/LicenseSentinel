@@ -43,12 +43,18 @@ class PyPiHandler(AbstractPackageManagerFetcher):
             return asyncio.run(self._get_source_links_async(packages_names, timeout))
         except RuntimeError:
             # Fallback if an event loop is already running (e.g. inside another async call)
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            result = loop.run_until_complete(
-                self._get_source_links_async(packages_names, timeout))
-            loop.close()
-            return result
+            loop = asyncio.get_event_loop_policy().new_event_loop()
+            try:
+                asyncio.set_event_loop(loop)
+                result = loop.run_until_complete(
+                    self._get_source_links_async(packages_names, timeout)
+                )
+                return result
+            finally:
+                try:
+                    loop.close()
+                except Exception:
+                    pass
 
     async def _get_source_links_async(self, packages_names: List[str],
                                       timeout: int) -> Dict[str, Dict[str, Optional[str]]]:

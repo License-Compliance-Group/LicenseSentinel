@@ -16,6 +16,7 @@ Notes
   `scan_path` exists.
 - Logging is performed via infrastructure.logger_formatter.LoggerFormatter.
 """
+import os
 from datetime import datetime
 import subprocess
 import logging
@@ -71,7 +72,8 @@ class ScanCodeRunner(ScanEngine):
         defaults to False
         :return: Parsed JSON dict from ScanCode output, or None on failure.
         """
-        cache_dir = Path("/data/scancode-results")
+        cache_root = os.getenv("SCANCODE_CACHE_DIR")
+        cache_dir = Path(cache_root) if cache_root else scan_path.parent / "scancode-results"
         cache_path = cache_dir / f"{pkg}-scancode-result.json"
 
         # Check if cache exists
@@ -124,7 +126,7 @@ class ScanCodeRunner(ScanEngine):
                     "Failed to parse ScanCode JSON output for %s: %s", pkg, e)
                 return None
 
-        except subprocess.CalledProcessError as e:
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
             LOGGER.error("Error scanning %s repository at %s: %s",
                          pkg, extracted_path, e)
             return None
@@ -157,27 +159,23 @@ class ScanCodeRunner(ScanEngine):
                 %s', pkg)
             return ("Unknown",)
 
-        if len(tallies) == 1 and len(tallies[0]['value'].split('AND')) == 1:
-            return (normalizer.normalize(tallies[0]['value']),)
+        # Single license path
+        single = tallies[0].get('value') if len(tallies) == 1 else None
+        if single:
+            normalized = normalizer.normalize(single) or single
+            return (normalized.upper(),)
 
         LOGGER.debug("More than one license for %s detected.", pkg)
-        license_names = []
+        license_names: list[str] = []
         for tally in tallies:
-            license_name = tally['value']
+            license_name = tally.get('value')
             LOGGER.debug("%s : %s", pkg, license_name)
-            if license_name is not None:
-                # tallies containing 'AND' mean multiple licenses
-                # a project depending on such solution has to be
-                # compatible with ALL of them
-                license_names.extend(
-                    tuple(license_name.split(' AND ')))
-
-            else:
+            if not license_name:
                 return ('Unknown',)
-        return tuple(map(
-            normalizer.normalize,
-            set(license_names)
-        ))
+            license_names.extend(tuple(license_name.split(' AND ')))
+
+        normalized_names = [normalizer.normalize(name) or name for name in set(license_names)]
+        return tuple(name.upper() for name in normalized_names)
 
 
 def main() -> None:
