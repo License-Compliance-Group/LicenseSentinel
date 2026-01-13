@@ -3,7 +3,8 @@
 import zipfile
 from pathlib import Path
 import requests
-from infrastructure.logger_formatter import LoggerFormatter
+
+from src.infrastructure.logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__)
 
 
@@ -60,7 +61,7 @@ class Connectivity:
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 content = f.read()
-        except (IOError, AttributeError) as ex:
+        except (IOError, AttributeError, TypeError) as ex:
             logger.warning("Could not read from file: %s", ex)
             return None
         return content
@@ -80,6 +81,8 @@ class Connectivity:
                            format(e.response.status_code))
         except requests.ConnectionError:
             logger.warning("No internet connection available.")
+        except requests.Timeout:
+            logger.warning("Internet connection check timed out.")
         return False
 
     @staticmethod
@@ -112,7 +115,7 @@ class Connectivity:
             if content_length and int(content_length) > max_size:
                 raise ValueError('Response too large')
 
-        except (requests.exceptions.Timeout, ValueError) as ex:
+        except (requests.exceptions.Timeout, ValueError, requests.HTTPError) as ex:
             logger.error("Could not download a file from %s, because an " +
                          "exception occurred: %s", url, ex)
             return None
