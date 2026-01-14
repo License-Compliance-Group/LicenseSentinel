@@ -1,0 +1,177 @@
+# This workflow will install Python dependencies, run unit tests and create coverage and unit test reports
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Generate reports
+
+on:
+  push:
+    branches: [ "main", "develop", "automate-coverage-testing"]
+  pull_request:
+    branches: [ "main", "develop", "automate-coverage-testing" ]
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  generate-coverage:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ${{ fromJSON(vars.PYTHON_VERSIONS) }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/cache@v4
+      id: cache-venv
+      with:
+        path: ./.venv/
+        key: ${{ runner.os }}-venv-${{ matrix.python-version }}-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: ${{ runner.os }}-venv-${{ matrix.python-version }}-
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install venv on cache miss
+      run: python src/scripts/venv_setup.py --recreate
+      if: steps.cache-venv.outputs.cache-hit != 'true'
+    - name: Measure coverage with coverage
+      run: |
+        . ./.venv/bin/activate
+        coverage run -m unittest discover
+    - name: Create a report for further analysis
+      run: |
+        . ./.venv/bin/activate
+        coverage xml -o test/reports/coverage-${{ matrix.python-version }}.xml
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report-${{ matrix.python-version }}
+        path: test/reports/coverage-${{ matrix.python-version }}.xml
+
+  generate-unittest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ${{ fromJSON(vars.PYTHON_VERSIONS) }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/cache@v4
+      id: cache-venv
+      with:
+        path: ./.venv/
+        key: ${{ runner.os }}-venv-${{ matrix.python-version }}-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: ${{ runner.os }}-venv-${{ matrix.python-version }}-
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install venv on cache miss
+      run: python src/scripts/venv_setup.py --recreate
+      if: steps.cache-venv.outputs.cache-hit != 'true'
+    - name: Generate unit test XML
+      run: |
+        . ./.venv/bin/activate
+        python -m xmlrunner discover -o test/reports/unit-${{ matrix.python-version }}
+    - name: Upload unit test report
+      uses: actions/upload-artifact@v4
+      with:
+        name: unit-report-${{ matrix.python-version }}
+        path: test/reports/unit-${{ matrix.python-version }}
+
+  commit:
+    runs-on: ubuntu-latest
+    needs:
+      - generate-coverage
+      - generate-unittest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Extract branch name
+      shell: bash
+      run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+      id: extract_branch
+    - name: Checkout source branch
+      run: |
+        git remote update
+        git fetch
+        git checkout ${{ steps.extract_branch.outputs.branch }}
+      if: github.event_name == 'pull_request'
+    - name: Download coverage reports
+      uses: actions/download-artifact@v4
+      with:
+        pattern: coverage-report-*
+        path: downloaded-reports
+    - name: Download unit reports
+      uses: actions/download-artifact@v4
+      with:
+        pattern: unit-report-*
+        path: downloaded-reports
+    - name: Wipe obsolete reports
+      # xUnit-style reports tend to generate a lot of temporary files
+      # Look at 'upload unit test report' task to see where the path comes from.
+      run: |
+        if [ -d test/reports ];
+        then git rm -r test/reports/unit*/*;
+        fi
+        mkdir -p test/reports
+    - name: Copy reports to test/reports
+      run: tar -cpC downloaded-reports . | tar -xpC test/reports
+    - name: Commit reports to the repo
+      uses: EndBug/add-and-commit@v9
+      with:
+        new_branch: ${{ steps.extract_branch.outputs.branch }}
+        default_author: github_actions
+        add: test/reports/*.xml --force
+        message: 'Append reports'
+
+  comment:
+    # Share the reports as comments.
+    runs-on: ubuntu-latest
+    needs: commit
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ${{ fromJSON(vars.PYTHON_VERSIONS) }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Check coverage file exists
+      run: |
+        if [ ! -f test/reports/coverage-report-${{ matrix.python-version }}/coverage-${{ matrix.python-version }}.xml ]; 
+        then echo "Coverage file not found"; exit 1; 
+        fi
+    - name: 'Append coverage report'
+      uses: kamilok04/coverage-with-title@main
+      with:
+        coverageFile: test/reports/coverage-report-${{ matrix.python-version }}/coverage-${{ matrix.python-version }}.xml
+        token: ${{ secrets.GITHUB_TOKEN }}
+        title: 'Python (${{ matrix.python-version }}) Coverage Report'
+        thresholdAll: 0.8
+    - name: 'Append unit test report'
+      id: append-unit
+      uses: kamilok04/test-reporter-body-hijack@main
+      with:
+        artifact: 'unit-report-${{ matrix.python-version }}'
+        name: 'Python (${{ matrix.python-version }}) Unit Test Report'
+        path: '*.xml' # The version granularity is guaranteed by the artifact
+        reporter: python-xunit
+        report-title: Python (${{ matrix.python-version }}) Unit Test Report
+        
+    - name: Post unit test comment
+      run: |
+        echo "Adding unit test report as a comment"
+        sanitized_content=$(cat << 'EOF' | sed -E 's/([|`*_{}\[\]\(\)#+\-!])/\\\1/g'
+        ${{ steps.append-unit.outputs.body }}
+        EOF
+        )
+        echo "$sanitized_content" > body-comment.md
+        if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+          PR_NUMBER=$(jq -r .number $GITHUB_EVENT_PATH)
+          TITLE="Python (${{ matrix.python-version }}) Unit Test Report"
+          EXISTING_COMMENT_ID=$(gh api repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments | jq -r ".[] | select(.body | startswith(\"### $TITLE\")) | {id: .id, created_at: .created_at} | sort_by(.created_at) | reverse | first | .id")
+          if [ -n "$EXISTING_COMMENT_ID" ]; then
+            gh api repos/$GITHUB_REPOSITORY/issues/comments/$EXISTING_COMMENT_ID -X PATCH -F body=@body-comment.md
+          else
+            gh api repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments -F body=@body-comment.md
+          fi
+        else
+          gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -F body=@body-comment.md
+        fi

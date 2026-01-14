@@ -48,7 +48,6 @@ class TestFullCompatibilityCalc(unittest.TestCase):
                                                             'gpl-3.0-only'])
         self.assertEqual(result[0], "No")
 
-
 class TestLicenseCompatibilityAnalyzerClass(unittest.TestCase):
     """Unit tests for LicenseCompatibilityAnalyzer class."""
 
