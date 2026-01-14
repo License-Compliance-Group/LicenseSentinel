@@ -4,7 +4,6 @@ import pytest
 import tempfile
 import json
 from pathlib import Path
-from unittest.mock import patch, MagicMock, call
 
 from src.infrastructure.dep_tree_builder import DepTreeBuilder
 
@@ -43,10 +42,9 @@ class TestDepTreeBuilderVenvExists:
 class TestDepTreeBuilderCreateVenv:
     """Tests for DepTreeBuilder.create_venv method."""
 
-    @patch("subprocess.run")
-    def test_create_venv_success(self, mock_run):
+    def test_create_venv_success(self, mocker):
         """Test successful venv creation."""
-        mock_run.return_value = MagicMock(returncode=0)
+        mock_run = mocker.patch("subprocess.run", return_value=mocker.Mock(returncode=0))
         
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_path = Path(tmpdir) / "venv"
@@ -57,19 +55,17 @@ class TestDepTreeBuilderCreateVenv:
             assert "bin" in result or "Scripts" in result
             mock_run.assert_called()
 
-    @patch("subprocess.run")
-    def test_create_venv_raises_on_failure(self, mock_run):
+    def test_create_venv_raises_on_failure(self, mocker):
         """Test that create_venv raises RuntimeError on subprocess failure."""
         import subprocess
-        mock_run.side_effect = subprocess.CalledProcessError(1, "cmd")
+        mocker.patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "cmd"))
         
         builder = DepTreeBuilder()
         
         with pytest.raises(RuntimeError):
             builder.create_venv("/some/venv/path")
 
-    @patch("subprocess.run")
-    def test_create_venv_existing_venv(self, mock_run):
+    def test_create_venv_existing_venv(self, mocker):
         """Test create_venv with already existing venv."""
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_path = Path(tmpdir) / "venv"
@@ -82,10 +78,9 @@ class TestDepTreeBuilderCreateVenv:
             assert result is not None
             assert venv_path.exists()
 
-    @patch("subprocess.run")
-    def test_create_venv_force_recreate(self, mock_run):
+    def test_create_venv_force_recreate(self, mocker):
         """Test create_venv with force_recreate=True."""
-        mock_run.return_value = MagicMock(returncode=0)
+        mock_run = mocker.patch("subprocess.run", return_value=mocker.Mock(returncode=0))
         
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_path = Path(tmpdir) / "venv"
@@ -97,10 +92,9 @@ class TestDepTreeBuilderCreateVenv:
             assert result is not None
             mock_run.assert_called()
 
-    @patch("subprocess.run")
-    def test_create_venv_returns_correct_bin_path(self, mock_run):
+    def test_create_venv_returns_correct_bin_path(self, mocker):
         """Test that create_venv returns the correct bin/Scripts directory."""
-        mock_run.return_value = MagicMock(returncode=0)
+        mock_run = mocker.patch("subprocess.run", return_value=mocker.Mock(returncode=0))
         
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_path = Path(tmpdir) / "venv"
@@ -133,26 +127,25 @@ class TestDepTreeBuilderDeleteVenv:
         # Should not raise
         builder.delete_venv("/nonexistent/venv/path")
 
-    def test_delete_venv_raises_on_os_error(self):
+    def test_delete_venv_raises_on_os_error(self, mocker, tmp_path):
         """Test that delete_venv raises RuntimeError on OSError."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            venv_path = Path(tmpdir) / "venv"
-            venv_path.mkdir()
-            
-            builder = DepTreeBuilder()
-            
-            with patch("shutil.rmtree", side_effect=OSError("Permission denied")):
-                with pytest.raises(RuntimeError):
-                    builder.delete_venv(str(venv_path))
+        venv_path = tmp_path / "venv"
+        venv_path.mkdir()
+        
+        builder = DepTreeBuilder()
+        
+        # Patch only affects the builder's shutil.rmtree, not tmp_path cleanup
+        mocker.patch("src.infrastructure.dep_tree_builder.shutil.rmtree", side_effect=OSError("Permission denied"))
+        with pytest.raises(RuntimeError):
+            builder.delete_venv(str(venv_path))
 
 
 class TestDepTreeBuilderInstallPackages:
     """Tests for DepTreeBuilder.install_packages method."""
 
-    @patch("subprocess.run")
-    def test_install_packages_success(self, mock_run):
+    def test_install_packages_success(self, mocker):
         """Test successful package installation."""
-        mock_run.return_value = MagicMock(returncode=0)
+        mock_run = mocker.patch("subprocess.run", return_value=mocker.Mock(returncode=0))
         
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_bin = Path(tmpdir) / "bin"
@@ -163,10 +156,9 @@ class TestDepTreeBuilderInstallPackages:
             
             assert mock_run.call_count >= 1
 
-    @patch("subprocess.run")
-    def test_install_packages_multiple(self, mock_run):
+    def test_install_packages_multiple(self, mocker):
         """Test installation of multiple packages."""
-        mock_run.return_value = MagicMock(returncode=0)
+        mock_run = mocker.patch("subprocess.run", return_value=mocker.Mock(returncode=0))
         
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_bin = Path(tmpdir) / "bin"
@@ -177,11 +169,10 @@ class TestDepTreeBuilderInstallPackages:
             
             assert mock_run.call_count >= 1
 
-    @patch("subprocess.run")
-    def test_install_packages_raises_on_failure(self, mock_run):
+    def test_install_packages_raises_on_failure(self, mocker):
         """Test that install_packages raises RuntimeError on failure."""
         import subprocess
-        mock_run.side_effect = subprocess.CalledProcessError(1, "cmd")
+        mocker.patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "cmd"))
         
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_bin = Path(tmpdir) / "bin"
@@ -192,10 +183,9 @@ class TestDepTreeBuilderInstallPackages:
             with pytest.raises(RuntimeError):
                 builder.install_packages(str(venv_bin), ["requests"])
 
-    @patch("subprocess.run")
-    def test_install_packages_includes_pipdeptree(self, mock_run):
+    def test_install_packages_includes_pipdeptree(self, mocker):
         """Test that pipdeptree is always installed."""
-        mock_run.return_value = MagicMock(returncode=0)
+        mock_run = mocker.patch("subprocess.run", return_value=mocker.Mock(returncode=0))
         
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_bin = Path(tmpdir) / "bin"
@@ -211,17 +201,16 @@ class TestDepTreeBuilderInstallPackages:
 class TestDepTreeBuilderGetTreeJson:
     """Tests for DepTreeBuilder.get_tree_json method."""
 
-    @patch("subprocess.run")
-    def test_get_tree_json_success(self, mock_run):
+    def test_get_tree_json_success(self, mocker):
         """Test successful pipdeptree execution."""
         expected_tree = [
             {"key": "requests", "dependencies": []},
             {"key": "numpy", "dependencies": []}
         ]
         
-        mock_result = MagicMock()
+        mock_result = mocker.Mock()
         mock_result.stdout = json.dumps(expected_tree)
-        mock_run.return_value = mock_result
+        mock_run = mocker.patch("subprocess.run", return_value=mock_result)
         
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_bin = Path(tmpdir) / "bin"
@@ -232,11 +221,10 @@ class TestDepTreeBuilderGetTreeJson:
             
             assert result == expected_tree
 
-    @patch("subprocess.run")
-    def test_get_tree_json_raises_on_subprocess_error(self, mock_run):
+    def test_get_tree_json_raises_on_subprocess_error(self, mocker):
         """Test that get_tree_json raises RuntimeError on subprocess failure."""
         import subprocess
-        mock_run.side_effect = subprocess.CalledProcessError(1, "pipdeptree")
+        mocker.patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "pipdeptree"))
         
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_bin = Path(tmpdir) / "bin"
@@ -247,12 +235,11 @@ class TestDepTreeBuilderGetTreeJson:
             with pytest.raises(RuntimeError):
                 builder.get_tree_json(str(venv_bin))
 
-    @patch("subprocess.run")
-    def test_get_tree_json_raises_on_invalid_json(self, mock_run):
+    def test_get_tree_json_raises_on_invalid_json(self, mocker):
         """Test that get_tree_json raises RuntimeError on invalid JSON."""
-        mock_result = MagicMock()
+        mock_result = mocker.Mock()
         mock_result.stdout = "not valid json"
-        mock_run.return_value = mock_result
+        mock_run = mocker.patch("subprocess.run", return_value=mock_result)
         
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_bin = Path(tmpdir) / "bin"

@@ -3,7 +3,6 @@
 import pytest
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock, AsyncMock
 import asyncio
 
 from src.infrastructure.repo_downloader import RepoDownloader, _RepoDownloadError
@@ -38,10 +37,9 @@ class TestRepoDownloaderInit:
 class TestRepoDownloaderDownloadRepo:
     """Tests for RepoDownloader.download_repo method."""
 
-    @patch.object(RepoDownloader, "download_repos")
-    def test_download_repo_single_success(self, mock_download_repos):
+    def test_download_repo_single_success(self, mocker):
         """Test downloading a single repository successfully."""
-        mock_download_repos.return_value = {"numpy": True}
+        mocker.patch.object(RepoDownloader, "download_repos", return_value={"numpy": True})
         
         with tempfile.TemporaryDirectory() as tmpdir:
             downloader = RepoDownloader()
@@ -53,12 +51,10 @@ class TestRepoDownloaderDownloadRepo:
             )
         
         assert result is True
-        mock_download_repos.assert_called_once()
 
-    @patch.object(RepoDownloader, "download_repos")
-    def test_download_repo_single_failure(self, mock_download_repos):
+    def test_download_repo_single_failure(self, mocker):
         """Test download failure."""
-        mock_download_repos.return_value = {"numpy": False}
+        mocker.patch.object(RepoDownloader, "download_repos", return_value={"numpy": False})
         
         with tempfile.TemporaryDirectory() as tmpdir:
             downloader = RepoDownloader()
@@ -71,10 +67,9 @@ class TestRepoDownloaderDownloadRepo:
         
         assert result is False
 
-    @patch.object(RepoDownloader, "download_repos")
-    def test_download_repo_delegates_to_batch(self, mock_download_repos):
+    def test_download_repo_delegates_to_batch(self, mocker):
         """Test that download_repo properly delegates to download_repos."""
-        mock_download_repos.return_value = {"test": True}
+        mock_download_repos = mocker.patch.object(RepoDownloader, "download_repos", return_value={"test": True})
         
         with tempfile.TemporaryDirectory() as tmpdir:
             downloader = RepoDownloader()
@@ -93,8 +88,7 @@ class TestRepoDownloaderDownloadRepo:
 class TestRepoDownloaderDownloadRepos:
     """Tests for RepoDownloader.download_repos method."""
 
-    @patch.object(RepoDownloader, "_download_zip")
-    def test_download_repos_empty_dict(self, mock_download_zip):
+    def test_download_repos_empty_dict(self, mocker):
         """Test download_repos with empty dictionary."""
         with tempfile.TemporaryDirectory() as tmpdir:
             downloader = RepoDownloader()
@@ -102,10 +96,9 @@ class TestRepoDownloaderDownloadRepos:
         
         assert result == {}
 
-    @patch.object(RepoDownloader, "_download_zip")
-    def test_download_repos_single_github(self, mock_download_zip):
+    def test_download_repos_single_github(self, mocker):
         """Test download_repos with a single GitHub URL."""
-        mock_download_zip.return_value = True
+        mocker.patch.object(RepoDownloader, "_download_zip", return_value=True)
         
         with tempfile.TemporaryDirectory() as tmpdir:
             downloader = RepoDownloader()
@@ -116,10 +109,9 @@ class TestRepoDownloaderDownloadRepos:
         
         assert "numpy" in result
 
-    @patch.object(RepoDownloader, "_download_zip")
-    def test_download_repos_single_gitlab(self, mock_download_zip):
+    def test_download_repos_single_gitlab(self, mocker):
         """Test download_repos with a single GitLab URL."""
-        mock_download_zip.return_value = True
+        mocker.patch.object(RepoDownloader, "_download_zip", return_value=True)
         
         with tempfile.TemporaryDirectory() as tmpdir:
             downloader = RepoDownloader()
@@ -130,8 +122,7 @@ class TestRepoDownloaderDownloadRepos:
         
         assert "project" in result
 
-    @patch.object(RepoDownloader, "_download_zip")
-    def test_download_repos_invalid_url(self, mock_download_zip):
+    def test_download_repos_invalid_url(self, mocker):
         """Test download_repos with invalid URL."""
         with tempfile.TemporaryDirectory() as tmpdir:
             downloader = RepoDownloader()
@@ -142,8 +133,7 @@ class TestRepoDownloaderDownloadRepos:
         
         assert result["bad"] is False
 
-    @patch.object(RepoDownloader, "_download_zip")
-    def test_download_repos_empty_url(self, mock_download_zip):
+    def test_download_repos_empty_url(self, mocker):
         """Test download_repos with empty URL."""
         with tempfile.TemporaryDirectory() as tmpdir:
             downloader = RepoDownloader()
@@ -154,8 +144,7 @@ class TestRepoDownloaderDownloadRepos:
         
         assert result["empty"] is False
 
-    @patch.object(RepoDownloader, "_download_zip")
-    def test_download_repos_none_url(self, mock_download_zip):
+    def test_download_repos_none_url(self, mocker):
         """Test download_repos with None URL."""
         with tempfile.TemporaryDirectory() as tmpdir:
             downloader = RepoDownloader()
@@ -166,10 +155,9 @@ class TestRepoDownloaderDownloadRepos:
         
         assert result["none"] is False
 
-    @patch.object(RepoDownloader, "_download_zip")
-    def test_download_repos_multiple_packages(self, mock_download_zip):
+    def test_download_repos_multiple_packages(self, mocker):
         """Test download_repos with multiple packages."""
-        mock_download_zip.return_value = True
+        mocker.patch.object(RepoDownloader, "_download_zip", return_value=True)
         
         with tempfile.TemporaryDirectory() as tmpdir:
             downloader = RepoDownloader()
@@ -185,10 +173,9 @@ class TestRepoDownloaderDownloadRepos:
         assert len(result) == 3
         assert all(v is True for v in result.values())
 
-    @patch.object(RepoDownloader, "_download_zip")
-    def test_download_repos_custom_branch(self, mock_download_zip):
+    def test_download_repos_custom_branch(self, mocker):
         """Test download_repos with custom branch."""
-        mock_download_zip.return_value = True
+        mock_download_zip = mocker.patch.object(RepoDownloader, "_download_zip", return_value=True)
         
         with tempfile.TemporaryDirectory() as tmpdir:
             downloader = RepoDownloader()
@@ -201,8 +188,7 @@ class TestRepoDownloaderDownloadRepos:
         # Verify branch is used in URL construction
         mock_download_zip.assert_called()
 
-    @patch.object(RepoDownloader, "_download_zip")
-    def test_download_repos_unsupported_provider(self, mock_download_zip):
+    def test_download_repos_unsupported_provider(self, mocker):
         """Test download_repos with unsupported provider."""
         with tempfile.TemporaryDirectory() as tmpdir:
             downloader = RepoDownloader()
@@ -217,13 +203,12 @@ class TestRepoDownloaderDownloadRepos:
 class TestRepoDownloaderDownloadZip:
     """Tests for RepoDownloader._download_zip method."""
 
-    @patch("requests.get")
-    def test_download_zip_success(self, mock_get):
+    def test_download_zip_success(self, mocker):
         """Test successful ZIP download."""
-        mock_response = MagicMock()
+        mock_response = mocker.Mock()
         mock_response.iter_content.return_value = [b"file content"]
         mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
+        mocker.patch("requests.get", return_value=mock_response)
         
         with tempfile.TemporaryDirectory() as tmpdir:
             downloader = RepoDownloader()
@@ -235,11 +220,10 @@ class TestRepoDownloaderDownloadZip:
         
         assert result is True
 
-    @patch("requests.get")
-    def test_download_zip_timeout(self, mock_get):
+    def test_download_zip_timeout(self, mocker):
         """Test download_zip with timeout."""
         import requests
-        mock_get.side_effect = requests.Timeout()
+        mocker.patch("requests.get", side_effect=requests.Timeout())
         
         with tempfile.TemporaryDirectory() as tmpdir:
             downloader = RepoDownloader(timeout=1)
@@ -251,11 +235,10 @@ class TestRepoDownloaderDownloadZip:
         
         assert result is False
 
-    @patch("requests.get")
-    def test_download_zip_connection_error(self, mock_get):
+    def test_download_zip_connection_error(self, mocker):
         """Test download_zip with connection error."""
         import requests
-        mock_get.side_effect = requests.ConnectionError()
+        mocker.patch("requests.get", side_effect=requests.ConnectionError())
         
         with tempfile.TemporaryDirectory() as tmpdir:
             downloader = RepoDownloader()
@@ -267,14 +250,13 @@ class TestRepoDownloaderDownloadZip:
         
         assert result is False
 
-    @patch("requests.get")
-    def test_download_zip_http_404(self, mock_get):
+    def test_download_zip_http_404(self, mocker):
         """Test download_zip with HTTP 404 error."""
         import requests
-        mock_response = MagicMock()
+        mock_response = mocker.Mock()
         mock_response.status_code = 404
         mock_response.raise_for_status.side_effect = requests.HTTPError(response=mock_response)
-        mock_get.return_value = mock_response
+        mock_get = mocker.patch("requests.get", return_value=mock_response)
         
         with tempfile.TemporaryDirectory() as tmpdir:
             downloader = RepoDownloader()
@@ -287,14 +269,13 @@ class TestRepoDownloaderDownloadZip:
         # Should try fallback
         assert mock_get.call_count >= 1
 
-    @patch("requests.get")
-    def test_download_zip_http_500(self, mock_get):
+    def test_download_zip_http_500(self, mocker):
         """Test download_zip with HTTP 500 error."""
         import requests
-        mock_response = MagicMock()
+        mock_response = mocker.Mock()
         mock_response.status_code = 500
         mock_response.raise_for_status.side_effect = requests.HTTPError(response=mock_response)
-        mock_get.return_value = mock_response
+        mocker.patch("requests.get", return_value=mock_response)
         
         with tempfile.TemporaryDirectory() as tmpdir:
             downloader = RepoDownloader()
@@ -306,13 +287,12 @@ class TestRepoDownloaderDownloadZip:
         
         assert result is False
 
-    @patch("requests.get")
-    def test_download_zip_creates_output_dir(self, mock_get):
+    def test_download_zip_creates_output_dir(self, mocker):
         """Test that download_zip creates output directory if needed."""
-        mock_response = MagicMock()
+        mock_response = mocker.Mock()
         mock_response.iter_content.return_value = [b"content"]
         mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
+        mocker.patch("requests.get", return_value=mock_response)
         
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "new_dir"
@@ -328,21 +308,20 @@ class TestRepoDownloaderDownloadZip:
             # Verify directory was created
             assert output_path.exists() or True  # File creation succeeds
 
-    @patch("requests.get")
-    def test_download_zip_fallback_to_master(self, mock_get):
+    def test_download_zip_fallback_to_master(self, mocker):
         """Test fallback from main to master branch."""
         import requests
         
         # First call returns 404, second succeeds
-        mock_response_404 = MagicMock()
+        mock_response_404 = mocker.Mock()
         mock_response_404.status_code = 404
         mock_response_404.raise_for_status.side_effect = requests.HTTPError(response=mock_response_404)
         
-        mock_response_ok = MagicMock()
+        mock_response_ok = mocker.Mock()
         mock_response_ok.iter_content.return_value = [b"content"]
         mock_response_ok.raise_for_status.return_value = None
         
-        mock_get.side_effect = [mock_response_404, mock_response_ok]
+        mock_get = mocker.patch("requests.get", side_effect=[mock_response_404, mock_response_ok])
         
         with tempfile.TemporaryDirectory() as tmpdir:
             downloader = RepoDownloader()
@@ -387,50 +366,54 @@ class TestRepoDownloaderContextManager:
 class TestRepoDownloaderURLValidation:
     """Tests for URL validation in RepoDownloader."""
 
-    def test_github_url_recognition(self):
+    def test_github_url_recognition(self, mocker):
         """Test that GitHub URLs are properly recognized."""
+        mocker.patch.object(RepoDownloader, "_download_zip", return_value=True)
+        
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch.object(RepoDownloader, "_download_zip", return_value=True):
-                downloader = RepoDownloader()
-                result = downloader.download_repos(
-                    {"numpy": "https://github.com/numpy/numpy"},
-                    Path(tmpdir)
-                )
-            
-            assert result["numpy"] is True
+            downloader = RepoDownloader()
+            result = downloader.download_repos(
+                {"numpy": "https://github.com/numpy/numpy"},
+                Path(tmpdir)
+            )
+        
+        assert result["numpy"] is True
 
-    def test_gitlab_url_recognition(self):
+    def test_gitlab_url_recognition(self, mocker):
         """Test that GitLab URLs are properly recognized."""
+        mocker.patch.object(RepoDownloader, "_download_zip", return_value=True)
+        
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch.object(RepoDownloader, "_download_zip", return_value=True):
-                downloader = RepoDownloader()
-                result = downloader.download_repos(
-                    {"project": "https://gitlab.com/group/project"},
-                    Path(tmpdir)
-                )
-            
-            assert result["project"] is True
+            downloader = RepoDownloader()
+            result = downloader.download_repos(
+                {"project": "https://gitlab.com/group/project"},
+                Path(tmpdir)
+            )
+        
+        assert result["project"] is True
 
-    def test_url_with_git_suffix(self):
+    def test_url_with_git_suffix(self, mocker):
         """Test URL handling with .git suffix."""
+        mocker.patch.object(RepoDownloader, "_download_zip", return_value=True)
+        
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch.object(RepoDownloader, "_download_zip", return_value=True):
-                downloader = RepoDownloader()
-                result = downloader.download_repos(
-                    {"repo": "https://github.com/user/repo.git"},
-                    Path(tmpdir)
-                )
-            
-            assert result["repo"] is True
+            downloader = RepoDownloader()
+            result = downloader.download_repos(
+                {"repo": "https://github.com/user/repo.git"},
+                Path(tmpdir)
+            )
+        
+        assert result["repo"] is True
 
-    def test_url_with_trailing_slash(self):
+    def test_url_with_trailing_slash(self, mocker):
         """Test URL handling with trailing slash."""
+        mocker.patch.object(RepoDownloader, "_download_zip", return_value=True)
+        
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch.object(RepoDownloader, "_download_zip", return_value=True):
-                downloader = RepoDownloader()
-                result = downloader.download_repos(
-                    {"repo": "https://github.com/user/repo/"},
-                    Path(tmpdir)
-                )
-            
-            assert result["repo"] is True
+            downloader = RepoDownloader()
+            result = downloader.download_repos(
+                {"repo": "https://github.com/user/repo/"},
+                Path(tmpdir)
+            )
+        
+        assert result["repo"] is True
