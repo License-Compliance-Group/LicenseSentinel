@@ -6,8 +6,25 @@ import requests
 from src.infrastructure.logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__)
 
+
 class Connectivity:
     """Implementation of the class"""
+
+    @staticmethod
+    def check_file_exists(path: Path) -> bool:
+        """Check if a file exists at the given path.
+
+        Args:
+            path (path): A path to check"""
+        try:
+            with open(path, 'r', encoding='utf-8'):
+                return True
+
+        except PermissionError:
+            logger.warning("No permission to read file: %s", path)
+            return False
+        except IOError:
+            return False
 
     @staticmethod
     def safe_write(path, content):
@@ -47,25 +64,26 @@ class Connectivity:
             logger.warning("Could not read from file: %s", ex)
             return None
         return content
+
     @staticmethod
-    def verify_internet_access(host = "https://example.com",timeout = 30):
+    def verify_internet_access(host="https://example.com", timeout=30):
         """We need internet access to download the matrix file."""
         # Connect to a known-up server
         try:
             logger.info("Verifying internet access. This will take up to %d" +
-            "seconds, depending on your network quality.", timeout)
+                        "seconds, depending on your network quality.", timeout)
             req = requests.head(host, timeout=timeout)
             req.raise_for_status()
             return True
         except requests.HTTPError as e:
             logger.warning("Checking internet connection failed, status code %s.",
-            format(e.response.status_code))
+                           format(e.response.status_code))
         except requests.ConnectionError:
             logger.warning("No internet connection available.")
         return False
 
     @staticmethod
-    def download_file(url, timeout = 30, max_size = 5 * 1024 * 1024):
+    def download_file(url, timeout=30, max_size=5 * 1024 * 1024):
         """Download any file from anywhere. Basically a discount curl.
 
         Args:
@@ -88,15 +106,15 @@ class Connectivity:
         # Try downloading
         try:
             logger.debug('Downloading from %s...', url)
-            response = requests.get(url, timeout = timeout)
+            response = requests.get(url, timeout=timeout)
             response.raise_for_status()
             content_length = response.headers.get('Content-Length')
             if content_length and int(content_length) > max_size:
                 raise ValueError('Response too large')
 
         except (requests.exceptions.Timeout, ValueError) as ex:
-            logger.error("Could not download a file from %s, because an "+
-            "exception occurred: %s", url, ex)
+            logger.error("Could not download a file from %s, because an " +
+                         "exception occurred: %s", url, ex)
             return None
         return response
 

@@ -1,7 +1,7 @@
 """Unit tests for license analyzer functions."""
 import unittest
-from src.infrastructure.license_name_normalizer import normalize
-from src.analyzer.license_compatibility_analyzer import LicenseCompatibilityAnalyzer
+from src.analyzer.license_name_normalizer import normalize
+from src.analyzer.matrix_manager import LicenseCompatibilityAnalyzer
 
 
 class TestNormalizeLicenseName(unittest.TestCase):
@@ -42,13 +42,15 @@ class TestLicenseCompatibilityAnalyzer(unittest.TestCase):
         """Test comparing identical licenses."""
         result = self.analyzer.compare_licenses("MIT", "MIT")
         self.assertIsNotNone(result)
-        self.assertEqual(result[0], "Same")  # Same licenses are a special casae
+        # Same licenses are a special casae
+        self.assertEqual(result[0], "Same")
 
     def test_compare_licenses_unknown(self):
         """Test comparing unknown licenses."""
         result = self.analyzer.compare_licenses("Unknown", "MIT")
         self.assertIsNone(result[0])    # This is a tuple (result, explanation)
-                                        # We only care about the result.
+        # We only care about the result.
+
     def test_calculate_compatibility(self):
         """Test calculating compatibility for multiple licenses."""
         licenses = ["MIT", "Apache-2.0"]

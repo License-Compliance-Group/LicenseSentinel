@@ -15,7 +15,7 @@ Intended usage:
 from typing import Optional
 
 
-class PyPiMetadata:
+class PyPIMetadata:
     """
     Container for PyPI package metadata.
 
@@ -39,7 +39,7 @@ class PyPiMetadata:
             raise ValueError("Package cannot be empty.")
         self._package = package
         self._license_type = license_type
-        self._link = link
+        self._link: str | None = link
 
     @property
     def package(self) -> str:

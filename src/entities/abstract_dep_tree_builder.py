@@ -36,3 +36,8 @@ class AbstractDepTreeBuilder(ABC):
     def delete_venv(self, path: str) -> None:
         """Delete the virtual environment (cleanup)."""
         raise NotImplementedError
+
+    @abstractmethod
+    def has_cycles(self, graph: Dict[str, List[str]]) -> bool:
+        """Check if the dependency tree has cycles."""
+        raise NotImplementedError

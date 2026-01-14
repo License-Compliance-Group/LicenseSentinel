@@ -25,7 +25,7 @@ class AbstractRepoDownloader(ABC):
     def download_repos(
         self,
         repo_urls: Dict[str, Optional[str]],
-        output_path: str,
+        output_path: Path,
         branch: str = "main",
     ) -> Dict[str, bool]:
         """Download multiple repositories (asynchronous).
