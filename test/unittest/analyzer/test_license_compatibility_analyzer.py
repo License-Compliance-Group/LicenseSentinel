@@ -1,12 +1,12 @@
 """Unit tests for LicenseCompatibilityAnalyzer"""
 import os
 import tempfile
-import unittest
+import pytest
 from unittest.mock import patch, MagicMock, mock_open, Mock
 from datetime import datetime
 from requests import Response
 
-from src.analyzer.license_compatibility_analyzer import (
+from src.analyzer.matrix_manager import (
     LicenseCompatibilityAnalyzer,
     FullCompatibilityCalc,
     CompatibilityCalcStrategy
@@ -14,122 +14,122 @@ from src.analyzer.license_compatibility_analyzer import (
 from src.infrastructure.connectivity import Connectivity as io
 
 
-class TestCompatibilityCalcStrategy(unittest.TestCase):
-    """Unit tests for CompatibilityCalcStrategy abstract class."""
-
-    def test_abstract_method(self):
-        """Test that CompatibilityCalcStrategy cannot be instantiated."""
-        # Abstract classes cannot be instantiated
-        self.assertRaises(TypeError, CompatibilityCalcStrategy)
+def test_abstract_method():
+    """Test that CompatibilityCalcStrategy cannot be instantiated."""
+    # Abstract classes cannot be instantiated
+    with pytest.raises(TypeError):
+        CompatibilityCalcStrategy()
 
 
-class TestFullCompatibilityCalc(unittest.TestCase):
-    """Unit tests for FullCompatibilityCalc class."""
+@pytest.fixture
+def calc():
+    return FullCompatibilityCalc()
 
-    def setUp(self):
-        self.calc = FullCompatibilityCalc()
 
-    def test_calculate_license_compatibility_same_licenses(self):
-        """Test calculate_license_compatibility with same licenses."""
-        result = self.calc.calculate_license_compatibility(['apache-2.0',
-                                                            'apache-2.0'])
-        # a 'same' return only makes any sense with a pairwise check,
-        # this is a full one
-        self.assertEqual(result, ("Yes", "n.a."))
+def test_calculate_license_compatibility_same_licenses(calc):
+    """Test calculate_license_compatibility with same licenses."""
+    result = calc.calculate_license_compatibility(['apache-2.0',
+                                                   'apache-2.0'])
+    # a 'same' return only makes any sense with a pairwise check,
+    # this is a full one
+    assert result == ("Yes", "n.a.")
 
-    def test_calculate_license_compatibility_compatible(self):
-        """Test calculate_license_compatibility with compatible licenses."""
-        result = self.calc.calculate_license_compatibility(['0bsd', 'sunpro'])
-        self.assertEqual(result, ("Yes", "n.a."))
 
-    def test_calculate_license_compatibility_incompatible(self):
-        """Test calculate_license_compatibility with incompatible licenses."""
-        result = self.calc.calculate_license_compatibility(['ftl',
-                                                            'gpl-3.0-only'])
-        self.assertEqual(result[0], "No")
+def test_calculate_license_compatibility_compatible(calc):
+    """Test calculate_license_compatibility with compatible licenses."""
+    result = calc.calculate_license_compatibility(['0bsd', 'sunpro'])
+    assert result == ("Yes", "n.a.")
 
-class TestLicenseCompatibilityAnalyzerClass(unittest.TestCase):
-    """Unit tests for LicenseCompatibilityAnalyzer class."""
 
-    def setUp(self):
-        self.temp_dir = tempfile.mkdtemp()
-        self.temp_file = os.path.join(self.temp_dir, "test_matrix.json")
-        self.analyzer = LicenseCompatibilityAnalyzer(path=self.temp_file)
-        
+def test_calculate_license_compatibility_incompatible(calc):
+    """Test calculate_license_compatibility with incompatible licenses."""
+    result = calc.calculate_license_compatibility(['ftl',
+                                                   'gpl-3.0-only'])
+    assert result[0] == "No"
 
-    def tearDown(self):
-        if os.path.exists(self.temp_file):
-            os.remove(self.temp_file)
-        os.rmdir(self.temp_dir)
+@pytest.fixture
+def analyzer():
+    temp_dir = tempfile.mkdtemp()
+    temp_file = os.path.join(temp_dir, "test_matrix.json")
+    analyzer = LicenseCompatibilityAnalyzer(path=temp_file)
+    yield analyzer
+    if os.path.exists(temp_file):
+        os.remove(temp_file)
+    os.rmdir(temp_dir)
 
-    def test_analyzer_builds(self):
-        """Ensure default config of LicenseCompatibilityAnalyzer works."""
-        analyzer = LicenseCompatibilityAnalyzer()
-        self.assertIsNotNone(analyzer)
+def test_analyzer_builds():
+    """Ensure default config of LicenseCompatibilityAnalyzer works."""
+    analyzer = LicenseCompatibilityAnalyzer()
+    assert analyzer is not None
 
-    def test_init_custom_path(self):
-        """Test __init__ with custom path."""
-        custom_path = "/custom/path/matrix.json"
-        analyzer = LicenseCompatibilityAnalyzer(path=custom_path)
-        self.assertEqual(analyzer.path, custom_path)
 
-    def test_init_custom_strategy(self):
-        """Test __init__ with custom strategy."""
-        strategy = FullCompatibilityCalc()
-        analyzer = LicenseCompatibilityAnalyzer(strategy=strategy)
-        self.assertEqual(analyzer.compat_calc_strategy, strategy)
+def test_init_custom_path():
+    """Test __init__ with custom path."""
+    custom_path = "/custom/path/matrix.json"
+    analyzer = LicenseCompatibilityAnalyzer(path=custom_path)
+    assert analyzer.path == custom_path
 
-    def test_compat_calc_strategy_property(self):
-        """Test compat_calc_strategy property getter and setter."""
-        strategy = FullCompatibilityCalc()
-        self.analyzer.compat_calc_strategy = strategy
-        self.assertEqual(self.analyzer.compat_calc_strategy, strategy)
 
-    def test_last_comparison_result_property(self):
-        """Test last_comparison_result property getter and setter."""
-        result = ("Yes", "n.a.")
-        self.analyzer.last_comparison_result = result
-        self.assertEqual(self.analyzer.last_comparison_result, result)
+def test_init_custom_strategy():
+    """Test __init__ with custom strategy."""
+    strategy = FullCompatibilityCalc()
+    analyzer = LicenseCompatibilityAnalyzer(strategy=strategy)
+    assert analyzer.compat_calc_strategy == strategy
 
-    def test_license_matrix_property_getter_empty(self):
-        """Test license_matrix property getter when empty.
-        Should retrieve online file."""
-        self.analyzer.license_matrix = ""
-        result = self.analyzer.license_matrix
-        self.assertIsNotNone(result)
-        self.assertGreater(len(result), 0)
-        
-    @patch.object(io,'verify_internet_access', return_value=False)
-    def test_license_matrix_property_getter_empty_offline(self, mock_verify):
-        """Test license_matrix property getter when empty.
-        Assume no connectivity, should return an empty string"""
-        mock_verify.return_value = False
-        self.analyzer.license_matrix = ""
-        result = self.analyzer.license_matrix
-        self.assertIsNotNone(result)
-        self.assertEqual(result, "")
 
-    def test_license_matrix_property_getter_cached(self):
-        """Test license_matrix property getter when cached."""
-        self.analyzer.license_matrix = {"key": "value"}
-        result = self.analyzer.license_matrix
-        self.assertEqual(result, {"key": "value"})
+def test_compat_calc_strategy_property(analyzer):
+    """Test compat_calc_strategy property getter and setter."""
+    strategy = FullCompatibilityCalc()
+    analyzer.compat_calc_strategy = strategy
+    assert analyzer.compat_calc_strategy == strategy
 
-    def test_license_matrix_property_setter(self):
-        """Test license_matrix property setter."""
-        data = {"key": "value"}
-        self.analyzer.license_matrix = data
-        self.assertEqual(self.analyzer.license_matrix, data)
 
-    def test_matrix_file_present_true(self):
-        """Test matrix_file_present when file exists."""
-        with open(self.temp_file, 'w', encoding='utf-8') as f:
-            f.write("{}")
-        self.assertTrue(self.analyzer.matrix_file_present())
+def test_last_comparison_result_property(analyzer):
+    """Test last_comparison_result property getter and setter."""
+    result = ("Yes", "n.a.")
+    analyzer.last_comparison_result = result
+    assert analyzer.last_comparison_result == result
 
-    def test_matrix_file_present_false(self):
-        """Test matrix_file_present when file does not exist."""
-        self.assertFalse(self.analyzer.matrix_file_present())
+def test_license_matrix_property_getter_empty(analyzer):
+    """Test license_matrix property getter when empty.
+    Should retrieve online file."""
+    analyzer.license_matrix = ""
+    result = analyzer.license_matrix
+    assert result is not None
+    assert len(result) > 0
+
+
+@patch.object(io,'verify_internet_access', return_value=False)
+def test_license_matrix_property_getter_empty_offline(mock_verify, analyzer):
+    """Test license_matrix property getter when empty.
+    Assume no connectivity, should return an empty string"""
+    mock_verify.return_value = False
+    analyzer.license_matrix = ""
+    result = analyzer.license_matrix
+    assert result is not None
+    assert result == ""
+
+def test_license_matrix_property_getter_cached(analyzer):
+    """Test license_matrix property getter when cached."""
+    analyzer.license_matrix = {"key": "value"}
+    result = analyzer.license_matrix
+    assert result == {"key": "value"}
+
+def test_license_matrix_property_setter(analyzer):
+    """Test license_matrix property setter."""
+    data = {"key": "value"}
+    analyzer.license_matrix = data
+    assert analyzer.license_matrix == data
+
+def test_matrix_file_present_true(analyzer):
+    """Test matrix_file_present when file exists."""
+    with open(analyzer.path, 'w', encoding='utf-8') as f:
+        f.write("{}")
+    assert analyzer.matrix_file_present()
+
+def test_matrix_file_present_false(analyzer):
+    """Test matrix_file_present when file does not exist."""
+    assert not analyzer.matrix_file_present()
 
     @patch('os.remove')
     def test_delete_matrix_file_exists(self, mock_remove):
