@@ -506,6 +506,8 @@ class Controller:
                 arg = cmd_parts[1].strip()
                 if arg.lower() == "all":
                     return True
+                if arg.lower() == "root":
+                    return False
                 pkg_exist = self.get_package_metadata(arg)
                 return pkg_exist is not None
             case "quit":
