@@ -36,7 +36,7 @@ jobs:
     - name: Measure coverage with coverage
       run: |
         . ./.venv/bin/activate
-        coverage run -m unittest discover
+        coverage run -m pytest test/
     - name: Create a report for further analysis
       run: |
         . ./.venv/bin/activate
@@ -47,7 +47,7 @@ jobs:
         name: coverage-report-${{ matrix.python-version }}
         path: test/reports/coverage-${{ matrix.python-version }}.xml
 
-  generate-unittest:
+  generate-pytest:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -68,21 +68,21 @@ jobs:
     - name: Install venv on cache miss
       run: python src/scripts/venv_setup.py --recreate
       if: steps.cache-venv.outputs.cache-hit != 'true'
-    - name: Generate unit test XML
+    - name: Generate pytest XML
       run: |
         . ./.venv/bin/activate
-        python -m xmlrunner discover -o test/reports/unit-${{ matrix.python-version }}
-    - name: Upload unit test report
+        python -m pytest --junitxml=test/reports/pytest-${{ matrix.python-version }}.xml test/
+    - name: Upload pytest report
       uses: actions/upload-artifact@v4
       with:
-        name: unit-report-${{ matrix.python-version }}
-        path: test/reports/unit-${{ matrix.python-version }}
+        name: pytest-report-${{ matrix.python-version }}
+        path: test/reports/pytest-${{ matrix.python-version }}.xml
 
   commit:
     runs-on: ubuntu-latest
     needs:
       - generate-coverage
-      - generate-unittest
+      - generate-pytest
     steps:
     - uses: actions/checkout@v4
     - name: Extract branch name
@@ -100,17 +100,17 @@ jobs:
       with:
         pattern: coverage-report-*
         path: downloaded-reports
-    - name: Download unit reports
+    - name: Download pytest reports
       uses: actions/download-artifact@v4
       with:
-        pattern: unit-report-*
+        pattern: pytest-report-*
         path: downloaded-reports
     - name: Wipe obsolete reports
       # xUnit-style reports tend to generate a lot of temporary files
-      # Look at 'upload unit test report' task to see where the path comes from.
+      # Look at 'upload pytest report' task to see where the path comes from.
       run: |
         if [ -d test/reports ];
-        then git rm -r test/reports/unit*/*;
+        then git rm test/reports/pytest-*.xml;
         fi
         mkdir -p test/reports
     - name: Copy reports to test/reports
@@ -145,21 +145,21 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         title: 'Python (${{ matrix.python-version }}) Coverage Report'
         thresholdAll: 0.8
-    - name: 'Append unit test report'
-      id: append-unit
+    - name: 'Append pytest report'
+      id: append-pytest
       uses: kamilok04/test-reporter-body-hijack@main
       with:
-        artifact: 'unit-report-${{ matrix.python-version }}'
-        name: 'Python (${{ matrix.python-version }}) Unit Test Report'
+        artifact: 'pytest-report-${{ matrix.python-version }}'
+        name: 'Python (${{ matrix.python-version }}) Test Report'
         path: '*.xml' # The version granularity is guaranteed by the artifact
         reporter: python-xunit
-        report-title: Python (${{ matrix.python-version }}) Unit Test Report
+        report-title: Python (${{ matrix.python-version }}) Test Report
         
-    - name: Post unit test comment
+    - name: Post pytest comment
       run: |
-        echo "Adding unit test report as a comment"
+        echo "Adding test report as a comment"
         sanitized_content=$(cat << 'EOF' | sed -E 's/([|`*_{}\[\]\(\)#+\-!])/\\\1/g'
-        ${{ steps.append-unit.outputs.body }}
+        ${{ steps.append-pytest.outputs.body }}
         EOF
         )
         echo "$sanitized_content" > body-comment.md
