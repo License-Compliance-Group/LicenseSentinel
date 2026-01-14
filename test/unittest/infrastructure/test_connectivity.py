@@ -2,7 +2,6 @@
 
 import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 import zipfile
 import tempfile
 
@@ -33,15 +32,15 @@ class TestConnectivityCheckFileExists:
         result = Connectivity.check_file_exists(Path("/nonexistent/path/file.txt"))
         assert result is False
 
-    @patch("builtins.open", side_effect=PermissionError())
-    def test_check_file_exists_permission_error(self, mock_file):
+    def test_check_file_exists_permission_error(self, mocker):
         """Test that check_file_exists returns False on PermissionError."""
+        mocker.patch("pathlib.Path.open", side_effect=PermissionError())
         result = Connectivity.check_file_exists(Path("/some/path/file.txt"))
         assert result is False
 
-    @patch("builtins.open", side_effect=IOError())
-    def test_check_file_exists_io_error(self, mock_file):
+    def test_check_file_exists_io_error(self, mocker):
         """Test that check_file_exists returns False on IOError."""
+        mocker.patch("pathlib.Path.open", side_effect=IOError())
         result = Connectivity.check_file_exists(Path("/some/path/file.txt"))
         assert result is False
 
@@ -79,9 +78,9 @@ class TestConnectivitySafeWrite:
         assert result is True
         assert file_path.exists()
 
-    @patch("builtins.open", side_effect=IOError("Write error"))
-    def test_safe_write_io_error(self, mock_file):
+    def test_safe_write_io_error(self, mocker):
         """Test that safe_write returns False on IOError."""
+        mocker.patch("builtins.open", side_effect=IOError("Write error"))
         result = Connectivity.safe_write(Path("/some/path/file.txt"), "content")
         assert result is False
 
@@ -126,9 +125,9 @@ class TestConnectivitySafeRead:
         result = Connectivity.safe_read(Path("/nonexistent/path/file.txt"))
         assert result is None
 
-    @patch("builtins.open", side_effect=IOError("Read error"))
-    def test_safe_read_io_error(self, mock_file):
+    def test_safe_read_io_error(self, mocker):
         """Test that safe_read returns None on IOError."""
+        mocker.patch("builtins.open", side_effect=IOError("Read error"))
         result = Connectivity.safe_read(Path("/some/path/file.txt"))
         assert result is None
 
@@ -141,53 +140,50 @@ class TestConnectivitySafeRead:
 class TestConnectivityVerifyInternetAccess:
     """Tests for Connectivity.verify_internet_access method."""
 
-    @patch("requests.head")
-    def test_verify_internet_access_success(self, mock_head):
+    def test_verify_internet_access_success(self, mocker):
         """Test that verify_internet_access returns True when connection succeeds."""
-        mock_response = MagicMock()
+        mock_response = mocker.Mock()
         mock_response.raise_for_status.return_value = None
-        mock_head.return_value = mock_response
+        mocker.patch("requests.head", return_value=mock_response)
 
         result = Connectivity.verify_internet_access()
         assert result is True
 
-    @patch("requests.head")
-    def test_verify_internet_access_http_error(self, mock_head):
+    def test_verify_internet_access_http_error(self, mocker):
         """Test that verify_internet_access returns False on HTTPError."""
         import requests
-        mock_response = MagicMock()
+        mock_response = mocker.Mock()
         mock_response.status_code = 503
         mock_response.raise_for_status.side_effect = requests.HTTPError(response=mock_response)
-        mock_head.return_value = mock_response
+        mocker.patch("requests.head", return_value=mock_response)
 
         result = Connectivity.verify_internet_access()
         assert result is False
 
-    @patch("requests.head")
-    def test_verify_internet_access_connection_error(self, mock_head):
+    def test_verify_internet_access_connection_error(self, mocker):
         """Test that verify_internet_access returns False on ConnectionError."""
         import requests
+        mock_head = mocker.patch("requests.head")
         mock_head.side_effect = requests.ConnectionError()
 
         result = Connectivity.verify_internet_access()
         assert result is False
 
-    @patch("requests.head")
-    def test_verify_internet_access_timeout(self, mock_head):
+    def test_verify_internet_access_timeout(self, mocker):
         """Test that verify_internet_access handles timeout."""
         import requests
+        mock_head = mocker.patch("requests.head")
         mock_head.side_effect = requests.Timeout()
 
         result = Connectivity.verify_internet_access()
         # Should not raise, returns False
         assert result is False
 
-    @patch("requests.head")
-    def test_verify_internet_access_custom_host(self, mock_head):
+    def test_verify_internet_access_custom_host(self, mocker):
         """Test verify_internet_access with custom host."""
-        mock_response = MagicMock()
+        mock_response = mocker.Mock()
         mock_response.raise_for_status.return_value = None
-        mock_head.return_value = mock_response
+        mock_head = mocker.patch("requests.head", return_value=mock_response)
 
         result = Connectivity.verify_internet_access(host="https://custom.com")
         assert result is True
@@ -197,70 +193,67 @@ class TestConnectivityVerifyInternetAccess:
 class TestConnectivityDownloadFile:
     """Tests for Connectivity.download_file method."""
 
-    @patch("src.infrastructure.connectivity.Connectivity.verify_internet_access")
-    @patch("requests.get")
-    def test_download_file_success(self, mock_get, mock_internet):
+    def test_download_file_success(self, mocker):
         """Test that download_file successfully downloads a file."""
+        mock_internet = mocker.patch("src.infrastructure.connectivity.Connectivity.verify_internet_access")
         mock_internet.return_value = True
-        mock_response = MagicMock()
+        mock_response = mocker.Mock()
         mock_response.headers.get.return_value = "1000"
         mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
+        mocker.patch("requests.get", return_value=mock_response)
 
         result = Connectivity.download_file("http://example.com/file.txt")
         assert result == mock_response
 
-    @patch("src.infrastructure.connectivity.Connectivity.verify_internet_access")
-    def test_download_file_no_internet(self, mock_internet):
+    def test_download_file_no_internet(self, mocker):
         """Test that download_file returns None when offline."""
+        mock_internet = mocker.patch("src.infrastructure.connectivity.Connectivity.verify_internet_access")
         mock_internet.return_value = False
 
         result = Connectivity.download_file("http://example.com/file.txt")
         assert result is None
 
-    @patch("src.infrastructure.connectivity.Connectivity.verify_internet_access")
-    @patch("requests.get")
-    def test_download_file_timeout(self, mock_get, mock_internet):
+    def test_download_file_timeout(self, mocker):
         """Test that download_file handles timeout."""
         import requests
+        mock_internet = mocker.patch("src.infrastructure.connectivity.Connectivity.verify_internet_access")
+        mock_get = mocker.patch("requests.get")
         mock_internet.return_value = True
         mock_get.side_effect = requests.Timeout()
 
         result = Connectivity.download_file("http://example.com/file.txt", timeout=5)
         assert result is None
 
-    @patch("src.infrastructure.connectivity.Connectivity.verify_internet_access")
-    @patch("requests.get")
-    def test_download_file_too_large(self, mock_get, mock_internet):
+    def test_download_file_too_large(self, mocker):
         """Test that download_file rejects files that are too large."""
+        mock_internet = mocker.patch("src.infrastructure.connectivity.Connectivity.verify_internet_access")
         mock_internet.return_value = True
-        mock_response = MagicMock()
+        mock_response = mocker.Mock()
         mock_response.headers.get.return_value = "10000000"  # 10MB
-        mock_get.return_value = mock_response
+        mocker.patch("requests.get", return_value=mock_response)
 
         result = Connectivity.download_file("http://example.com/file.txt", max_size=1000)
         assert result is None
 
-    @patch("src.infrastructure.connectivity.Connectivity.verify_internet_access")
-    @patch("requests.get")
-    def test_download_file_http_error(self, mock_get, mock_internet):
+    def test_download_file_http_error(self, mocker):
         """Test that download_file handles HTTP errors."""
         import requests
+        mock_internet = mocker.patch("src.infrastructure.connectivity.Connectivity.verify_internet_access")
+        mock_get = mocker.patch("requests.get")
         mock_internet.return_value = True
         mock_get.side_effect = requests.HTTPError()
 
         result = Connectivity.download_file("http://example.com/file.txt")
         assert result is None
 
-    @patch("src.infrastructure.connectivity.Connectivity.verify_internet_access")
-    @patch("requests.get")
-    def test_download_file_custom_timeout(self, mock_get, mock_internet):
+    def test_download_file_custom_timeout(self, mocker):
         """Test download_file with custom timeout."""
+        mock_internet = mocker.patch("src.infrastructure.connectivity.Connectivity.verify_internet_access")
         mock_internet.return_value = True
-        mock_response = MagicMock()
+        mock_response = mocker.Mock()
         mock_response.headers.get.return_value = "1000"
         mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
+        mock_get = mocker.patch("requests.get", return_value=mock_response)
 
         Connectivity.download_file("http://example.com/file.txt", timeout=60)
         mock_get.assert_called_once()
@@ -324,9 +317,9 @@ class TestConnectivityExtractZipContents:
         assert result is True
         assert extract_path.exists()
 
-    @patch("zipfile.ZipFile")
-    def test_extract_zip_contents_io_error(self, mock_zipfile):
+    def test_extract_zip_contents_io_error(self, mocker):
         """Test extraction handling of IOError."""
+        mock_zipfile = mocker.patch("zipfile.ZipFile")
         mock_zipfile.side_effect = IOError("IO Error")
 
         result = Connectivity.extract_zip_contents(
