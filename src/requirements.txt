@@ -1,9 +1,0 @@
-# Librerie principali
-requests<=2.31.0        
-numpy>=1.24.0           # Per calcoli numerici, almeno versione 1.24.0
-pandas          # Per la gestione di dati tabulari
-
-# Librerie opzionali
-matplotlib              # Per creare grafici
-flask
-textual>=6.3.0          # TUI

@@ -1,8 +1,11 @@
 # Actual project requirements
-
-pylint 
 requests
-behave
 textual
+rich
+pipdeptree
+
+# Testing requirements
+pylint 
+behave
 coverage
 pytest
