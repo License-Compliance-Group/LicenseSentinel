@@ -109,7 +109,7 @@ jobs:
       # xUnit-style reports tend to generate a lot of temporary files
       # Look at 'upload pytest report' task to see where the path comes from.
       run: |
-        if [ ! `find test/reports -maxdepth 0 -empty` ];
+        if compgen -G test/reports/pytest-*.xml > /dev/null;
         then git rm test/reports/pytest-*.xml;
         fi
         mkdir -p test/reports
