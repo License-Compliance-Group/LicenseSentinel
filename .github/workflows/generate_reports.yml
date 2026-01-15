@@ -127,8 +127,6 @@ jobs:
     # Share the reports as comments.
     runs-on: ubuntu-latest
     needs: commit
-    # Upload reports, even if failed.
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -141,6 +139,8 @@ jobs:
         then echo "Coverage file not found"; exit 1; 
         fi
     - name: 'Append coverage report'
+      # Upload reports, even if failed.
+      continue-on-error: true
       uses: kamilok04/coverage-with-title@main
       with:
         coverageFile: test/reports/coverage-report-${{ matrix.python-version }}/coverage-${{ matrix.python-version }}.xml
@@ -149,6 +149,8 @@ jobs:
         thresholdAll: 0.8
     - name: 'Append pytest report'
       id: append-pytest
+      # Upload reports, even if failed.
+      continue-on-error: true
       uses: kamilok04/test-reporter-body-hijack@main
       with:
         artifact: 'pytest-report-${{ matrix.python-version }}'
