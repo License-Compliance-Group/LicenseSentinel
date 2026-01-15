@@ -8,7 +8,7 @@ A toolchain for building and analyzing the dependency tree of a Python project f
 - **PyPI Metadata Retrieval** – Fetches license information from PyPI
 - **License Compatibility Check** – Verifies compatibility between licenses using a compatibility matrix
 - **Source Code Inspection** – Compares the license declared on PyPI with the one found in the original repository
-![alt text](image.png)
+![alt text](doc/image.png)
 ## Requirements
 
 ### Python Dependencies
