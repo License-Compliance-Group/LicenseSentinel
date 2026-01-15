@@ -110,7 +110,7 @@ jobs:
       # Look at 'upload pytest report' task to see where the path comes from.
       run: |
         if [ -d test/reports ];
-        then git rm test/reports/pytest-*.xml;
+        then git rm -f test/reports/pytest-*.xml;
         fi
         mkdir -p test/reports
     - name: Copy reports to test/reports
