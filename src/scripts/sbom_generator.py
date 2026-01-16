@@ -30,6 +30,7 @@ def generate_sbom():
     command = [
         "syft",
         project_root,
+        f"file:{os.path.join(project_root, 'src/requirements-dev.txt')}",
         "-o", "spdx-json",
         "--exclude", "**/__pycache__/**",
         "--exclude", "**/.github/**",
