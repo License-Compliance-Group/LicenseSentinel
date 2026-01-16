@@ -26,11 +26,21 @@ def generate_sbom():
     # Percorso del file SBOM
     output_file = os.path.join(project_root, "sbom.spdx.json")
 
-    # Comando Syft: analizza l'intero progetto
+    # Copia il file requirements-dev.txt nella root
+    requirements_src = os.path.join(project_root, "src/requirements-dev.txt")
+    requirements_dst = os.path.join(project_root, "requirements-dev.txt")
+
+    try:
+        shutil.copy(requirements_src, requirements_dst)
+        print(f"Copiato {requirements_src} → {requirements_dst}")
+    except Exception as e:
+        print(f"Errore durante la copia del file requirements: {e}")
+        sys.exit(1)
+
+    # Comando Syft: analizza l'intero progetto (un solo input!)
     command = [
         "syft",
         project_root,
-        f"file:{os.path.join(project_root, 'src/requirements-dev.txt')}",
         "-o", "spdx-json",
         "--exclude", "**/__pycache__/**",
         "--exclude", "**/.github/**",
@@ -74,4 +84,3 @@ def generate_sbom():
 
 if __name__ == "__main__":
     generate_sbom()
-
