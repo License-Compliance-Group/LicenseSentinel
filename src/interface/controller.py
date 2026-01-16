@@ -6,18 +6,19 @@ import logging
 import json
 import copy
 
-from entities.pypi_metadata import PyPIMetadata
-from analyzer.package_metadata_fetcher import PackageMetadataFetcher
-from analyzer.matrix_manager import LicenseCompatibilityAnalyzer
-from analyzer.tree_license_analyzer import TreeAnalyzer
-from analyzer import license_name_normalizer as normalizer
-from analyzer.license_comparator import LicenseComparator
+from src.entities.pypi_metadata import PyPIMetadata
+from src.analyzer.package_metadata_fetcher import PackageMetadataFetcher
+from src.analyzer.matrix_manager import LicenseCompatibilityAnalyzer
+from src.analyzer.tree_license_analyzer import TreeAnalyzer
+from src.analyzer import license_name_normalizer as normalizer
+from src.analyzer.license_comparator import LicenseComparator
 
-from infrastructure.pypi_client import PyPiHandler
-from infrastructure.repo_downloader import RepoDownloader
-from infrastructure.dep_tree_builder import DepTreeBuilder
-from infrastructure.logger_formatter import LoggerFormatter
-from infrastructure.scancode_runner import ScanCodeRunner
+from src.infrastructure.pypi_client import PyPiHandler
+from src.infrastructure.repo_downloader import RepoDownloader
+from src.infrastructure.dep_tree_builder import DepTreeBuilder
+from src.infrastructure.logger_formatter import LoggerFormatter
+from src.infrastructure.scancode_runner import ScanCodeRunner
+from src.interface.ui_state import CommandResult
 
 logger = LoggerFormatter.initialize(__name__, logging.DEBUG)
 
@@ -29,6 +30,7 @@ PACKAGES_TO_SKIP = ("pip", "pipdeptree")
 
 COMMANDS_SUGGESTIONS: list[str] = [
     "scan <package_name>",
+    "scan all",
     #    "analyze dependencies",
     #    "show licenses",
     #    "export report",
@@ -38,6 +40,7 @@ COMMANDS_SUGGESTIONS: list[str] = [
 
 COMMANDS: list[str] = [
     "scan",
+    "scan all",
     #    "analyze dependencies",
     #    "show licenses",
     #    "export report",
@@ -62,7 +65,7 @@ class Controller:
         incompatible_edges: List of detected license incompatibilities between packages.
     """
 
-    _license_names: list[str] = []
+    _license_names: list[str] = None
     _license_lookup: dict[str, str] = {}
 
     def __init__(self):
@@ -78,9 +81,14 @@ class Controller:
         self.orchestrator: PackageMetadataFetcher | None = None
         # New graph with added licenses
         self._graph_with_licenses: dict[str, list[str]] | None = None
-        self.metadata_items: list[PyPIMetadata] | None = None
+        self.metadata_items: list[PyPIMetadata]
         self.incompatible_edges: list[tuple[str,
                                             str, str, str, tuple[str, str]]] | None = None
+
+        # Initialize matrix.json during startup - blocking operation
+        # logger.info("Initializing license matrix...")
+        # self.load_license_names()
+        # logger.info("License matrix initialized successfully.")
 
     @property
     def graph_with_licenses(self) -> dict[str, list[str]] | None:
@@ -182,6 +190,7 @@ class Controller:
                 root = pkg + f" ({self.main_license})"
                 name_mapping[pkg] = root
                 continue
+
             metadata = self.get_package_metadata(pkg)
             if metadata and metadata.license_type:
                 normalized_license = normalizer.normalize(metadata.license_type)  # noqa
@@ -200,7 +209,8 @@ class Controller:
 
         return root, graph_with_licenses
 
-    def get_incompatibilities(self, package_name) -> list[tuple[str, str, str, str, tuple[str, str]]]:
+    def get_incompatibilities(self, package_name) \
+            -> list[tuple[str, str, str, str, tuple[str, str]]]:
         """Retrieve all license incompatibilities for the specified package.
 
         Returns incompatibilities where the package is the parent in the dependency tree.
@@ -230,7 +240,7 @@ class Controller:
         ]
         return incompatibilities
 
-    def start_analysis(self, file_path: Path, ignore_cache: bool = False) -> None:
+    def start_analysis(self, file_path: Path, ignore_cache: bool = False) -> bool:
         """Execute comprehensive license analysis on a requirements file.
 
         Main workflow:
@@ -250,7 +260,7 @@ class Controller:
         logger.debug("Working directory: %s", os.getcwd())
         if not file_path.exists():
             logger.warning("File not found: %s", file_path)
-            return
+            return False
 
         logger.debug("File loaded: %s", file_path)
         pypi_scraper = PyPiHandler()
@@ -262,28 +272,28 @@ class Controller:
             repo_downloader
         )
 
-        metadata_items, graph = self.orchestrator.build_package_metadata(
+        self.metadata_items, graph = self.orchestrator.build_package_metadata(
             file_path,
             self.main_license,
             ignore_cache
         )
-        if not metadata_items:
+        if not self.metadata_items:
             logger.warning("No package metadata found for %s", file_path)
-            return
+            return False
 
         header = f"{' PACKAGE':<20} {' LICENSE':<40} {' LINK'}"
         logger.info("-" * (len(header) + 40))
         logger.info(header)
         logger.info("-" * (len(header) + 40))
 
-        for metadata in metadata_items:
+        for metadata in self.metadata_items:
             logger.info(" %s %s %s", f"{metadata.package:<20}",
                         f"{metadata.license_type:<40}", metadata.link)
 
         tree_analyzer = TreeAnalyzer()
 
         self.incompatible_edges = tree_analyzer.run_tree_compatibility_check(
-            metadata_items, graph)
+            self.metadata_items, graph)
         # TODO: used for "testing", remove
         # self.incompatible_edges.extend([
         #    (
@@ -348,10 +358,10 @@ class Controller:
         #    ),
         # ])
 
+        print("graph:", str(graph))
         print("incompatible_edges"+str(self.incompatible_edges))
-        return
+        return True
 
-    # -> bool:
     def start_scancode_analysis(self, package_name: str, ignore_cache: bool = False):
         """Perform ScanCode analysis on package source code to verify license accuracy.
 
@@ -360,11 +370,11 @@ class Controller:
         to identify discrepancies and dubious entries.
 
         Args:
-            package_name: Name of the package to scan.
+            package_name: Name of the package to scan or "all" to scan all packages.
             ignore_cache: If True, re-download sources and re-scan even if cached.
 
         Returns:
-            True if analysis completed successfully, False if repository link not found.
+            Tuple of (discrepancies, doubts) lists, or (None, None) if package not found.
 
         Raises:
             RuntimeError: If start_analysis() has not been called yet.
@@ -372,8 +382,47 @@ class Controller:
         if self.orchestrator is None:
             raise RuntimeError(
                 "Must execute start_analysis() before using this method")
+
+        scan_engine = ScanCodeRunner()
+
+        if package_name.lower() == "all":
+            return self._scan_all_packages(scan_engine, ignore_cache)
+
+        return self._scan_single_package(package_name, scan_engine, ignore_cache)
+
+    def _scan_all_packages(self, scan_engine: ScanCodeRunner, ignore_cache: bool):
+        """Scan all packages in the metadata items.
+
+        Args:
+            scan_engine: The ScanCode runner instance.
+            ignore_cache: If True, re-download sources and re-scan even if cached.
+
+        Returns:
+            Tuple of (discrepancies, doubts) lists.
+        """
+        for pkg in self.metadata_items:
+            self.orchestrator.download_sources(
+                {pkg.package: pkg.link},
+                override_cache=ignore_cache
+            )
+
+        license_comparator = LicenseComparator(
+            self.metadata_items, scan_engine)
+        return license_comparator.compare_license_trees(ignore_cache)
+
+    def _scan_single_package(self, package_name: str, scan_engine: ScanCodeRunner,
+                             ignore_cache: bool):
+        """Scan a single package.
+
+        Args:
+            package_name: Name of the package to scan.
+            scan_engine: The ScanCode runner instance.
+            ignore_cache: If True, re-download sources and re-scan even if cached.
+
+        Returns:
+            Tuple of (discrepancies, doubts) lists, or (None, None) if package not found.
+        """
         pkg_metadata = self.get_package_metadata(package_name)
-        print("pkg_metadata:", pkg_metadata)
         if pkg_metadata is None or pkg_metadata.link is None:
             logger.warning(
                 "No repository link found for package: %s", package_name)
@@ -381,24 +430,14 @@ class Controller:
 
         self.orchestrator.download_sources(
             {pkg_metadata.package: pkg_metadata.link},
-            override_cache=ignore_cache)
-        # TODO: correggere LicenseComparator per accettare anche singoli oggetti
-        # HACK: LicenseComparator accetta solo ogetti iterabili e non singoli oggetti -> list con 1 elemento
-        shameful_solution: list[PyPIMetadata] = [pkg_metadata]
-        scan_engine = ScanCodeRunner()
-        license_comparator = LicenseComparator(
-            shameful_solution,
-            scan_engine
+            override_cache=ignore_cache
         )
-        # TODO: gestire il view del risultato
-        discrepancies, doubts = license_comparator.compare_license_trees(
-            ignore_cache)
-        print("discrepancies:", discrepancies)
-        print("doubts:", doubts)
 
-        return discrepancies, doubts
+        # LicenseComparator expects an iterable, so wrap single package in a list
+        license_comparator = LicenseComparator([pkg_metadata], scan_engine)
+        return license_comparator.compare_license_trees(ignore_cache)
 
-    def execute_command(self, command: str) -> None:
+    def execute_command(self, command: str) -> CommandResult:
         """Parse and execute a user command.
 
         Supported commands:
@@ -409,22 +448,38 @@ class Controller:
             command: The full command string including arguments.
 
         Returns:
-            None. Side effects include logging and potential application exit.
+            CommandResult object with execution outcome and data.
         """
         cmd_parts = command.strip().split(" ", 1)
         cmd = cmd_parts[0].lower()
-        print("cmd_parts:", cmd_parts)
-        if cmd == "scan":
-            if len(cmd_parts) != 2:
-                logger.error("Usage: scan <package_name>")
-                return
-            package_name = cmd_parts[1]
-            self.start_scancode_analysis(package_name)
-        elif cmd == "quit":
-            logger.info("Exiting the application.")
-            sys.exit()
-        else:
-            logger.error("Unknown command: %s", command)
+
+        match cmd:
+            case "scan":
+                if len(cmd_parts) != 2:
+                    return CommandResult(
+                        command_type="scan",
+                        success=False,
+                        message="Usage: scan <package_name>"
+                    )
+                package_name = cmd_parts[1]
+                discrepancies, doubts = self.start_scancode_analysis(package_name)  # noqa
+                return CommandResult(
+                    command_type="scan",
+                    success=True,
+                    data={
+                        "package_name": package_name,
+                        "discrepancies": discrepancies,
+                        "doubts": doubts
+                    }
+                )
+            case "quit":
+                logger.info("Exiting the application.")
+                sys.exit()
+            case _:
+                logger.error("Unknown command: %s", command)
+                return CommandResult(
+                    command_type="unknown", success=False, message="Unknown command"
+                )
 
     def is_valid_command(self, command: str) -> bool:
         """Validate command syntax and arguments.
@@ -445,9 +500,16 @@ class Controller:
         cmd = cmd_parts[0].lower()
         match cmd:
             case "scan":
-                # scan requires a package name argument
-                pkg_exist = self.get_package_metadata(cmd_parts[1].strip())
-                return len(cmd_parts) == 2 and pkg_exist is not None
+                # scan requires an argument; accept 'all' as a special case
+                if len(cmd_parts) != 2 or not cmd_parts[1].strip():
+                    return False
+                arg = cmd_parts[1].strip()
+                if arg.lower() == "all":
+                    return True
+                if arg.lower() == "root":
+                    return False
+                pkg_exist = self.get_package_metadata(arg)
+                return pkg_exist is not None
             case "quit":
                 # quit doesn't require arguments
                 return True
@@ -470,9 +532,8 @@ class Controller:
 
         path_obj = Path(path.strip())
         return path_obj.exists() and path_obj.is_file()
-        # return bool(Connectivity.check_file_exists(path_obj))
 
-    # Da correggere i path della matrice e del file license_names.txt
+    # TODO: Da correggere i path della matrice e del file license_names.txt
     @classmethod
     def load_license_names(cls) -> list[str]:
         """Load valid license names from the compatibility matrix.
@@ -484,20 +545,42 @@ class Controller:
         Returns:
             Sorted list of all valid license names, or empty list if loading fails.
         """
+        if cls._license_names:
+            print("Using cached license names")
+            return cls._license_names
+
+        # Create data directory if it doesn't exist
+        MATRIX_PATH.parent.mkdir(parents=True, exist_ok=True)
+
         lca = LicenseCompatibilityAnalyzer(path=MATRIX_PATH)
+        # success = lca.update_license_matrix()
         lca.update_license_matrix()
+        # print("update_license_matrix() returned: %s", success)
+
+        # if not success:
+        #    return []
+
+        # if not MATRIX_PATH.exists():
+        #    return []
+
         try:
             with MATRIX_PATH.open(encoding="utf-8") as file:
                 data = json.load(file)
+
+            print("JSON loaded, extracting licenses...")
             cls._license_names = sorted(
                 {lic.get("name")
                  for lic in data.get("licenses", []) if lic.get("name")}
             )
             cls._license_lookup = {
                 name.lower(): name for name in cls._license_names}
+
+            print("Successfully loaded %d license names",
+                  len(cls._license_names))
             return cls._license_names
-        except (FileNotFoundError, json.JSONDecodeError):
-            logger.error("Failed to load license names from %s", MATRIX_PATH)
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print("Failed to load license names from %s: %s",
+                  MATRIX_PATH, str(e))
             return []
 
     @classmethod

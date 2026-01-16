@@ -12,12 +12,12 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 
-from entities.package_manager_fetcher import AbstractPackageManagerFetcher
-from entities.abstract_dep_tree_builder import AbstractDepTreeBuilder
-from entities.abstract_repo_downloader import AbstractRepoDownloader
-from entities.pypi_metadata import PyPIMetadata
+from src.entities.package_manager_fetcher import AbstractPackageManagerFetcher
+from src.entities.abstract_dep_tree_builder import AbstractDepTreeBuilder
+from src.entities.abstract_repo_downloader import AbstractRepoDownloader
+from src.entities.pypi_metadata import PyPIMetadata
 
-from infrastructure.logger_formatter import LoggerFormatter
+from src.infrastructure.logger_formatter import LoggerFormatter
 
 
 LOGGER = LoggerFormatter.initialize("package_metadata_fetcher", logging.INFO)
@@ -78,7 +78,7 @@ class PackageMetadataFetcher:
             LOGGER.warning("Failed to save cache: %s", exc)
 
     def build_package_metadata(self, file_path: Path, root_license: str = "N/A",
-                               override_cache: bool = False) -> tuple[List[PyPIMetadata], dict[str, list[str]]]:
+                               override_cache: bool = True) -> tuple[List[PyPIMetadata], dict[str, list[str]]]:
         """Build package metadata from a requirements.txt file.
 
         This is the main orchestrator that:
@@ -103,7 +103,8 @@ class PackageMetadataFetcher:
         # Step 1: Parse requirements file
         self.dependencies = self._parse_requirements_file(file_path)
         if not self.dependencies:
-            return [], {}
+            raise RuntimeError(
+                "No dependencies found - check requirements.txt file")
 
         # Step 2: Build dependency tree
         # (single pass - no intermediate function)
@@ -111,7 +112,8 @@ class PackageMetadataFetcher:
         LOGGER.info("Building dependency tree for %d root packages",
                     len(self.dependencies))
         try:
-            graph, all_packages = self._deptree_handler(self.dependencies)
+            self.graph, all_packages = self._deptree_handler(self.dependencies)
+
             LOGGER.info("Discovered %d total packages", len(all_packages))
         except RuntimeError as exc:
             LOGGER.error("Failed to build dependency tree: %s", exc)
@@ -138,6 +140,7 @@ class PackageMetadataFetcher:
             license_type=root_license,
             link=None
         ))
+        self.graph["Root"] = self.dependencies
         LOGGER.info("Successfully fetched metadata for %d packages",
                     len(self.packages_metadata))
 
@@ -163,7 +166,7 @@ class PackageMetadataFetcher:
         # Possibly let the option "scan all packages" be a separate button that the user
         # can press if he wants to scan everything at once.
 
-        return self.packages_metadata, graph
+        return copy.deepcopy(self.packages_metadata), copy.deepcopy(self.graph)
 
     def download_sources(self, package_urls: Dict[str, str | None], override_cache=False):
         """Private function. Downloads package sources from given URLs,
@@ -237,8 +240,16 @@ class PackageMetadataFetcher:
         for deps in graph.values():
             all_packages.update(deps)
 
-        self.graph = graph
-        self.graph["Root"] = self.dependencies
+        # self.graph = graph
+        # HACK: add root dependencies and remove pipdeptree entry if present
+        # This should be handled by dep_builder, but for now we do it here
+        # self.graph["Root"] = self.dependencies
+        # Used by pipdeptree internally, remove from graph
+        # If used by other packages well...
+        # self.graph.pop("pipdeptree", None)
+        # self.graph.pop("setuptools", None)
+        # self.graph.pop("packaging", None)
+
         return graph, all_packages
 
     def _load_pypi_metadata(self, packages, override_cache=False):

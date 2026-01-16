@@ -12,8 +12,8 @@ import sys
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Set
-from entities.abstract_dep_tree_builder import AbstractDepTreeBuilder
-from infrastructure.logger_formatter import LoggerFormatter
+from src.entities.abstract_dep_tree_builder import AbstractDepTreeBuilder
+from src.infrastructure.logger_formatter import LoggerFormatter
 
 logger = LoggerFormatter.initialize("Dependency tree builder", logging.INFO)
 
@@ -31,6 +31,7 @@ class DepTreeBuilder(AbstractDepTreeBuilder):
     Args:
         AbstractDepTreeBuilder: implements this interface.
     """
+
     def venv_exists(self, path: str = PATH) -> bool:
         """Check if a virtual environment exists at the given path.
 
@@ -180,6 +181,40 @@ class DepTreeBuilder(AbstractDepTreeBuilder):
 
         for node in tree_json:
             visit(node)
+        # graph.pop("pipdeptree", None)
+        # graph.pop("setuptools", None)
+        # graph.pop("packaging", None)
+        # In pratica elimina dall'albero pipdeptree steso e le sue dipendeze
+        # Le dipendenze di pipdeptree sono eliminate solo se non sono usate
+        # da nessun altro pacchetto. GG per il testing
+        if "pipdeptree" in graph:
+            pipdeptree_deps = set(graph["pipdeptree"])
+
+            # Count how many packages depend on each dependency
+            dep_count: Dict[str, int] = {}
+            for pkg, deps in graph.items():
+                if pkg == "pipdeptree":
+                    continue
+                for dep in deps:
+                    dep_count[dep] = dep_count.get(dep, 0) + 1
+
+            # Identify dependencies ONLY used by pipdeptree
+            exclusive_deps = {
+                dep for dep in pipdeptree_deps if dep_count.get(dep, 0) == 0}
+
+            # Remove pipdeptree
+            graph.pop("pipdeptree")
+
+            # Remove exclusive dependencies from the graph
+            for dep in exclusive_deps:
+                graph.pop(dep, None)
+                logger.debug(
+                    "Removed pipdeptree exclusive dependency: %s", dep)
+
+            # Clean up references to removed packages from other packages' dependency lists
+            for pkg in graph:
+                graph[pkg] = [dep for dep in graph[pkg]
+                              if dep not in exclusive_deps]
 
         return graph
 
@@ -261,6 +296,7 @@ class DepTreeBuilder(AbstractDepTreeBuilder):
         for root in roots:
             self.print_subtree(graph, root, visited=visited)
             print()
+
 
 def main() -> None:
     """Main entry point for testing dependency tree building."""
