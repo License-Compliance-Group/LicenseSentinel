@@ -6,7 +6,7 @@ from unittest.mock import patch, MagicMock, mock_open, Mock
 from datetime import datetime
 from requests import Response
 
-from src.analyzer.matrix_manager import (
+from license_sentinel.analyzer.license_compatibility_analyzer import (
     LicenseCompatibilityAnalyzer,
     FullCompatibilityCalc,
     CompatibilityCalcStrategy
