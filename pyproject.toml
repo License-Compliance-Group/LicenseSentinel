@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "license-sentinel"
+version = "0.0.1"
+description = "A tool for analyzing Python project dependencies and verifying license compatibility"
+readme = "ARCHITECTURE.md"
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
+authors = [
+    {name = "temp", email = "temp@kys.net"}
+]
+keywords = ["license", "dependencies"]
+classifiers = [
+    "TODO"
+]
+
+dependencies = [
+    "requests",
+    "textual",
+    "rich",
+    "pipdeptree",
+    "scancode-toolkit",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "behave",
+]
+
+[project.scripts]
+license-sentinel = "license_sentinel.temp:main"
+
+[project.urls]
+Homepage = "https://github.com/License-Compliance-Group/LicenseSentinel"
+Repository = "https://github.com/License-Compliance-Group/LicenseSentinel"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["license_sentinel*"]
+
+[tool.setuptools.package-data]
+# Ensure non-code assets ship inside the wheel
+"license_sentinel.data" = ["*.json"]
+"license_sentinel.interface" = ["*.css"]

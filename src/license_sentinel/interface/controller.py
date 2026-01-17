@@ -6,19 +6,19 @@ import logging
 import json
 import copy
 
-from entities.pypi_metadata import PyPIMetadata
-from analyzer.package_metadata_fetcher import PackageMetadataFetcher
-from analyzer.matrix_manager import LicenseCompatibilityAnalyzer
-from analyzer.tree_license_analyzer import TreeAnalyzer
-from analyzer import license_name_normalizer as normalizer
-from analyzer.license_comparator import LicenseComparator
+from ..entities.pypi_metadata import PyPIMetadata
+from ..analyzer.package_metadata_fetcher import PackageMetadataFetcher
+from ..analyzer.matrix_manager import LicenseCompatibilityAnalyzer
+from ..analyzer.tree_license_analyzer import TreeAnalyzer
+from ..analyzer import license_name_normalizer as normalizer
+from ..analyzer.license_comparator import LicenseComparator
 
-from infrastructure.pypi_client import PyPiHandler
-from infrastructure.repo_downloader import RepoDownloader
-from infrastructure.dep_tree_builder import DepTreeBuilder
-from infrastructure.logger_formatter import LoggerFormatter
-from infrastructure.scancode_runner import ScanCodeRunner
-from interface.ui_state import CommandResult
+from ..infrastructure.pypi_client import PyPiHandler
+from ..infrastructure.repo_downloader import RepoDownloader
+from ..infrastructure.dep_tree_builder import DepTreeBuilder
+from ..infrastructure.logger_formatter import LoggerFormatter
+from ..infrastructure.scancode_runner import ScanCodeRunner
+from .ui_state import CommandResult
 
 logger = LoggerFormatter.initialize(__name__, logging.DEBUG)
 

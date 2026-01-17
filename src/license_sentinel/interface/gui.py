@@ -14,8 +14,8 @@ from textual.widgets import (
     TabPane, LoadingIndicator, Log, ListView, ListItem
 )
 from textual import events, on
-from interface.controller import Controller
-from interface.ui_state import Stage, SuggestionState, CommandResult
+from .controller import Controller
+from .ui_state import Stage, SuggestionState, CommandResult
 
 ERROR_PATH_PLACEHOLDER = "❌ Invalid path!"
 PATH_PLACEHOLDER = "📄 Insert the path to the requirements.txt file"

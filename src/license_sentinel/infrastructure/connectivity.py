@@ -4,7 +4,7 @@ import zipfile
 from pathlib import Path
 import requests
 
-from src.infrastructure.logger_formatter import LoggerFormatter
+from .logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__)
 
 
