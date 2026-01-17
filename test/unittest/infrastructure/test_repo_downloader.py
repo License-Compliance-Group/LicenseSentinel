@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 import asyncio
 
-from src.infrastructure.repo_downloader import RepoDownloader, _RepoDownloadError
+from license_sentinel.infrastructure.repo_downloader import RepoDownloader, _RepoDownloadError
 
 
 class TestRepoDownloaderInit:

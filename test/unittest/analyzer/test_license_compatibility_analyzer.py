@@ -11,7 +11,7 @@ from src.analyzer.matrix_manager import (
     FullCompatibilityCalc,
     CompatibilityCalcStrategy
 )
-from src.infrastructure.connectivity import Connectivity as io
+from license_sentinel.infrastructure.connectivity import Connectivity as io
 
 
 def test_abstract_method():

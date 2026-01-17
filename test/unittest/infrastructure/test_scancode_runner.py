@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import subprocess
 
-from src.infrastructure.scancode_runner import ScanCodeRunner
+from license_sentinel.infrastructure.scancode_runner import ScanCodeRunner
 
 
 class TestScanCodeRunnerRunScan:
@@ -14,7 +14,7 @@ class TestScanCodeRunnerRunScan:
 
     def test_run_scan_success(self, mocker):
         """Test successful ScanCode execution."""
-        mocker.patch("src.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
+        mocker.patch("license_sentinel.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
         mock_result = mocker.Mock()
         mock_result.stdout = json.dumps({
             "tallies": {
@@ -38,7 +38,7 @@ class TestScanCodeRunnerRunScan:
 
     def test_run_scan_extraction_fails(self, mocker):
         """Test run_scan when ZIP extraction fails."""
-        mocker.patch("src.infrastructure.scancode_runner.io.extract_zip_contents", return_value=False)
+        mocker.patch("license_sentinel.infrastructure.scancode_runner.io.extract_zip_contents", return_value=False)
         mock_run = mocker.patch("subprocess.run")
         
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -53,7 +53,7 @@ class TestScanCodeRunnerRunScan:
 
     def test_run_scan_subprocess_fails(self, mocker):
         """Test run_scan when ScanCode subprocess fails."""
-        mocker.patch("src.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
+        mocker.patch("license_sentinel.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
         mocker.patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "scancode"))
         
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -67,7 +67,7 @@ class TestScanCodeRunnerRunScan:
 
     def test_run_scan_invalid_json_output(self, mocker):
         """Test run_scan with invalid JSON in stdout."""
-        mocker.patch("src.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
+        mocker.patch("license_sentinel.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
         mock_result = mocker.Mock()
         mock_result.stdout = "invalid json output"
         mock_result.returncode = 0
@@ -84,7 +84,7 @@ class TestScanCodeRunnerRunScan:
 
     def test_run_scan_caching(self, mocker):
         """Test that run_scan uses cache when available."""
-        mocker.patch("src.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
+        mocker.patch("license_sentinel.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
         mock_result = mocker.Mock()
         mock_result.stdout = json.dumps({"tallies": {"detected_license_expression": []}})
         mock_result.returncode = 0
@@ -110,7 +110,7 @@ class TestScanCodeRunnerRunScan:
 
     def test_run_scan_override_cache(self, mocker):
         """Test run_scan with override_cache=True."""
-        mocker.patch("src.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
+        mocker.patch("license_sentinel.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
         mock_result = mocker.Mock()
         mock_result.stdout = json.dumps({"tallies": {"detected_license_expression": []}})
         mock_result.returncode = 0
@@ -257,7 +257,7 @@ class TestScanCodeRunnerScanForLicense:
 
     def test_scan_for_license_normalization(self, mocker):
         """Test that licenses are normalized."""
-        mock_normalize = mocker.patch("src.infrastructure.scancode_runner.normalizer.normalize", side_effect=lambda x: x.upper())
+        mock_normalize = mocker.patch("license_sentinel.infrastructure.scancode_runner.normalizer.normalize", side_effect=lambda x: x.upper())
         mocker.patch.object(ScanCodeRunner, "run_scan", return_value={
             "tallies": {
                 "detected_license_expression": [
@@ -280,7 +280,7 @@ class TestScanCodeRunnerIntegration:
 
     def test_full_scan_workflow(self, mocker):
         """Test complete scan workflow from ZIP to license extraction."""
-        mocker.patch("src.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
+        mocker.patch("license_sentinel.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
         mock_result = mocker.Mock()
         mock_result.stdout = json.dumps({
             "tallies": {
@@ -308,7 +308,7 @@ class TestScanCodeRunnerIntegration:
 
     def test_scan_handles_complex_licenses(self, mocker):
         """Test scanning packages with complex license expressions."""
-        mocker.patch("src.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
+        mocker.patch("license_sentinel.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
         mock_result = mocker.Mock()
         mock_result.stdout = json.dumps({
             "tallies": {
@@ -336,7 +336,7 @@ class TestScanCodeRunnerErrorHandling:
 
     def test_scan_handles_scancode_not_installed(self, mocker):
         """Test handling when ScanCode is not installed."""
-        mocker.patch("src.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
+        mocker.patch("license_sentinel.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
         mocker.patch("subprocess.run", side_effect=FileNotFoundError("scancode not found"))
         
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -350,7 +350,7 @@ class TestScanCodeRunnerErrorHandling:
 
     def test_scan_handles_permission_error(self, mocker):
         """Test handling of permission errors."""
-        mocker.patch("src.infrastructure.scancode_runner.io.extract_zip_contents", return_value=False)
+        mocker.patch("license_sentinel.infrastructure.scancode_runner.io.extract_zip_contents", return_value=False)
         mocker.patch("subprocess.run")
         
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -368,7 +368,7 @@ class TestScanCodeRunnerCaching:
 
     def test_cache_directory_creation(self, mocker):
         """Test that cache directory is created if needed."""
-        mocker.patch("src.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
+        mocker.patch("license_sentinel.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
         mock_result = mocker.Mock()
         mock_result.stdout = json.dumps({
             "tallies": {
@@ -392,7 +392,7 @@ class TestScanCodeRunnerCaching:
 
     def test_cache_invalid_json_fallback(self, mocker):
         """Test that invalid cached JSON is handled gracefully."""
-        mocker.patch("src.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
+        mocker.patch("license_sentinel.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
         mock_result = mocker.Mock()
         mock_result.stdout = json.dumps({
             "tallies": {
@@ -415,3 +415,4 @@ class TestScanCodeRunnerCaching:
         
         # Should handle invalid cache and re-scan
         assert mock_run.called or result is not None
+
