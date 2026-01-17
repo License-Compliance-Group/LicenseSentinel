@@ -13,7 +13,7 @@ def generate_sbom():
         print("Errore: 'syft' non è installato o non è nel PATH.")
         sys.exit(1)
 
-    # Directory dello script
+    # Directory dove si trova questo script
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
     # Root del progetto (due livelli sopra)
@@ -26,33 +26,21 @@ def generate_sbom():
     # Percorso del file SBOM
     output_file = os.path.join(project_root, "sbom.spdx.json")
 
-    # Percorso del requirements
+    # Percorso del requirements (rimane in src)
     requirements_path = os.path.join(project_root, "src", "requirements-dev.txt")
     if os.path.isfile(requirements_path):
         print(f"Trovato requirements in: {requirements_path}")
     else:
         print("Attenzione: file requirements-dev.txt non trovato in src/ (continuerò comunque).")
 
-    # 🔍 Cerca automaticamente .venv o venv
-    possible_venvs = [".venv", "venv"]
-    venv_path = None
-
-    for name in possible_venvs:
-        candidate = os.path.join(project_root, name)
-        if os.path.isdir(candidate):
-            venv_path = candidate
-            print(f"Trovato virtualenv: {venv_path}")
-            break
-
-    if venv_path is None:
-        print("Errore: nessun virtualenv trovato (.venv o venv) nella root del progetto.")
-        sys.exit(1)
-
-    # 🔥 Comando Syft: analizza il runtime Python del virtualenv
+    # Comando Syft: analizza l'intera root del progetto
     command = [
         "syft",
-        f"python:{venv_path}",
-        "-o", "spdx-json"
+        project_root,
+        "-o", "spdx-json",
+        "--exclude", "**/__pycache__/**",
+        "--exclude", "**/.github/**",
+        "--exclude", "**/tmp/**"
     ]
 
     print("Eseguo comando Syft:", " ".join(command))
@@ -89,6 +77,7 @@ def generate_sbom():
         sys.exit(1)
 
     print(f"SBOM generata con successo: {output_file}")
+    print("Directory analizzata da Syft:", project_root)
 
 
 if __name__ == "__main__":
