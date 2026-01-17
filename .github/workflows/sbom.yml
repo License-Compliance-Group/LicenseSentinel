@@ -2,36 +2,35 @@ name: Generate SBOM
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - "**"   # esegue su tutti i branch
   pull_request:
-    branches: [ main ]
+    branches:
+      - "**"
 
 jobs:
   sbom:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-
-      - name: Upgrade pip/setuptools/wheel
-        run: python -m pip install --upgrade pip setuptools wheel
-
-      - name: Install project dependencies
-        run: |
-          python -m pip install -r src/requirements-dev.txt
+          python-version: '3.11'
 
       - name: Install Syft
-        run: python -m pip install syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
+          | sh -s -- -b /usr/local/bin
 
-      - name: Generate SBOM
-        run: python3 src/scripts/sbom_generator.py
+      - name: Generate SBOM (SPDX JSON)
+        run: |
+          python3 src/scripts/sbom_generator.py
 
-      - name: Upload SBOM artifact
+      - name: Upload SBOM as artifact
         uses: actions/upload-artifact@v4
         with:
           name: sbom
