@@ -3,7 +3,7 @@
 import pytest
 import asyncio
 
-from src.infrastructure.pypi_client import PyPiHandler
+from license_sentinel.infrastructure.pypi_client import PyPiHandler
 
 
 class TestPyPiHandlerGetSourceLinks:
