@@ -1,7 +1,7 @@
 """Unit tests for license analyzer functions."""
 import unittest
-from src.analyzer.main import normalize_license_name
-from src.analyzer.license_compatibility_analyzer import LicenseCompatibilityAnalyzer
+from license_sentinel.analyzer.main import normalize_license_name
+from license_sentinel.analyzer.license_compatibility_analyzer import LicenseCompatibilityAnalyzer
 
 
 class TestNormalizeLicenseName(unittest.TestCase):

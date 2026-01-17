@@ -6,12 +6,12 @@ from unittest.mock import patch, MagicMock, mock_open, Mock
 from datetime import datetime
 from requests import Response
 
-from src.analyzer.license_compatibility_analyzer import (
+from license_sentinel.analyzer.license_compatibility_analyzer import (
     LicenseCompatibilityAnalyzer,
     FullCompatibilityCalc,
     CompatibilityCalcStrategy
 )
-from src.infrastructure.connectivity import Connectivity as io
+from license_sentinel.infrastructure.connectivity import Connectivity as io
 
 
 class TestCompatibilityCalcStrategy(unittest.TestCase):
