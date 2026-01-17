@@ -16,20 +16,39 @@ def generate_sbom():
     # Directory dello script
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
-    # Root del progetto
+    # Root del progetto (due livelli sopra)
     project_root = os.path.abspath(os.path.join(script_dir, "../.."))
 
-    # Percorso del virtualenv
-    venv_path = os.path.join(project_root, ".venv")
-
-    if not os.path.isdir(venv_path):
-        print(f"Errore: virtualenv non trovato in {venv_path}")
+    if not os.path.isdir(project_root):
+        print(f"Errore: root del progetto non trovata: {project_root}")
         sys.exit(1)
 
     # Percorso del file SBOM
     output_file = os.path.join(project_root, "sbom.spdx.json")
 
-    # Comando Syft: analizza il runtime Python del virtualenv
+    # Percorso del requirements
+    requirements_path = os.path.join(project_root, "src", "requirements-dev.txt")
+    if os.path.isfile(requirements_path):
+        print(f"Trovato requirements in: {requirements_path}")
+    else:
+        print("Attenzione: file requirements-dev.txt non trovato in src/ (continuerò comunque).")
+
+    # 🔍 Cerca automaticamente .venv o venv
+    possible_venvs = [".venv", "venv"]
+    venv_path = None
+
+    for name in possible_venvs:
+        candidate = os.path.join(project_root, name)
+        if os.path.isdir(candidate):
+            venv_path = candidate
+            print(f"Trovato virtualenv: {venv_path}")
+            break
+
+    if venv_path is None:
+        print("Errore: nessun virtualenv trovato (.venv o venv) nella root del progetto.")
+        sys.exit(1)
+
+    # 🔥 Comando Syft: analizza il runtime Python del virtualenv
     command = [
         "syft",
         f"python:{venv_path}",
