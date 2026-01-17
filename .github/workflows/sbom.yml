@@ -3,7 +3,7 @@ name: Generate SBOM
 on:
   push:
     branches:
-      - "**"   # esegue su tutti i branch
+      - "**"
   pull_request:
     branches:
       - "**"
@@ -21,14 +21,16 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install dependencies
+        run: pip install -r src/requirements-dev.txt
+
       - name: Install Syft
         run: |
           curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
           | sh -s -- -b /usr/local/bin
 
       - name: Generate SBOM (SPDX JSON)
-        run: |
-          python3 src/scripts/sbom_generator.py
+        run: python3 src/scripts/sbom_generator.py
 
       - name: Upload SBOM as artifact
         uses: actions/upload-artifact@v4
