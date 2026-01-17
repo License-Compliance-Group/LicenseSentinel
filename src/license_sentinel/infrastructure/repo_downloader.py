@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import Dict, Optional
 
 import requests
-from src.entities.abstract_repo_downloader import AbstractRepoDownloader
-from src.infrastructure.logger_formatter import LoggerFormatter
+from ..entities.abstract_repo_downloader import AbstractRepoDownloader
+from .logger_formatter import LoggerFormatter
 
 LOGGER = LoggerFormatter.initialize("repo_downloader", logging.INFO)
 
