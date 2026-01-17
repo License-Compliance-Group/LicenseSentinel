@@ -26,18 +26,14 @@ def generate_sbom():
     # Percorso del file SBOM
     output_file = os.path.join(project_root, "sbom.spdx.json")
 
-    # Copia il file requirements-dev.txt nella root
-    requirements_src = os.path.join(project_root, "src/requirements-dev.txt")
-    requirements_dst = os.path.join(project_root, "requirements-dev.txt")
+    # Percorso del requirements (rimane in src)
+    requirements_path = os.path.join(project_root, "src", "requirements-dev.txt")
+    if os.path.isfile(requirements_path):
+        print(f"Trovato requirements in: {requirements_path}")
+    else:
+        print("Attenzione: file requirements-dev.txt non trovato in src/ (continuerò comunque).")
 
-    try:
-        shutil.copy(requirements_src, requirements_dst)
-        print(f"Copiato {requirements_src} → {requirements_dst}")
-    except Exception as e:
-        print(f"Errore durante la copia del file requirements: {e}")
-        sys.exit(1)
-
-    # Comando Syft: analizza l'intero progetto (un solo input!)
+    # Comando Syft: analizza l'intera root del progetto
     command = [
         "syft",
         project_root,
@@ -47,13 +43,15 @@ def generate_sbom():
         "--exclude", "**/tmp/**"
     ]
 
+    print("Eseguo comando Syft:", " ".join(command))
+
     try:
         result = subprocess.run(
             command,
             capture_output=True,
             text=True,
             check=True,
-            timeout=300
+            timeout=600
         )
     except subprocess.TimeoutExpired:
         print("Errore: timeout durante l'esecuzione di Syft.")
