@@ -3,7 +3,7 @@ name: Generate SBOM
 on:
   push:
     branches:
-      - "**"
+      - "**"   # esegue su tutti i branch
   pull_request:
     branches:
       - "**"
@@ -21,14 +21,10 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Create virtual environment
-        run: python -m venv venv
-
-      - name: Activate venv and install dependencies
+      - name: Install dependencies
         run: |
-          source venv/bin/activate
-          pip install --upgrade pip
-          pip install -r src/requirements-dev.txt
+          python -m pip install --upgrade pip
+          pip install -r src/requirements.txt
 
       - name: Install Syft
         run: |
@@ -37,7 +33,6 @@ jobs:
 
       - name: Generate SBOM (SPDX JSON)
         run: |
-          source venv/bin/activate
           python3 src/scripts/sbom_generator.py
 
       - name: Upload SBOM as artifact
@@ -45,3 +40,4 @@ jobs:
         with:
           name: sbom
           path: sbom.spdx.json
+
