@@ -76,8 +76,8 @@ class TestLicenseComparatorCompareTrees:
         
         comparator = LicenseComparator([meta], mock_scan_engine)
         
-        with pytest.raises(IndexError):
-            comparator.compare_license_trees()
+        _, doubts = comparator.compare_license_trees()
+        assert doubts[0][2] == 'Unknown'
 
     def test_compare_license_trees_single_unknown(self, mock_scan_engine, pypi_metadata_factory):
         """Test scenario where scanner returns 'Unknown'."""
