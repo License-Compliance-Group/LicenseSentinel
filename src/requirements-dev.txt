@@ -9,3 +9,4 @@ pylint
 behave
 coverage
 pytest
+pytest-mock
