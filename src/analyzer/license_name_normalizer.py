@@ -16,8 +16,7 @@ def normalize(name: str) -> str | None:
 
     """
     if name is None:
-        return 'Unknown'
-    # Yes ChatGPT and is a big mapping. Deal with it.
+        return ''
     key = name.strip().lower()
     mapping = {
         # GPL Family

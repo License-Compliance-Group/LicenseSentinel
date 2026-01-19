@@ -6,19 +6,19 @@ import logging
 import json
 import copy
 
-from entities.pypi_metadata import PyPIMetadata
-from analyzer.package_metadata_fetcher import PackageMetadataFetcher
-from analyzer.matrix_manager import LicenseCompatibilityAnalyzer
-from analyzer.tree_license_analyzer import TreeAnalyzer
-from analyzer import license_name_normalizer as normalizer
-from analyzer.license_comparator import LicenseComparator
+from src.entities.pypi_metadata import PyPIMetadata
+from src.analyzer.package_metadata_fetcher import PackageMetadataFetcher
+from src.analyzer.matrix_manager import LicenseCompatibilityAnalyzer
+from src.analyzer.tree_license_analyzer import TreeAnalyzer
+from src.analyzer import license_name_normalizer as normalizer
+from src.analyzer.license_comparator import LicenseComparator
 
-from infrastructure.pypi_client import PyPiHandler
-from infrastructure.repo_downloader import RepoDownloader
-from infrastructure.dep_tree_builder import DepTreeBuilder
-from infrastructure.logger_formatter import LoggerFormatter
-from infrastructure.scancode_runner import ScanCodeRunner
-from interface.ui_state import CommandResult
+from src.infrastructure.pypi_client import PyPiHandler
+from src.infrastructure.repo_downloader import RepoDownloader
+from src.infrastructure.dep_tree_builder import DepTreeBuilder
+from src.infrastructure.logger_formatter import LoggerFormatter
+from src.infrastructure.scancode_runner import ScanCodeRunner
+from src.interface.ui_state import CommandResult
 
 logger = LoggerFormatter.initialize(__name__, logging.DEBUG)
 
@@ -506,6 +506,8 @@ class Controller:
                 arg = cmd_parts[1].strip()
                 if arg.lower() == "all":
                     return True
+                if arg.lower() == "root":
+                    return False
                 pkg_exist = self.get_package_metadata(arg)
                 return pkg_exist is not None
             case "quit":

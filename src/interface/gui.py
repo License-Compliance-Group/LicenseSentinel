@@ -14,8 +14,8 @@ from textual.widgets import (
     TabPane, LoadingIndicator, Log, ListView, ListItem
 )
 from textual import events, on
-from interface.controller import Controller
-from interface.ui_state import Stage, SuggestionState, CommandResult
+from src.interface.controller import Controller
+from src.interface.ui_state import Stage, SuggestionState, CommandResult
 
 ERROR_PATH_PLACEHOLDER = "❌ Invalid path!"
 PATH_PLACEHOLDER = "📄 Insert the path to the requirements.txt file"
@@ -842,7 +842,6 @@ class LicenseSentinelUI(App):
 #                         Suggestions System                                       #
 # =================================================================================#
 
-
     async def _mount_input_bar(self) -> None:
         """Display input bar and initialize suggestion system.
 
@@ -1142,8 +1141,10 @@ class LicenseSentinelUI(App):
                         break
 
             if not found:
-                table.add_row(package_name, "N/A",
-                              "No scan results", height=None)
+                pypi_license = self.controller.get_package_metadata(
+                    package_name).license_type
+                table.add_row(package_name, pypi_license,
+                              "No doubts or discrepancies found", height=None)
 
 
 if __name__ == "__main__":

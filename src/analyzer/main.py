@@ -4,17 +4,16 @@ import itertools
 from pathlib import Path
 
 import logging
-from infrastructure import pypi_client
-from infrastructure import repo_downloader
-from infrastructure import dep_tree_builder
-from infrastructure import scancode_runner
-from infrastructure.logger_formatter import LoggerFormatter
-from analyzer import license_name_normalizer
+from src.infrastructure import pypi_client
+from src.infrastructure import repo_downloader
+from src.infrastructure import dep_tree_builder
+from src.infrastructure import scancode_runner
+from src.infrastructure.logger_formatter import LoggerFormatter
+from src.analyzer import license_name_normalizer
 
-from analyzer import package_metadata_fetcher
-from analyzer.matrix_manager import\
-    LicenseCompatibilityAnalyzer
-from analyzer.license_comparator import LicenseComparator
+from src.analyzer import package_metadata_fetcher
+from src.analyzer.matrix_manager import LicenseCompatibilityAnalyzer
+from src.analyzer.license_comparator import LicenseComparator
 
 logger = LoggerFormatter.initialize(__name__, logging.DEBUG)
 

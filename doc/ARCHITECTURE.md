@@ -191,8 +191,6 @@ Definiscono interfacce e contratti che vengono implementati negli strati superio
 
 #### `package_metadata_fetcher.py` - Orchestratore Principale
 
-La "god class" che orchiestra l'intero flusso.
-
 **Flusso principale: `build_package_metadata()`**
 
 1. **Parsing requirements.txt**

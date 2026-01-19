@@ -27,4 +27,4 @@ class TestLicenseNameNormalizerNormalize:
 
     def test_normalize_none_input(self):
         """Test error handling for None input."""
-        assert license_name_normalizer.normalize(None) == 'Unknown'
+        assert license_name_normalizer.normalize(None) == ''
