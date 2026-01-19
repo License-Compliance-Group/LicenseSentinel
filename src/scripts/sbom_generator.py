@@ -13,31 +13,24 @@ def generate_sbom():
         print("Errore: 'syft' non è installato o non è nel PATH.")
         sys.exit(1)
 
-    # Directory dove si trova questo script
+    # Directory dello script
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
     # Root del progetto (due livelli sopra)
     project_root = os.path.abspath(os.path.join(script_dir, "../.."))
 
-    if not os.path.isdir(project_root):
-        print(f"Errore: root del progetto non trovata: {project_root}")
-        sys.exit(1)
-
-    # Percorso del file SBOM
+    # Percorso output SBOM
     output_file = os.path.join(project_root, "sbom.spdx.json")
 
-    # Percorso del requirements (rimane in src)
-    requirements_path = os.path.join(project_root, "src", "requirements-dev.txt")
-    if os.path.isfile(requirements_path):
-        print(f"Trovato requirements in: {requirements_path}")
-    else:
-        print("Attenzione: file requirements-dev.txt non trovato in src/ (continuerò comunque).")
+    # Percorso interprete Python attuale
+    python_path = sys.executable
+    print(f"Interprete Python rilevato: {python_path}")
 
-    # Comando Syft: analizza l'intera root del progetto
+    # Comando Syft: analizza l'ambiente Python reale
     command = [
-    "syft",
-    "python:.",
-    "-o", "spdx-json"
+        "syft",
+        f"python:{python_path}",
+        "-o", "spdx-json"
     ]
 
     print("Eseguo comando Syft:", " ".join(command))
@@ -58,14 +51,14 @@ def generate_sbom():
         print(e.stderr or e.stdout)
         sys.exit(1)
 
-    # Parsing del JSON prodotto da Syft
+    # Parsing JSON
     try:
         sbom_data = json.loads(result.stdout)
     except json.JSONDecodeError:
         print("Errore: l'output di Syft non è un JSON valido.")
         sys.exit(1)
 
-    # Scrittura del JSON formattato
+    # Scrittura file SBOM
     try:
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(sbom_data, f, indent=4)
@@ -74,7 +67,6 @@ def generate_sbom():
         sys.exit(1)
 
     print(f"SBOM generata con successo: {output_file}")
-    print("Directory analizzata da Syft:", project_root)
 
 
 if __name__ == "__main__":
