@@ -55,6 +55,7 @@ class TestTreeAnalyzer:
         assert edge[0] == "PkgA"
         assert edge[1] == "gpl-2.0-only"
         assert edge[2] == "PkgB"
+        assert edge[3] == 'proprietary'
         assert edge[4][0] == "No"
 
     def test_run_tree_compatibility_check_integration_mock(self, mock_lca_cls, mocker):

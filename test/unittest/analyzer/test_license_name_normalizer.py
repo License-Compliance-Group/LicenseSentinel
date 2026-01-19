@@ -27,5 +27,4 @@ class TestLicenseNameNormalizerNormalize:
 
     def test_normalize_none_input(self):
         """Test error handling for None input."""
-        with pytest.raises(AttributeError):
-            license_name_normalizer.normalize(None)
+        assert license_name_normalizer.normalize(None) == 'Unknown'
