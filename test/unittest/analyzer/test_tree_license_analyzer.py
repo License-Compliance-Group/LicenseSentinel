@@ -1,70 +1,84 @@
+"""Unit tests for the TreeAnalyzer class."""
+
 import pytest
 from src.analyzer.tree_license_analyzer import TreeAnalyzer
 from src.entities.pypi_metadata import PyPIMetadata
 
-@pytest.fixture
-def mock_lca_cls(mocker):
-    """Mock the LicenseCompatibilityAnalyzer class internally used by TreeAnalyzer."""
-    return mocker.patch('src.analyzer.tree_license_analyzer.LicenseCompatibilityAnalyzer')
 
-def test_run_tree_compatibility_check_empty_metadata(mock_lca_cls):
-    res = TreeAnalyzer.run_tree_compatibility_check([], {})
-    assert res is None
+class TestTreeAnalyzer:
+    """Tests for the TreeAnalyzer class."""
 
-def test_run_tree_compatibility_check_empty_graph(mock_lca_cls, mocker):
-    metadata = [mocker.MagicMock(spec=PyPIMetadata)]
-    res = TreeAnalyzer.run_tree_compatibility_check(metadata, {})
-    assert res is None
+    @pytest.fixture
+    def mock_lca_cls(self, mocker):
+        """Mock the LicenseCompatibilityAnalyzer class internally used by TreeAnalyzer."""
+        return mocker.patch('src.analyzer.tree_license_analyzer.LicenseCompatibilityAnalyzer')
 
-def test_detect_incompatible_edges_compatible(mock_lca_cls):
-    mock_lca_instance = mock_lca_cls.return_value
-    mock_lca_instance.compare_licenses.return_value = ("Yes", "Compatible")
+    def test_run_tree_compatibility_check_empty_metadata(self, mock_lca_cls):
+        """Test that empty metadata returns None."""
+        res = TreeAnalyzer.run_tree_compatibility_check([], {})
+        assert res is None
 
-    graph = {"PkgA": ["PkgB"]}
-    # Use different licenses so it doesn't skip the check
-    license_by_pkg_diff = {"pkga": "mit", "pkgb": "bsd-3-clause"}
+    def test_run_tree_compatibility_check_empty_graph(self, mock_lca_cls, mocker):
+        """Test that empty graph returns None."""
+        metadata = [mocker.MagicMock(spec=PyPIMetadata)]
+        res = TreeAnalyzer.run_tree_compatibility_check(metadata, {})
+        assert res is None
 
-    edges = TreeAnalyzer.detect_incompatible_edges(graph, license_by_pkg_diff, mock_lca_instance)
-    assert len(edges) == 0
+    def test_detect_incompatible_edges_compatible(self, mock_lca_cls):
+        """Test detection with compatible licenses."""
+        mock_lca_instance = mock_lca_cls.return_value
+        mock_lca_instance.compare_licenses.return_value = ("Yes", "Compatible")
 
-def test_detect_incompatible_edges_incompatible(mock_lca_cls):
-    mock_lca_instance = mock_lca_cls.return_value
-    mock_lca_instance.compare_licenses.return_value = ("No", "Conflict")
+        graph = {"PkgA": ["PkgB"]}
+        # Use different licenses so it doesn't skip the check
+        license_by_pkg_diff = {"pkga": "mit", "pkgb": "bsd-3-clause"}
 
-    graph = {"PkgA": ["PkgB"]}
-    license_by_pkg = {"pkga": "gpl-2.0-only", "pkgb": "proprietary"}
+        edges = TreeAnalyzer.detect_incompatible_edges(
+            graph, license_by_pkg_diff, mock_lca_instance
+        )
+        assert len(edges) == 0
 
-    edges = TreeAnalyzer.detect_incompatible_edges(graph, license_by_pkg, mock_lca_instance)
-    
-    assert len(edges) == 1
-    edge = edges[0]
-    assert edge[0] == "PkgA"
-    assert edge[1] == "gpl-2.0-only"
-    assert edge[2] == "PkgB"
-    assert edge[4][0] == "No"
+    def test_detect_incompatible_edges_incompatible(self, mock_lca_cls):
+        """Test detection with incompatible licenses."""
+        mock_lca_instance = mock_lca_cls.return_value
+        mock_lca_instance.compare_licenses.return_value = ("No", "Conflict")
 
-def test_run_tree_compatibility_check_integration_mock(mock_lca_cls, mocker):
-    """Integration test with mocked LCA to verify full flow."""
-    mock_lca_instance = mock_lca_cls.return_value
-    mock_lca_instance.compare_licenses.return_value = ("No", "Conflict")
+        graph = {"PkgA": ["PkgB"]}
+        license_by_pkg = {"pkga": "gpl-2.0-only", "pkgb": "proprietary"}
 
-    pkg_a = mocker.MagicMock(spec=PyPIMetadata)
-    pkg_a.package = "PkgA"
-    pkg_a.license_type = "GPL-2.0"
-    
-    pkg_b = mocker.MagicMock(spec=PyPIMetadata)
-    pkg_b.package = "PkgB"
-    pkg_b.license_type = "MIT"
+        edges = TreeAnalyzer.detect_incompatible_edges(
+            graph, license_by_pkg, mock_lca_instance
+        )
+        
+        assert len(edges) == 1
+        edge = edges[0]
+        assert edge[0] == "PkgA"
+        assert edge[1] == "gpl-2.0-only"
+        assert edge[2] == "PkgB"
+        assert edge[4][0] == "No"
 
-    metadata = [pkg_a, pkg_b]
-    graph = {"PkgA": ["PkgB"]}
+    def test_run_tree_compatibility_check_integration_mock(self, mock_lca_cls, mocker):
+        """Integration test with mocked LCA to verify full flow."""
+        mock_lca_instance = mock_lca_cls.return_value
+        mock_lca_instance.compare_licenses.return_value = ("No", "Conflict")
 
-    result = TreeAnalyzer.run_tree_compatibility_check(metadata, graph)
-    
-    mock_lca_cls.assert_called()
-    
-    mock_lca_instance.update_license_matrix.assert_called_once()
-    
-    assert result is not None
-    assert len(result) == 1
-    assert result[0][1] == "gpl-2.0-only"
+        pkg_a = mocker.MagicMock(spec=PyPIMetadata)
+        pkg_a.package = "PkgA"
+        pkg_a.license_type = "GPL-2.0"
+        
+        pkg_b = mocker.MagicMock(spec=PyPIMetadata)
+        pkg_b.package = "PkgB"
+        pkg_b.license_type = "MIT"
+
+        metadata = [pkg_a, pkg_b]
+        graph = {"PkgA": ["PkgB"]}
+
+        result = TreeAnalyzer.run_tree_compatibility_check(metadata, graph)
+        
+        mock_lca_cls.assert_called()
+        
+        mock_lca_instance.update_license_matrix.assert_called_once()
+        
+        assert result is not None
+        assert len(result) == 1
+        assert result[0][1] == "gpl-2.0-only"
