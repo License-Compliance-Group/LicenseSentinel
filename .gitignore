@@ -215,4 +215,3 @@ requirements.txt
 # Ignore raw data files
 src/data/**
 src/tmpvenv/**
-test/unittest/analyzer/HOWTO_TEST_MOCKS_PATCH.md
