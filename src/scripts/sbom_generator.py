@@ -35,12 +35,9 @@ def generate_sbom():
 
     # Comando Syft: analizza l'intera root del progetto
     command = [
-        "syft",
-        project_root,
-        "-o", "spdx-json",
-        "--exclude", "**/__pycache__/**",
-        "--exclude", "**/.github/**",
-        "--exclude", "**/tmp/**"
+    "syft",
+    "python:.",
+    "-o", "spdx-json"
     ]
 
     print("Eseguo comando Syft:", " ".join(command))
