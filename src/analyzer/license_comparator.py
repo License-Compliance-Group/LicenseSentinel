@@ -70,6 +70,9 @@ class LicenseComparator(AbstractLicenseComparator):
                     continue
                 discrepancies.append((name, pypi_name, scan_names))
                 continue
+            if not scan_names:
+                logger.debug('No license detected for %s, skipping.', name)
+                continue
             if pypi_name == 'Unknown'\
                     or scan_names[0] == 'Unknown':
                 doubts.append((name, pypi_name, scan_names[0]))
