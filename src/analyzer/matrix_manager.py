@@ -9,11 +9,17 @@ from abc import abstractmethod, ABC
 from datetime import datetime
 from time import time
 
-from infrastructure.connectivity import Connectivity as io
-from infrastructure.logger_formatter import LoggerFormatter
+from src.infrastructure.connectivity import Connectivity as io
+from src.infrastructure.logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__,
-LoggerFormatter.INFO)
-class CompatibilityCalcStrategy(ABC): # pylint: disable=too-few-public-methods
+                                    LoggerFormatter.INFO)
+
+
+# ========================================================================
+# RESPONSIBILITY 1: STRATEGY PATTERN FOR COMPATIBILITY CALCULATION
+# ========================================================================
+
+class CompatibilityCalcStrategy(ABC):  # pylint: disable=too-few-public-methods
     # This class is meant for a single purpose.
     """Abstract Strategy class for compatibility calculation algorithms"""
     @abstractmethod
@@ -27,9 +33,11 @@ class CompatibilityCalcStrategy(ABC): # pylint: disable=too-few-public-methods
             tuple: (result as "Yes"/"No"/"Same", explanation)
         """
 
-class FullCompatibilityCalc(CompatibilityCalcStrategy): # pylint: disable=too-few-public-methods
+
+class FullCompatibilityCalc(CompatibilityCalcStrategy):  # pylint: disable=too-few-public-methods
     # This class is meant for a single purpose.
     """ Regular mode: just check every possible unique pair"""
+
     def calculate_license_compatibility(self, licenses):
         """The abstract implementation
 
@@ -50,11 +58,23 @@ class FullCompatibilityCalc(CompatibilityCalcStrategy): # pylint: disable=too-fe
                 return result
         return ("Yes", "n.a.")
 
-_LAST_ONLINE_CHECK = 0 # pylint:disable=invalid-name
-                       # this variable is expected by pylint to be
-                       # both snake_case and PASCAL_CASE. good luck.
-                       # This variable is intended to be common
-                       # across all instances. It need not be thread-safe.
+
+# ========================================================================
+# RESPONSIBILITY 2: GOD CLASS - LICENSE COMPATIBILITY ANALYZER
+# This class has multiple responsibilities that should be separated:
+# - Matrix JSON file management (download, update, validation)
+# - Timestamp verification
+# - License comparison using matrix data
+# - License extraction from scancode results
+# - Compatibility calculation orchestration
+# ========================================================================
+
+_LAST_ONLINE_CHECK = 0  # pylint:disable=invalid-name
+# this variable is expected by pylint to be
+# both snake_case and PASCAL_CASE. good luck.
+# This variable is intended to be common
+# across all instances. It need not be thread-safe.
+
 
 class LicenseCompatibilityAnalyzer:
     """Analyzes cross-compatibility of multiple licenses.
@@ -80,11 +100,15 @@ class LicenseCompatibilityAnalyzer:
             self.compat_calc_strategy = strategy
 
         if path is None:
-            path = Path.joinpath(Path.cwd(),"src","data","matrix.json")
+            path = Path.joinpath(Path.cwd(), "data", "matrix.json")
         self.path = str(path)
         logger.info("Seeking license file at: %s", self.path)
         if not self.matrix_file_present():
             logger.info("License file not present.")
+
+    # ====================================================================
+    # STRATEGY PATTERN PROPERTY
+    # ====================================================================
 
     @property
     def compat_calc_strategy(self):
@@ -95,23 +119,33 @@ class LicenseCompatibilityAnalyzer:
             license compatibility calculation.
         """
         return self._compat_calc_strategy
+
     @compat_calc_strategy.setter
     def compat_calc_strategy(self, content):
         self._compat_calc_strategy = content
+
+    # ====================================================================
+    # CONNECTIVITY AND ONLINE CHECK MANAGEMENT
+    # ====================================================================
 
     @property
     def last_online_check(self):
         """Last time a successful online verification happened.
         Used to prevent excessive remote pinging.
-        
+
         Returns:
             last_online_check: epoch time since last succesful check,
                 0 if none ever happened
         """
         return _LAST_ONLINE_CHECK
+
     @last_online_check.setter
     def last_online_check(self, value):
-        _LAST_ONLINE_CHECK = value # pylint:disable=invalid-name
+        _LAST_ONLINE_CHECK = value  # pylint:disable=invalid-name
+
+    # ====================================================================
+    # COMPARISON RESULT TRACKING
+    # ====================================================================
 
     @property
     def last_comparison_result(self):
@@ -121,9 +155,14 @@ class LicenseCompatibilityAnalyzer:
             (str, str): (result, explanation)
         """
         return self._last_comparison_result
+
     @last_comparison_result.setter
     def last_comparison_result(self, value):
         self._last_comparison_result = value
+
+    # ====================================================================
+    # MATRIX JSON HANDLING - Property accessor for matrix data
+    # ====================================================================
 
     @property
     def license_matrix(self):
@@ -135,12 +174,14 @@ class LicenseCompatibilityAnalyzer:
                 return ""
         return self._license_matrix
 
-
     @license_matrix.setter
     def license_matrix(self, content):
         """Sets _license_matrix to content"""
         self._license_matrix = content
 
+    # ====================================================================
+    # MATRIX JSON HANDLING - File presence and deletion
+    # ====================================================================
 
     def matrix_file_present(self):
         """Checks if the required matrix file is present
@@ -155,10 +196,13 @@ class LicenseCompatibilityAnalyzer:
         if self.matrix_file_present():
             os.remove(self.path)
 
+    # ====================================================================
+    # MATRIX JSON HANDLING - Download the matrix from OSADL
+    # Downloads from: https://www.osadl.org/fileadmin/checklists/matrixseqexpl.json
+    # ====================================================================
 
-    def download_wrapper(self, url =\
-        "https://www.osadl.org/fileadmin/checklists/matrixseqexpl.json",
-        attempts = 2, timeout = 30):
+    def download_wrapper(self, url="https://www.osadl.org/fileadmin/checklists/matrixseqexpl.json",
+                         attempts=2, timeout=30):
         """A user-friendly wrapper around the download.
         Checks connectivity, downloads and writes to a file.
 
@@ -168,18 +212,18 @@ class LicenseCompatibilityAnalyzer:
             attempts (int, optional): How many download attempts will happen\
             before the script gives up. Defaults to 2.
         """
-        if time() - 5 * 1000 * 60 > self.last_online_check: # 5 minutes
+        if time() - 5 * 1000 * 60 > self.last_online_check:  # 5 minutes
             if not io.verify_internet_access():
                 return None
             self.last_online_check = time()
         for i in range(1, attempts + 1):
             if i > 1:
                 logger.warning("Download failed, trying again...")
-            logger.info("Downloading the file (attempt %d/%d). This"+
-            " will take up to %d seconds, depending on your network quality.",
-            i, attempts, timeout)
+            logger.info("Downloading the file (attempt %d/%d). This" +
+                        " will take up to %d seconds, depending on your network quality.",
+                        i, attempts, timeout)
             response = io.download_file(url,
-            timeout)
+                                        timeout)
             if response is not None:
                 break
 
@@ -189,7 +233,11 @@ class LicenseCompatibilityAnalyzer:
             logger.warning("All download attempts failed.")
         return response
 
-
+    # ====================================================================
+    # MATRIX JSON HANDLING - Timestamp verification
+    # Checks online timestamp from: https://www.osadl.org/fileadmin/checklists/timestamp
+    # Compares with local matrix JSON timestamp field
+    # ====================================================================
 
     def check_timestamp(self):
         """Compares offline and online timestamps, if possible.
@@ -216,6 +264,7 @@ class LicenseCompatibilityAnalyzer:
             return True
         return online_timestamp <= local_timestamp
 
+    # MATRIX JSON HANDLING - Get local timestamp from matrix JSON
     def get_local_timestamp(self):
         """Returns the cached JSON timestamp
         Note: this assumes class' JSON field was updated
@@ -225,8 +274,8 @@ class LicenseCompatibilityAnalyzer:
         """
         return datetime.fromisoformat(self.license_matrix['timestamp'])
 
-
-    def get_online_timestamp(self, timeout = 30):
+    # MATRIX JSON HANDLING - Get online timestamp to compare with local
+    def get_online_timestamp(self, timeout=30):
         """A convenience wrapper around download_file.
         Downloads a small string from a specified URL"""
 
@@ -237,6 +286,11 @@ class LicenseCompatibilityAnalyzer:
         timestamp = response.text.strip()
         return datetime.fromisoformat(timestamp)
 
+    # ====================================================================
+    # MATRIX JSON HANDLING - Main update method
+    # Reads from local file (data/matrix.json) or downloads from OSADL
+    # This is the primary method for loading matrix JSON data
+    # ====================================================================
 
     def update_license_matrix(self):
         """Updates classes' license matrix field, getting the data from offline
@@ -261,8 +315,8 @@ class LicenseCompatibilityAnalyzer:
         if not io.verify_internet_access():
             self.license_matrix = ''
             return False
-        try: # pylint: disable=no-else-return
-             # huh? this is not even an else statement
+        try:  # pylint: disable=no-else-return
+            # huh? this is not even an else statement
             response = self.download_wrapper()
             if response is None:
                 return False
@@ -270,7 +324,7 @@ class LicenseCompatibilityAnalyzer:
 
             # We have the file, save it for future use
             # By now we are sure that the response contains valid JSON
-            if not io.safe_write(self.path,response.text):
+            if not io.safe_write(self.path, response.text):
                 logger.error("Matrix file not written!")
 
             # Cache the JSON immediately
@@ -285,12 +339,17 @@ class LicenseCompatibilityAnalyzer:
             self.license_matrix = read_json
             return True
 
+    # ====================================================================
+    # SCANCODE LICENSE EXTRACTION - Not related to matrix JSON
+    # Extracts license data from scancode output files
+    # ====================================================================
+
     def extract_raw_licenses(self, json_path):
         """
         This method conflates a scancode JSON file to a raw list of licenses.
          For now it accepts a path, it might later accept a file descriptor
          or whatever else necessary
-        
+
 
         Args:
             json_path (str): a string containing the file path
@@ -307,10 +366,15 @@ class LicenseCompatibilityAnalyzer:
         for file_entry in licenses_json.get('files', []):
             detections = file_entry.get('license_detections', [])
             if isinstance(detections, dict) and 'license-expression' \
-                in detections:
+                    in detections:
                 licenses.append(detections['license-expression'])
         logger.debug("Detected licenses: %s", licenses)
         return licenses
+
+    # ====================================================================
+    # MATRIX JSON HANDLING - License comparison using matrix data
+    # Uses the loaded matrix JSON to compare two licenses for compatibility
+    # ====================================================================
 
     @classmethod
     def compare_licenses(cls, lic_a, lic_b):
@@ -336,7 +400,7 @@ class LicenseCompatibilityAnalyzer:
                 for compat in lic['compatibilities']:
                     if compat['name'].lower() == lic_b.lower():
                         notice = (compat['compatibility'],
-                                    compat['explanation'])
+                                  compat['explanation'])
                         logger.debug("Notice detected: %s", notice)
                         return notice
 
@@ -345,6 +409,11 @@ class LicenseCompatibilityAnalyzer:
                 return (None, None)
         logger.warning('Unknown license type for lic_a: %s', lic_a)
         return (None, None)
+
+    # ====================================================================
+    # COMPATIBILITY CALCULATION ORCHESTRATION
+    # Uses strategy pattern to calculate overall compatibility
+    # ====================================================================
 
     def calculate_license_compatibility(self, licenses):
         """Calculate license compatibility of the project using currently 
@@ -362,6 +431,6 @@ if __name__ == "__main__":
     # this is a quick-and-dirty method to check if stuff works
     lca = LicenseCompatibilityAnalyzer(FullCompatibilityCalc())
     lca.extract_raw_licenses(str(Path.cwd())
-                             + '/src/data/licenses.json')
-    lca.compare_licenses('afl-2.0', 'afl-2.1') # known compatible
+                             + '/data/licenses.json')
+    lca.compare_licenses('afl-2.0', 'afl-2.1')  # known compatible
     lca.calculate_license_compatibility(['afl-2.0', 'afl-2.1'])

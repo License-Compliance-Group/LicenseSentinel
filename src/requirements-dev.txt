@@ -1,0 +1,8 @@
+# Actual project requirements
+
+pylint 
+requests
+behave
+textual
+coverage
+pytest

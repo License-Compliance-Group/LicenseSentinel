@@ -2,6 +2,8 @@
 If a need arises to normalize anything else, a Normalizer interface
 may be created, handling different kinds of normalization.
 """
+
+
 def normalize(name: str) -> str | None:
     """Map common license strings to OSADL/SPDX-like keys used 
         by the matrix.
@@ -13,6 +15,8 @@ def normalize(name: str) -> str | None:
             identifier, or None if not recognized.  
 
     """
+    if name is None:
+        return ''
     key = name.strip().lower()
     mapping = {
         # GPL Family

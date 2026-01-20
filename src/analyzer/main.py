@@ -4,17 +4,16 @@ import itertools
 from pathlib import Path
 
 import logging
-from infrastructure import pypi_client
-from infrastructure import repo_downloader
-from infrastructure import dep_tree_builder
-from infrastructure import scancode_runner
-from infrastructure.logger_formatter import LoggerFormatter
-from infrastructure import license_name_normalizer
+from src.infrastructure import pypi_client
+from src.infrastructure import repo_downloader
+from src.infrastructure import dep_tree_builder
+from src.infrastructure import scancode_runner
+from src.infrastructure.logger_formatter import LoggerFormatter
+from src.analyzer import license_name_normalizer
 
-from analyzer import package_metadata_fetcher
-from analyzer.license_compatibility_analyzer import\
-    LicenseCompatibilityAnalyzer
-from analyzer.license_comparator import LicenseComparator
+from src.analyzer import package_metadata_fetcher
+from src.analyzer.matrix_manager import LicenseCompatibilityAnalyzer
+from src.analyzer.license_comparator import LicenseComparator
 
 logger = LoggerFormatter.initialize(__name__, logging.DEBUG)
 
@@ -24,14 +23,12 @@ MATRIX_PATH = DATA_DIR / "matrix.json"
 DEFAULT_REQUIREMENTS = PROJECT_ROOT / "requirements.txt"
 
 
-
-
-
 def main() -> None:
     """The main function of the project."""
 
     # set to True to force redownload/rebuild of everything
     ignore_cache = False
+    print(PROJECT_ROOT)
 
     logger.debug("Working directory: %s", os.getcwd())
 
@@ -50,15 +47,16 @@ def main() -> None:
     repo_downloader_instance = repo_downloader.RepoDownloader()
     dep_tree_builder_instance = dep_tree_builder.DepTreeBuilder()
     package_metadata_fetcher_instance = package_metadata_fetcher.\
-    PackageMetadataFetcher(
-        pypi_client_instance,
-        dep_tree_builder_instance,
-        repo_downloader_instance
-    )
+        PackageMetadataFetcher(
+            pypi_client_instance,
+            dep_tree_builder_instance,
+            repo_downloader_instance
+        )
+
     metadata_items, graph = package_metadata_fetcher_instance\
         .build_package_metadata(
-        file_path,
-        ignore_cache
+            file_path,
+            # ignore_cache
         )
 
     if not metadata_items:
@@ -92,6 +90,9 @@ def main() -> None:
 
     run_tree_compatibility_check(metadata_items, graph)
 
+# SCANCODE
+
+
 def explain_discrepancies(discrepancies):
     """Explains comparison errors in an user-friendly way.
 
@@ -113,6 +114,7 @@ def explain_discrepancies(discrepancies):
     error_str += 'Please note that licenses may be interchangeable despite not'\
         ' being identical.'
     logger.error(error_str)
+
 
 def explain_doubts(doubts):
     """Explains comparison errors in an user-friendly way.
@@ -144,6 +146,9 @@ def explain_doubts(doubts):
             ' usually the licensee\'s responsibility to comply with all of them.'
     logger.warning(warn_str)
 
+#
+
+
 def run_tree_compatibility_check(packages_metadata, graph) -> None:
     """  
     Run compatibility check along dependency edges instead of flat union
@@ -156,11 +161,11 @@ def run_tree_compatibility_check(packages_metadata, graph) -> None:
     """
     if not packages_metadata:
         logger.warning("No package metadata available, skipping"
-            " compatibility check.")
+                       " compatibility check.")
         return
     if not graph:
         logger.warning("Dependency graph unavailable, cannot performtree-based"
-             " compatibility check.")
+                       " compatibility check.")
         return
 
     license_by_pkg: dict[str, str] = {}
@@ -186,12 +191,12 @@ def run_tree_compatibility_check(packages_metadata, graph) -> None:
     lca.update_license_matrix()
     incompatible_edges = detect_incompatible_edges(graph, license_by_pkg, lca)
 
-
     print_dependency_forest(graph, license_by_pkg, incompatible_edges)
 
     compile_compatibility_report(incompatible_edges)
 
-def detect_incompatible_edges(graph, license_by_pkg, lca = None):
+
+def detect_incompatible_edges(graph, license_by_pkg, lca=None):
     """Detects and highlights incompatibilites within a dependency graph
 
     Args:
@@ -218,18 +223,20 @@ def detect_incompatible_edges(graph, license_by_pkg, lca = None):
                 # Same license, treat as compatible
                 # even if matrix has no self-entry
                 continue
-            notice = lca.compare_licenses(lic_parent, lic_dep)
+            notice = lca.compare_licenses(lic_dep, lic_parent)
             if not notice or notice[0] != "Yes":
                 if notice[0] == 'Same':
                     logger.error('License %s/%s is incompatible with itself.',
-                                 lic_parent,lic_dep)
+                                 lic_parent, lic_dep)
                 if notice[1] is None:
                     msg = "No explanation available."
                 else:
                     msg = notice[1]
                 incompatible_edges.append((
-                    parent, lic_parent,dep, lic_dep, (notice[0], msg)))
+                    parent, lic_parent, dep, lic_dep, (notice[0], msg)))
     return incompatible_edges
+
+
 def compile_compatibility_report(incompatible_edges):
     """Prints a report regarding potential tree incompatibilities.
 
@@ -244,12 +251,12 @@ def compile_compatibility_report(incompatible_edges):
     logger.info('Listing problems.')
     for edge in incompatible_edges:
         logger.info("Incompatibility: %s (%s) -> %s (%s), reason: %s",
-                   *edge)
+                    *edge)
 
 
 def find_first_incompatibility(lca: LicenseCompatibilityAnalyzer,
                                pkg_licenses: list[tuple[str, str]])\
-    -> tuple[str, str, str, str, tuple | None] | None:
+        -> tuple[str, str, str, str, tuple | None] | None:
     """  
     Planned for future use.
     Return the first incompatible pair of packages/licenses with 
@@ -270,7 +277,7 @@ def find_first_incompatibility(lca: LicenseCompatibilityAnalyzer,
             Returns None if all pairs are compatible.  
     """
     for (pkg_a, lic_a), (pkg_b, lic_b) in itertools.combinations(
-        pkg_licenses, 2):
+            pkg_licenses, 2):
         notice = lca.compare_licenses(lic_a, lic_b)
         if not notice or notice[0] != "Yes":
             return pkg_a, lic_a, pkg_b, lic_b, notice
@@ -326,9 +333,9 @@ def print_dependency_forest(graph: dict[str, list[str]],
             edge_incompatible = (pkg.lower(), dep.lower())\
                 in incompatible_set
             render(
-                dep,sub_prefix, idx == len(children) - 1, visited,
-                   edge_incompatible
-                   )
+                dep, sub_prefix, idx == len(children) - 1, visited,
+                edge_incompatible
+            )
 
     print("\n=== Dependency Tree (incompatible edges in red) ===")
     visited_global: set[str] = set()

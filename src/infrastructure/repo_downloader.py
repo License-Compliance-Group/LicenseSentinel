@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import Dict, Optional
 
 import requests
-from entities.abstract_repo_downloader import AbstractRepoDownloader
-from infrastructure.logger_formatter import LoggerFormatter
+from src.entities.abstract_repo_downloader import AbstractRepoDownloader
+from src.infrastructure.logger_formatter import LoggerFormatter
 
 LOGGER = LoggerFormatter.initialize("repo_downloader", logging.INFO)
 
@@ -64,7 +64,7 @@ class RepoDownloader(AbstractRepoDownloader):
     def download_repos(
         self,
         repo_urls: Dict[str, str | None],
-        output_path: str,
+        output_path: Path,
         branch: str = "main",
     ) -> Dict[str, bool]:
         """Download multiple repository branches as ZIP files.
@@ -248,7 +248,8 @@ class RepoDownloader(AbstractRepoDownloader):
             resolved_output_dir.mkdir(parents=True, exist_ok=True)
             LOGGER.info("Download directory created: %s", resolved_output_dir)
         else:
-            LOGGER.warning("Download directory already exists: %s", resolved_output_dir)
+            LOGGER.warning(
+                "Download directory already exists: %s", resolved_output_dir)
 
         return resolved_output_dir
 
@@ -260,7 +261,7 @@ class RepoDownloader(AbstractRepoDownloader):
         """Context manager exit - automatically cleanup executor."""
         self.executor.shutdown(wait=True)
 
-    def download_repo(self, repo_url: str, pkg_name, branch: str, output_path: str) -> bool:
+    def download_repo(self, repo_url: str, pkg_name, branch: str, output_path: Path) -> bool:
         """Download a single repository branch as a ZIP file.
         """
 
