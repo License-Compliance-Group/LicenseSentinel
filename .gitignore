@@ -215,3 +215,6 @@ requirements.txt
 # Ignore raw data files
 src/data/**
 src/tmpvenv/**
+
+test/whitebox/cfg/**
+test/whitebox/dfg/**
