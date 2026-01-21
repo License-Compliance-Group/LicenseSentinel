@@ -11,6 +11,7 @@ from time import time
 
 from src.infrastructure.connectivity import Connectivity as io
 from src.infrastructure.logger_formatter import LoggerFormatter
+from src.infrastructure.license_name_normalizer import normalize
 logger = LoggerFormatter.initialize(__name__,
                                     LoggerFormatter.INFO)
 
@@ -23,11 +24,12 @@ class CompatibilityCalcStrategy(ABC):  # pylint: disable=too-few-public-methods
     # This class is meant for a single purpose.
     """Abstract Strategy class for compatibility calculation algorithms"""
     @abstractmethod
-    def calculate_license_compatibility(self, licenses):
+    def calculate_license_compatibility(self, licenses, analyzer):
         """Calculate the compatibility between a list of licenses.
 
         Args:
             licenses (List[str]): A flat list of license names to check for compatibility.
+            analyzer (LicenseCompatibilityAnalyzer): The analyzer instance to use for license comparison.
 
         Returns:
             tuple: (result as "Yes"/"No"/"Same", explanation)
@@ -38,21 +40,33 @@ class FullCompatibilityCalc(CompatibilityCalcStrategy):  # pylint: disable=too-f
     # This class is meant for a single purpose.
     """ Regular mode: just check every possible unique pair"""
 
-    def calculate_license_compatibility(self, licenses):
+    def calculate_license_compatibility(self, licenses, analyzer):
         """The abstract implementation
 
         Args:
             licenses (List[str]): A flat list of license names
+            analyzer (LicenseCompatibilityAnalyzer): The analyzer instance to use for license comparison.
 
         Returns:
             (str, str): (result as "Yes"/"No"/"Same", explanation)
         """
+        # Edge cases:
+        # - None
+        # - 1 license
+        # - 2 licenses
+        
+        if not licenses or len(licenses) <= 1:
+            return('None', 'Not enough licenses to analyze.')
+        if len(licenses) == 2:
+            return analyzer.compare_licenses(
+                licenses[0],
+                licenses[1]
+            )
+        
         # don't check dupes
         licenses = set(licenses)
         for (license_a, license_b) in itertools.combinations(licenses, 2):
-            license_a = license_a.lower()
-            license_b = license_b.lower()
-            result = LicenseCompatibilityAnalyzer.compare_licenses(
+            result = analyzer.compare_licenses(
                 license_a, license_b)
             if result is None or result[0] != "Yes":
                 return result
@@ -376,8 +390,7 @@ class LicenseCompatibilityAnalyzer:
     # Uses the loaded matrix JSON to compare two licenses for compatibility
     # ====================================================================
 
-    @classmethod
-    def compare_licenses(cls, lic_a, lic_b):
+    def compare_licenses(self, lic_a, lic_b):
         """Compare two licenses for compatibility and return the result.
 
         Args:
@@ -392,13 +405,10 @@ class LicenseCompatibilityAnalyzer:
         # if it ever gets confirmed, we can use much more efficient binary
         # search. For now, linear will have to do.
         # Twice.
-        if not hasattr(cls, '_instance'):
-            cls._instance = cls()
-        instance = cls._instance
-        for lic in instance.license_matrix['licenses']:
-            if lic['name'].lower() == lic_a.lower():
+        for lic in self.license_matrix['licenses']:
+            if normalize(lic['name']) == normalize(lic_a):
                 for compat in lic['compatibilities']:
-                    if compat['name'].lower() == lic_b.lower():
+                    if normalize(compat['name']) == normalize(lic_b):
                         notice = (compat['compatibility'],
                                   compat['explanation'])
                         logger.debug("Notice detected: %s", notice)
@@ -416,14 +426,14 @@ class LicenseCompatibilityAnalyzer:
     # ====================================================================
 
     def calculate_license_compatibility(self, licenses):
-        """Calculate license compatibility of the project using currently 
+        """Calculate license compatibility of the project using currently
         selected strategy.
 
         Args:
             licenses (List[str]): A flat list of license names
         """
         self.last_comparison_result = self.compat_calc_strategy.\
-            calculate_license_compatibility(licenses)
+            calculate_license_compatibility(licenses, self)
 
 
 if __name__ == "__main__":

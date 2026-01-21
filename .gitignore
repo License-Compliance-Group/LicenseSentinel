@@ -216,6 +216,7 @@ __marimo__/
 src/data/**
 src/tmpvenv/**
 
-test/whitebox/cfg/**
-test/whitebox/dfg/**
+test/whitebox/cfg_graphs/**
+test/whitebox/dfg_graphs/**
 test/reports/*
+test/whitebox/log.txt

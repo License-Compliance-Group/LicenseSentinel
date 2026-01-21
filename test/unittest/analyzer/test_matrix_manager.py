@@ -1,4 +1,4 @@
-"""Unit tests for LicenseCompatibilityAnalyzer"""
+"""Unit tests for MatrixManager"""
 import os
 import tempfile
 import pytest
@@ -18,7 +18,8 @@ def test_abstract_method():
     """Test that CompatibilityCalcStrategy cannot be instantiated."""
     # Abstract classes cannot be instantiated
     with pytest.raises(TypeError):
-        CompatibilityCalcStrategy()
+        CompatibilityCalcStrategy() #pylint:disable=abstract-class-instantiated
+                                    # this is intended to throw
 
 
 @pytest.fixture
@@ -26,25 +27,24 @@ def calc():
     return FullCompatibilityCalc()
 
 
-def test_calculate_license_compatibility_same_licenses(calc):
+def test_calculate_license_compatibility_same_licenses(calc, analyzer):
     """Test calculate_license_compatibility with same licenses."""
     result = calc.calculate_license_compatibility(['apache-2.0',
-                                                   'apache-2.0'])
-    # a 'same' return only makes any sense with a pairwise check,
-    # this is a full one
-    assert result == ("Yes", "n.a.")
+                                                   'apache-2.0'], analyzer)
+
+    assert result == ("Same", "n.a.")
 
 
-def test_calculate_license_compatibility_compatible(calc):
+def test_calculate_license_compatibility_compatible(calc, analyzer):
     """Test calculate_license_compatibility with compatible licenses."""
-    result = calc.calculate_license_compatibility(['0bsd', 'sunpro'])
-    assert result == ("Yes", "n.a.")
+    result = calc.calculate_license_compatibility(['0bsd', 'sunpro'], analyzer)
+    assert result[0] == "Yes"
 
 
-def test_calculate_license_compatibility_incompatible(calc):
+def test_calculate_license_compatibility_incompatible(calc, analyzer):
     """Test calculate_license_compatibility with incompatible licenses."""
     result = calc.calculate_license_compatibility(['ftl',
-                                                   'gpl-3.0-only'])
+                                                   'gpl-3.0-only'], analyzer)
     assert result[0] == "No"
 
 @pytest.fixture
@@ -322,32 +322,23 @@ LicenseCompatibilityAnalyzer.get_online_timestamp')
         result = self.analyzer.extract_raw_licenses("dummy_path")
         self.assertEqual(result, [])
 
-    @patch.object(LicenseCompatibilityAnalyzer, 'license_matrix',
-                  new_callable=lambda: {'licenses': [{'name': 'mit',\
-                      'compatibilities': [{'name': 'bsd', 'compatibility':\
-                          'Yes', 'explanation': 'n.a.'}]}]})
-    def test_compare_licenses_compatible(self, mock_matrix):
+    def test_compare_licenses_compatible(analyzer):
         """Test compare_licenses with compatible licenses."""
-        LicenseCompatibilityAnalyzer.license_matrix = mock_matrix
-        result = LicenseCompatibilityAnalyzer.compare_licenses('mit', 'bsd')
-        self.assertEqual(result, ('Yes', 'n.a.'))
+        analyzer.license_matrix = {'licenses': [{'name': 'mit', 'compatibilities': [{'name': 'bsd', 'compatibility': 'Yes', 'explanation': 'n.a.'}]}]}
+        result = analyzer.compare_licenses('mit', 'bsd')
+        assert result == ('Yes', 'n.a.')
 
-    @patch.object(LicenseCompatibilityAnalyzer, 'license_matrix',
-        new_callable=lambda: {'licenses': [{'name': 'mit',\
-            'compatibilities': []}]})
-    def test_compare_licenses_unknown_license_b(self, mock_matrix):
+    def test_compare_licenses_unknown_license_b(analyzer):
         """Test compare_licenses with unknown license B."""
-        LicenseCompatibilityAnalyzer.license_matrix = mock_matrix
-        result = LicenseCompatibilityAnalyzer.compare_licenses('mit', 'unknown')
-        self.assertEqual(result, (None, None))
+        analyzer.license_matrix = {'licenses': [{'name': 'mit', 'compatibilities': []}]}
+        result = analyzer.compare_licenses('mit', 'unknown')
+        assert result == (None, None)
 
-    @patch.object(LicenseCompatibilityAnalyzer, 'license_matrix',
-                  new_callable=lambda: {'licenses': []})
-    def test_compare_licenses_unknown_license_a(self, mock_matrix):
+    def test_compare_licenses_unknown_license_a(analyzer):
         """Test compare_licenses with unknown license A."""
-        LicenseCompatibilityAnalyzer.license_matrix = mock_matrix
-        result = LicenseCompatibilityAnalyzer.compare_licenses('unknown', 'mit')
-        self.assertEqual(result, (None, None))
+        analyzer.license_matrix = {'licenses': []}
+        result = analyzer.compare_licenses('unknown', 'mit')
+        assert result == (None, None)
 
     def test_calculate_license_compatibility(self):
         """Test calculate_license_compatibility."""

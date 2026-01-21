@@ -10,7 +10,7 @@ from src.entities.pypi_metadata import PyPIMetadata
 from src.analyzer.package_metadata_fetcher import PackageMetadataFetcher
 from src.analyzer.matrix_manager import LicenseCompatibilityAnalyzer
 from src.analyzer.tree_license_analyzer import TreeAnalyzer
-from src.analyzer import license_name_normalizer as normalizer
+from src.infrastructure import license_name_normalizer as normalizer
 from src.analyzer.license_comparator import LicenseComparator
 
 from src.infrastructure.pypi_client import PyPiHandler
