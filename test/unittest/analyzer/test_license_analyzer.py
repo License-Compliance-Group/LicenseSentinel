@@ -1,7 +1,7 @@
 """Unit tests for license analyzer functions."""
 import pytest
-from src.infrastructure.license_name_normalizer import normalize
-from src.analyzer.matrix_manager import LicenseCompatibilityAnalyzer
+from src.license_sentinel.infrastructure.license_name_normalizer import normalize
+from src.license_sentinel.analyzer.matrix_manager import LicenseCompatibilityAnalyzer
 
 
 def test_known_licenses():

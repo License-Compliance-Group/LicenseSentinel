@@ -2,7 +2,7 @@
 # I test non richiedono docstring formali e i nomi come test_xxx sono standard pytest.
 
 import pytest
-from src.entities.pypi_metadata import PyPIMetadata
+from src.license_sentinel.entities.pypi_metadata import PyPIMetadata
 
 
 # Test del costruttore

@@ -2,11 +2,11 @@
 
 import pytest
 from pathlib import Path
-from src.analyzer.package_metadata_fetcher import PackageMetadataFetcher
-from src.entities.package_manager_fetcher import AbstractPackageManagerFetcher
-from src.entities.abstract_dep_tree_builder import AbstractDepTreeBuilder
-from src.entities.abstract_repo_downloader import AbstractRepoDownloader
-from src.entities.pypi_metadata import PyPIMetadata
+from src.license_sentinel.analyzer.package_metadata_fetcher import PackageMetadataFetcher
+from src.license_sentinel.entities.package_manager_fetcher import AbstractPackageManagerFetcher
+from src.license_sentinel.entities.abstract_dep_tree_builder import AbstractDepTreeBuilder
+from src.license_sentinel.entities.abstract_repo_downloader import AbstractRepoDownloader
+from src.license_sentinel.entities.pypi_metadata import PyPIMetadata
 
 
 class TestPackageMetadataFetcherParse:
@@ -87,7 +87,7 @@ class TestPackageMetadataFetcherBuild:
         mocker.patch.object(fetcher, '_load_cache', return_value={})
         mocker.patch.object(fetcher, '_save_cache')
         # Patch PROJECT_ROOT to verify it doesn't try to write to real fs
-        mocker.patch('src.analyzer.package_metadata_fetcher.PROJECT_ROOT', tmp_path)
+        mocker.patch('src.license_sentinel.analyzer.package_metadata_fetcher.PROJECT_ROOT', tmp_path)
         
         metadata, graph = fetcher.build_package_metadata(req_file, override_cache=True)
                     

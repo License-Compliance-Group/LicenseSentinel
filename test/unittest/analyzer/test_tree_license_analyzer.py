@@ -1,8 +1,8 @@
 """Unit tests for the TreeAnalyzer class."""
 
 import pytest
-from src.analyzer.tree_license_analyzer import TreeAnalyzer
-from src.entities.pypi_metadata import PyPIMetadata
+from src.license_sentinel.analyzer.tree_license_analyzer import TreeAnalyzer
+from src.license_sentinel.entities.pypi_metadata import PyPIMetadata
 
 
 class TestTreeAnalyzer:
@@ -11,7 +11,7 @@ class TestTreeAnalyzer:
     @pytest.fixture
     def mock_lca_cls(self, mocker):
         """Mock the LicenseCompatibilityAnalyzer class internally used by TreeAnalyzer."""
-        return mocker.patch('src.analyzer.tree_license_analyzer.LicenseCompatibilityAnalyzer')
+        return mocker.patch('src.license_sentinel.analyzer.tree_license_analyzer.LicenseCompatibilityAnalyzer')
 
     def test_run_tree_compatibility_check_empty_metadata(self, mock_lca_cls):
         """Test that empty metadata returns None."""

@@ -5,12 +5,12 @@ import pytest
 from unittest.mock import patch, MagicMock, mock_open, Mock
 from datetime import datetime
 from requests import Response
-from src.analyzer.matrix_manager import (
+from src.license_sentinel.analyzer.matrix_manager import (
     LicenseCompatibilityAnalyzer,
     FullCompatibilityCalc,
     CompatibilityCalcStrategy
 )
-from src.infrastructure.connectivity import Connectivity as io
+from src.license_sentinel.infrastructure.connectivity import Connectivity as io
 
 
 def test_abstract_method():
@@ -145,9 +145,9 @@ def test_matrix_file_present_false(analyzer):
             self.analyzer.delete_matrix_file()
             # os.remove should not be called
 
-    @patch('src.infrastructure.connectivity.Connectivity.\
+    @patch('src.license_sentinel.infrastructure.connectivity.Connectivity.\
 verify_internet_access')
-    @patch('src.infrastructure.connectivity.Connectivity.\
+    @patch('src.license_sentinel.infrastructure.connectivity.Connectivity.\
 download_file')
     def test_download_wrapper_success(self, mock_download, mock_verify):
         """Test download_wrapper with successful download."""
@@ -157,7 +157,7 @@ download_file')
         result = self.analyzer.download_wrapper()
         self.assertEqual(result, mock_response)
 
-    @patch('src.infrastructure.connectivity.Connectivity.\
+    @patch('src.license_sentinel.infrastructure.connectivity.Connectivity.\
 verify_internet_access')
     def test_download_wrapper_no_internet(self, mock_verify):
         """Test download_wrapper with no internet."""
@@ -165,9 +165,9 @@ verify_internet_access')
         result = self.analyzer.download_wrapper()
         self.assertIsNone(result)
 
-    @patch('src.infrastructure.connectivity.Connectivity.\
+    @patch('src.license_sentinel.infrastructure.connectivity.Connectivity.\
 verify_internet_access')
-    @patch('src.infrastructure.connectivity.Connectivity.download_file')
+    @patch('src.license_sentinel.infrastructure.connectivity.Connectivity.download_file')
     def test_download_wrapper_multiple_attempts(self, mock_download,
                                                 mock_verify):
         """Test download_wrapper with multiple attempts."""
@@ -185,9 +185,9 @@ verify_internet_access')
             result = self.analyzer.check_timestamp()
             self.assertFalse(result)
 
-    @patch('src.analyzer.license_compatibility_analyzer.\
+    @patch('src.license_sentinel.analyzer.license_compatibility_analyzer.\
 LicenseCompatibilityAnalyzer.get_local_timestamp')
-    @patch('src.analyzer.license_compatibility_analyzer.\
+    @patch('src.license_sentinel.analyzer.license_compatibility_analyzer.\
 LicenseCompatibilityAnalyzer.get_online_timestamp')
     def test_check_timestamp_online_newer(self, mock_online, mock_local):
         """Test check_timestamp when online timestamp is newer."""
@@ -197,9 +197,9 @@ LicenseCompatibilityAnalyzer.get_online_timestamp')
         result = self.analyzer.check_timestamp()
         self.assertFalse(result)
 
-    @patch('src.analyzer.license_compatibility_analyzer.\
+    @patch('src.license_sentinel.analyzer.license_compatibility_analyzer.\
 LicenseCompatibilityAnalyzer.get_local_timestamp')
-    @patch('src.analyzer.license_compatibility_analyzer.\
+    @patch('src.license_sentinel.analyzer.license_compatibility_analyzer.\
 LicenseCompatibilityAnalyzer.get_online_timestamp')
     def test_check_timestamp_local_newer(self, mock_online, mock_local):
         """Test check_timestamp when local timestamp is newer."""
@@ -209,7 +209,7 @@ LicenseCompatibilityAnalyzer.get_online_timestamp')
         result = self.analyzer.check_timestamp()
         self.assertTrue(result)
 
-    @patch('src.analyzer.license_compatibility_analyzer.\
+    @patch('src.license_sentinel.analyzer.license_compatibility_analyzer.\
 LicenseCompatibilityAnalyzer.get_online_timestamp')
     def test_check_timestamp_none_online(self, mock_online):
         """Test check_timestamp when online timestamp is None."""
@@ -226,7 +226,7 @@ LicenseCompatibilityAnalyzer.get_online_timestamp')
         result = self.analyzer.get_local_timestamp()
         self.assertEqual(result, datetime(2023, 1, 1))
 
-    @patch('src.infrastructure.connectivity.Connectivity.download_file')
+    @patch('src.license_sentinel.infrastructure.connectivity.Connectivity.download_file')
     def test_get_online_timestamp(self, mock_download):
         """Test get_online_timestamp."""
         mock_response = MagicMock()
@@ -235,7 +235,7 @@ LicenseCompatibilityAnalyzer.get_online_timestamp')
         result = self.analyzer.get_online_timestamp()
         self.assertEqual(result, datetime(2023, 1, 1))
 
-    @patch('src.infrastructure.connectivity.Connectivity.download_file')
+    @patch('src.license_sentinel.infrastructure.connectivity.Connectivity.download_file')
     def test_get_online_timestamp_none(self, mock_download):
         """Test get_online_timestamp when download fails."""
         mock_download.return_value = None
@@ -269,7 +269,7 @@ LicenseCompatibilityAnalyzer.get_online_timestamp')
             response.json.return_value = '{"key": "value"}'
             mock_download.return_value = response
             with\
-            patch('src.infrastructure.connectivity.Connectivity.safe_write',
+            patch('src.license_sentinel.infrastructure.connectivity.Connectivity.safe_write',
                   return_value=True):
                 result = self.analyzer.update_license_matrix()
                 self.assertTrue(result)
@@ -286,7 +286,7 @@ LicenseCompatibilityAnalyzer.get_online_timestamp')
     @patch.object(LicenseCompatibilityAnalyzer, 'matrix_file_present',
                   return_value=False)
     @patch.object(LicenseCompatibilityAnalyzer, 'download_wrapper')
-    @patch('src.infrastructure.connectivity.Connectivity.safe_write')
+    @patch('src.license_sentinel.infrastructure.connectivity.Connectivity.safe_write')
     def test_update_license_matrix_online_success(self, mock_write,
                                                   mock_download, _):
         """Test update_license_matrix with online success."""
@@ -299,7 +299,7 @@ LicenseCompatibilityAnalyzer.get_online_timestamp')
         self.assertTrue(result)
         self.assertEqual(self.analyzer.license_matrix, {"key": "value"})
 
-    @patch('src.infrastructure.connectivity.Connectivity.safe_read')
+    @patch('src.license_sentinel.infrastructure.connectivity.Connectivity.safe_read')
     def test_extract_raw_licenses_success(self, mock_safe_read):
         """Test extract_raw_licenses with success."""
         mock_safe_read.return_value = '{"files": [{"license_detections":\
@@ -307,14 +307,14 @@ LicenseCompatibilityAnalyzer.get_online_timestamp')
         result = self.analyzer.extract_raw_licenses("dummy_path")
         self.assertEqual(result, ["MIT"])
 
-    @patch('src.infrastructure.connectivity.Connectivity.safe_read')
+    @patch('src.license_sentinel.infrastructure.connectivity.Connectivity.safe_read')
     def test_extract_raw_licenses_read_fail(self, mock_safe_read):
         """Test extract_raw_licenses when safe_read fails."""
         mock_safe_read.return_value = None
         result = self.analyzer.extract_raw_licenses("dummy_path")
         self.assertIsNone(result)
 
-    @patch('src.infrastructure.connectivity.Connectivity.safe_read')
+    @patch('src.license_sentinel.infrastructure.connectivity.Connectivity.safe_read')
     def test_extract_raw_licenses_no_files(self, mock_safe_read):
         """Test extract_raw_licenses with no files in JSON."""
         mock_safe_read.return_value = '{"files": []}'
