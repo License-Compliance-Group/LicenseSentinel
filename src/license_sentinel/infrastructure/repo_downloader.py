@@ -12,7 +12,7 @@ from typing import Dict, Optional
 
 import requests
 from src.license_sentinel.entities.abstract_repo_downloader import AbstractRepoDownloader
-from .logger_formatter import LoggerFormatter
+from src.license_sentinel.infrastructure.logger_formatter import LoggerFormatter
 
 LOGGER = LoggerFormatter.initialize("repo_downloader", logging.INFO)
 
@@ -135,9 +135,9 @@ class RepoDownloader(AbstractRepoDownloader):
 
             # Step 5: Download and save
             LOGGER.info("Downloading %s branch '%s' to %s",
-                        normalized_url, branch, output_path)
+                        normalized_url, branch, output_dir)
             task = loop.run_in_executor(self.executor, self._download_zip,
-                                        pkg, zip_url, Path(output_dir))
+                                        pkg, zip_url, output_dir)
             tasks.append((pkg, repo_url, task))
 
         # Wait for all downloads
@@ -232,7 +232,7 @@ class RepoDownloader(AbstractRepoDownloader):
         them relative to the project root (two levels up from this file).
         """
         output_dir = Path(output_path)
-        project_root = Path(__file__).resolve().parents[1]
+        project_root = Path(__file__).resolve().parents[3]
 
         if output_dir.is_absolute():
             if output_dir.is_relative_to(project_root):

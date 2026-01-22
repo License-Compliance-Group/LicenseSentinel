@@ -32,6 +32,12 @@ class LicenseComparator(AbstractLicenseComparator):
     def _process_pypi_metadata(self, tree_a):
         tree = {}
         for metadata in tree_a:
+            if not isinstance(metadata.license_type, str):
+                logger.error('Invalid (non-string) metadata license %s detected for package %s. '
+                               'This is a logic problem, aborting.',
+                               metadata.license_type,
+                               metadata.package)
+                return None
             tree[metadata.package] = normalizer.normalize(
                 metadata.license_type
             )
@@ -54,30 +60,39 @@ class LicenseComparator(AbstractLicenseComparator):
         """
         discrepancies = []
         doubts = []
+        if not self.tree_a:
+            logger.error('There is no license tree to compare against, aborting.')
+            return ('','')
         if (not self.tree_b) or override_cache:
             self.tree_b = self.run_scan_engine(override_cache)
         for name, pypi_name in self.tree_a.items():
+            if name == 'Root': continue # edge case
             if not name in self.tree_b:
                 discrepancies.append(f'Package {name} missing from '
                                      'either tree')
                 continue
             scan_names = self.tree_b[name]
+            scan_names = list(map(normalizer.normalize, scan_names))
+            pypi_name = normalizer.normalize(pypi_name)
             if len(scan_names) > 1:
                 logger.debug('More than one license declared for %s'
                              'in alternative tree, proceeding with caution.', name)
-                if pypi_name in scan_names:
-                    doubts.append((name, pypi_name, scan_names))
+                # handle the rare ' or ' clause
+                pypi_names = set(pypi_name.split(' or '))
+                if any(pypi_name in scan_names for pypi_name in pypi_names):
+                    doubts.append((name, pypi_names, scan_names))
                     continue
-                discrepancies.append((name, pypi_name, scan_names))
+                discrepancies.append((name, pypi_names, scan_names))
                 continue
             if not scan_names:
                 logger.debug('No license detected for %s, skipping.', name)
-                doubts.append((name, pypi_name, 'Unknown'))
+                doubts.append((name, pypi_name, 'unknown'))
                 continue
-            if pypi_name == 'Unknown'\
-                    or scan_names[0] == 'Unknown':
+            if pypi_name == 'unknown'\
+                    or scan_names[0] == 'unknown':
                 doubts.append((name, pypi_name, scan_names[0]))
                 continue
+            
             if pypi_name != scan_names[0]:
                 # Handle 'WITH' exceptions
                 if pypi_name.lower() \
@@ -88,7 +103,7 @@ class LicenseComparator(AbstractLicenseComparator):
                                    scan_names[0])
                     doubts.append((name, pypi_name, scan_names[0]))
                 else:
-                    logger.warning('Incompatible entry: %s - %s/%s',
+                    logger.warning('Inconsistent entry: %s - %s/%s',
                                    name,
                                    pypi_name,
                                    scan_names[0])
@@ -104,6 +119,9 @@ class LicenseComparator(AbstractLicenseComparator):
                 from using caching
         """
         tree_b = {}
+        if not self.tree_a:
+            logger.error('There is no license tree to compare against, aborting.')
+            return {}
         for pkg_name in self.tree_a:
             tree_b[pkg_name] = \
                 self.scan_engine.scan_for_license(

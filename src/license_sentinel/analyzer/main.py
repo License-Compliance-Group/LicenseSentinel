@@ -11,17 +11,17 @@ from src.license_sentinel.infrastructure import scancode_runner
 from src.license_sentinel.infrastructure.logger_formatter import LoggerFormatter
 from src.license_sentinel.infrastructure import license_name_normalizer
 
-from . import package_metadata_fetcher
-from .matrix_manager import\
+from src.license_sentinel.analyzer import package_metadata_fetcher
+from src.license_sentinel.analyzer.matrix_manager import\
     LicenseCompatibilityAnalyzer
-from .license_comparator import LicenseComparator
+from src.license_sentinel.analyzer.license_comparator import LicenseComparator
 
 logger = LoggerFormatter.initialize(__name__, logging.DEBUG)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 MATRIX_PATH = DATA_DIR / "matrix.json"
-DEFAULT_REQUIREMENTS = PROJECT_ROOT / "requirements.txt"
+DEFAULT_REQUIREMENTS = PROJECT_ROOT / "requirements-dev.txt"
 
 
 def main() -> None:
@@ -57,12 +57,20 @@ def main() -> None:
     metadata_items, graph = package_metadata_fetcher_instance\
         .build_package_metadata(
             file_path,
-            # ignore_cache
+            "0BSD",
+            ignore_cache,
         )
+    
 
     if not metadata_items:
         logger.warning("No package metadata found for %s", file_path)
         return
+    
+   
+    package_metadata_fetcher_instance.download_sources(
+        {pkg.package: pkg.link for pkg in metadata_items},
+                override_cache=ignore_cache
+            )
 
     header = f"{' PACKAGE':<20} {' LICENSE':<40} {' LINK'}"
     print("-" * (len(header) + 40))
@@ -171,7 +179,11 @@ def run_tree_compatibility_check(packages_metadata, graph) -> None:
 
     license_by_pkg: dict[str, str] = {}
     for pkg in packages_metadata:
-        lic = (pkg.license_type or "").strip()
+        if not isinstance(pkg.license_type, str):
+            logger.error('Package %s has a non-string license, skipping.',
+                         pkg.package)
+            continue
+        lic = pkg.license_type.strip()
         if not lic:
             logger.warning("Package %s has unknown license, skipping in\
                 compatibility check.", pkg.package)

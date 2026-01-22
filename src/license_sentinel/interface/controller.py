@@ -18,7 +18,7 @@ from src.license_sentinel.infrastructure.logger_formatter import LoggerFormatter
 from src.license_sentinel.infrastructure.scancode_runner import ScanCodeRunner
 from src.license_sentinel.infrastructure.license_name_normalizer \
     import normalize
-from .ui_state import CommandResult
+from src.license_sentinel.interface.ui_state import CommandResult
 
 logger = LoggerFormatter.initialize(__name__, logging.DEBUG)
 

@@ -24,8 +24,7 @@ LOGGER = LoggerFormatter.initialize("package_metadata_fetcher", logging.INFO)
 
 
 PROJECT_ROOT = Path.cwd()
-DOWNLOAD_DIRECTORY = Path.joinpath(
-    PROJECT_ROOT, 'tmpvenv', 'repo_downloads')
+DOWNLOAD_DIRECTORY = Path.joinpath(PROJECT_ROOT, 'tmpvenv', 'repo_downloads')
 DEFAULT_DOWNLOAD_BRANCH = "main"
 PACKAGES_TO_SKIP = ("pip", "pipdeptree")
 
@@ -58,6 +57,7 @@ class PackageMetadataFetcher:
         self.graph = {}
 
         self.cache_file.parent.mkdir(parents=True, exist_ok=True)
+        
 
     def _load_cache(self) -> Dict[str, Dict[str, Optional[str]]]:
         """Load metadata cache from file."""
