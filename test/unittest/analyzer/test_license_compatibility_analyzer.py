@@ -5,21 +5,20 @@ import pytest
 from unittest.mock import patch, MagicMock, mock_open, Mock
 from datetime import datetime
 from requests import Response
-
-from license_sentinel.analyzer.license_compatibility_analyzer import (
+from src.analyzer.matrix_manager import (
     LicenseCompatibilityAnalyzer,
     FullCompatibilityCalc,
     CompatibilityCalcStrategy
 )
-from license_sentinel.infrastructure.connectivity import Connectivity as io
+from src.infrastructure.connectivity import Connectivity as io
 
 
 def test_abstract_method():
     """Test that CompatibilityCalcStrategy cannot be instantiated."""
     # Abstract classes cannot be instantiated
     with pytest.raises(TypeError):
-        CompatibilityCalcStrategy()
-
+        CompatibilityCalcStrategy() #pylint:disable=abstract-class-instantiated
+                                    # This is intended to raise
 
 @pytest.fixture
 def calc():
