@@ -27,7 +27,7 @@ from pathlib import Path
 from ..entities.scan_engine import ScanEngine
 from .logger_formatter import LoggerFormatter
 from .connectivity import Connectivity as io
-from ..analyzer import license_name_normalizer as normalizer
+from ..infrastructure import license_name_normalizer as normalizer
 
 
 LOGGER = LoggerFormatter.initialize("scancode_runner", logging.INFO)

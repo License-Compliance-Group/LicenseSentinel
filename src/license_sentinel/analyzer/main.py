@@ -9,7 +9,7 @@ from ..infrastructure import repo_downloader
 from ..infrastructure import dep_tree_builder
 from ..infrastructure import scancode_runner
 from ..infrastructure.logger_formatter import LoggerFormatter
-from . import license_name_normalizer
+from ..infrastructure import license_name_normalizer
 
 from . import package_metadata_fetcher
 from .matrix_manager import\

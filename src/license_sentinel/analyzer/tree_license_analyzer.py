@@ -4,7 +4,7 @@ from pathlib import Path
 import logging
 from ..entities.pypi_metadata import PyPIMetadata
 from ..infrastructure.logger_formatter import LoggerFormatter
-from . import license_name_normalizer
+from ..infrastructure import license_name_normalizer
 
 from .matrix_manager import LicenseCompatibilityAnalyzer
 

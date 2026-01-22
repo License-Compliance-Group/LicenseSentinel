@@ -6,12 +6,12 @@ from unittest.mock import patch, MagicMock, mock_open, Mock
 from datetime import datetime
 from requests import Response
 
-from license_sentinel.analyzer.license_compatibility_analyzer import (
+from src.license_sentinel.analyzer.matrix_manager import (
     LicenseCompatibilityAnalyzer,
     FullCompatibilityCalc,
     CompatibilityCalcStrategy
 )
-from license_sentinel.infrastructure.connectivity import Connectivity as io
+from src.license_sentinel.infrastructure.connectivity import Connectivity as io
 
 
 def test_abstract_method():

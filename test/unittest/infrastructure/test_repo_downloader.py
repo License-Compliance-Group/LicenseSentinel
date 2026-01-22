@@ -3,9 +3,7 @@
 import pytest
 import tempfile
 from pathlib import Path
-import asyncio
-
-from license_sentinel.infrastructure.repo_downloader import RepoDownloader, _RepoDownloadError
+from src.license_sentinel.infrastructure.repo_downloader import RepoDownloader
 
 
 class TestRepoDownloaderInit:

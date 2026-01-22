@@ -1,9 +1,8 @@
 """Unit tests for PyPiHandler class."""
 
-import pytest
 import asyncio
 
-from license_sentinel.infrastructure.pypi_client import PyPiHandler
+from src.license_sentinel.infrastructure.pypi_client import PyPiHandler
 
 
 class TestPyPiHandlerGetSourceLinks:

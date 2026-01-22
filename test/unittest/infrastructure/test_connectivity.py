@@ -5,7 +5,7 @@ from pathlib import Path
 import zipfile
 import tempfile
 
-from license_sentinel.infrastructure.connectivity import Connectivity
+from src.license_sentinel.infrastructure.connectivity import Connectivity
 
 
 class TestConnectivityCheckFileExists:
