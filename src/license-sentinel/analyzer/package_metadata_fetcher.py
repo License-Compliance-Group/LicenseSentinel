@@ -12,12 +12,12 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 
-from ..entities.package_manager_fetcher import AbstractPackageManagerFetcher
-from ..entities.abstract_dep_tree_builder import AbstractDepTreeBuilder
-from ..entities.abstract_repo_downloader import AbstractRepoDownloader
-from ..entities.pypi_metadata import PyPIMetadata
+from src.entities.package_manager_fetcher import AbstractPackageManagerFetcher
+from src.entities.abstract_dep_tree_builder import AbstractDepTreeBuilder
+from src.entities.abstract_repo_downloader import AbstractRepoDownloader
+from src.entities.pypi_metadata import PyPIMetadata
 
-from ..infrastructure.logger_formatter import LoggerFormatter
+from src.infrastructure.logger_formatter import LoggerFormatter
 
 
 LOGGER = LoggerFormatter.initialize("package_metadata_fetcher", logging.INFO)
