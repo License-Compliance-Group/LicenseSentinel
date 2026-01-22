@@ -24,10 +24,11 @@ import json
 from typing import Optional
 from pathlib import Path
 
-from ..entities.scan_engine import ScanEngine
+from src.license_sentinel.infrastructure.license_name_normalizer\
+    import normalize
+from src.license_sentinel.entities.scan_engine import ScanEngine
 from .logger_formatter import LoggerFormatter
 from .connectivity import Connectivity as io
-from ..infrastructure import license_name_normalizer as normalizer
 
 
 LOGGER = LoggerFormatter.initialize("scancode_runner", logging.INFO)
@@ -162,7 +163,7 @@ class ScanCodeRunner(ScanEngine):
         # Single license path
         single = tallies[0].get('value') if len(tallies) == 1 else None
         if single:
-            normalized = normalizer.normalize(single) or single
+            normalized = normalize(single) or single
             return (normalized.upper(),)
 
         LOGGER.debug("More than one license for %s detected.", pkg)
@@ -174,7 +175,7 @@ class ScanCodeRunner(ScanEngine):
                 return ('Unknown',)
             license_names.extend(tuple(license_name.split(' AND ')))
 
-        normalized_names = [normalizer.normalize(name) or name for name in set(license_names)]
+        normalized_names = [normalize(name) or name for name in set(license_names)]
         return tuple(name.upper() for name in normalized_names)
 
 

@@ -6,18 +6,16 @@ import logging
 import json
 import copy
 
-from ..entities.pypi_metadata import PyPIMetadata
-from ..analyzer.package_metadata_fetcher import PackageMetadataFetcher
-from ..analyzer.matrix_manager import LicenseCompatibilityAnalyzer
-from ..analyzer.tree_license_analyzer import TreeAnalyzer
-from ..analyzer import license_name_normalizer as normalizer
-from ..analyzer.license_comparator import LicenseComparator
-
-from ..infrastructure.pypi_client import PyPiHandler
-from ..infrastructure.repo_downloader import RepoDownloader
-from ..infrastructure.dep_tree_builder import DepTreeBuilder
-from ..infrastructure.logger_formatter import LoggerFormatter
-from ..infrastructure.scancode_runner import ScanCodeRunner
+from src.license_sentinel.entities.pypi_metadata import PyPIMetadata
+from src.license_sentinel.analyzer.package_metadata_fetcher import PackageMetadataFetcher
+from src.license_sentinel.analyzer.matrix_manager import LicenseCompatibilityAnalyzer
+from src.license_sentinel.analyzer.tree_license_analyzer import TreeAnalyzer
+from src.license_sentinel.analyzer.license_comparator import LicenseComparator
+from src.license_sentinel.infrastructure.pypi_client import PyPiHandler
+from src.license_sentinel.infrastructure.repo_downloader import RepoDownloader
+from src.license_sentinel.infrastructure.dep_tree_builder import DepTreeBuilder
+from src.license_sentinel.infrastructure.logger_formatter import LoggerFormatter
+from src.license_sentinel.infrastructure.scancode_runner import ScanCodeRunner
 from .ui_state import CommandResult
 
 logger = LoggerFormatter.initialize(__name__, logging.DEBUG)

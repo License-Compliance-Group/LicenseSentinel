@@ -4,12 +4,12 @@ import itertools
 from pathlib import Path
 
 import logging
-from ..infrastructure import pypi_client
-from ..infrastructure import repo_downloader
-from ..infrastructure import dep_tree_builder
-from ..infrastructure import scancode_runner
-from ..infrastructure.logger_formatter import LoggerFormatter
-from ..infrastructure import license_name_normalizer
+from src.license_sentinel.infrastructure import pypi_client
+from src.license_sentinel.infrastructure import repo_downloader
+from src.license_sentinel.infrastructure import dep_tree_builder
+from src.license_sentinel.infrastructure import scancode_runner
+from src.license_sentinel.infrastructure.logger_formatter import LoggerFormatter
+from src.license_sentinel.infrastructure import license_name_normalizer
 
 from . import package_metadata_fetcher
 from .matrix_manager import\
