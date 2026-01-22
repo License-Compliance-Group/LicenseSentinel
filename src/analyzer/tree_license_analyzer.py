@@ -2,11 +2,11 @@ import itertools
 from pathlib import Path
 
 import logging
-from ..entities.pypi_metadata import PyPIMetadata
-from ..infrastructure.logger_formatter import LoggerFormatter
-from . import license_name_normalizer
+from src.entities.pypi_metadata import PyPIMetadata
+from src.infrastructure.logger_formatter import LoggerFormatter
+from src.infrastructure import license_name_normalizer
 
-from .matrix_manager import LicenseCompatibilityAnalyzer
+from src.analyzer.matrix_manager import LicenseCompatibilityAnalyzer
 
 logger = LoggerFormatter.initialize(__name__, logging.DEBUG)
 
