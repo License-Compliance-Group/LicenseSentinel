@@ -32,7 +32,7 @@ dev = [
 ]
 
 [project.scripts]
-license-sentinel = "license_sentinel.temp:main"
+license-sentinel = "license_sentinel.licensesentinel:main"
 
 [project.urls]
 Homepage = "https://github.com/License-Compliance-Group/LicenseSentinel"
