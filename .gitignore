@@ -216,3 +216,4 @@ __marimo__/
 src/data/**
 src/tmpvenv/**
 test/reports/*
+data/*
