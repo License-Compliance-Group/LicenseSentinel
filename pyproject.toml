@@ -4,17 +4,21 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "license-sentinel"
-version = "0.0.1"
+version = "1.0"
 description = "A tool for analyzing Python project dependencies and verifying license compatibility"
-readme = "ARCHITECTURE.md"
-requires-python = ">=3.8"
+readme = "README.md"
+requires-python = ">=3.10"
 license = {file = "LICENSE"}
 authors = [
-    {name = "temp", email = "temp@kys.net"}
+    {name = "Antonello Maddalena", email = "a.maddalena2@studenti.unisannio.it"},
+    {name = "Gianluca Fasano", email = "g.fasano@studenti.unisannio.it"},
+    {name = "Kamil Bublij", email = "k.bublij@studenti.unisannio.it"},
+    {name = "Loris Umberto Pennucci", email = "l.pennucci@studenti.unisannio.it"},
+    {name = "Niccolò ", email = "c.mauriello1@studenti.unisannio.it"}
 ]
 keywords = ["license", "dependencies"]
 classifiers = [
-    "Development Status :: 3 - Alpha"
+    "Development Status :: 5 - Production/Stable"
 ]
 
 dependencies = [
