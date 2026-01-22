@@ -14,8 +14,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import requests
 from requests.exceptions import RequestException
 
-from src.license_sentinel.entities.package_manager_fetcher import AbstractPackageManagerFetcher
-from src.license_sentinel.infrastructure.logger_formatter import LoggerFormatter
+from ..entities.package_manager_fetcher import AbstractPackageManagerFetcher
+from .logger_formatter import LoggerFormatter
 
 LOGGER = LoggerFormatter.initialize("pypi_client", logging.INFO)
 

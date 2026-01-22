@@ -5,7 +5,7 @@ import tempfile
 import json
 from pathlib import Path
 
-from src.license_sentinel.infrastructure.dep_tree_builder import DepTreeBuilder
+from license_sentinel.infrastructure.dep_tree_builder import DepTreeBuilder
 
 
 class TestDepTreeBuilderVenvExists:

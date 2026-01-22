@@ -2,10 +2,10 @@
 """
 from pathlib import Path
 
-from src.license_sentinel.entities.scan_engine import ScanEngine
-from src.license_sentinel.entities.abstract_license_comparator import AbstractLicenseComparator
-from src.license_sentinel.infrastructure.logger_formatter import LoggerFormatter
-from src.license_sentinel.infrastructure import license_name_normalizer as normalizer
+from ..entities.scan_engine import ScanEngine
+from ..entities.abstract_license_comparator import AbstractLicenseComparator
+from ..infrastructure.logger_formatter import LoggerFormatter
+from . import license_name_normalizer as normalizer
 
 logger = LoggerFormatter.initialize(__name__,
                                     LoggerFormatter.DEBUG)
@@ -86,7 +86,7 @@ class LicenseComparator(AbstractLicenseComparator):
                                    name,
                                    pypi_name,
                                    scan_names[0])
-                    doubts.append((name, pypi_name, scan_names[0]))
+                    doubts.append(name, pypi_name, scan_names[0])
                 else:
                     logger.warning('Incompatible entry: %s - %s/%s',
                                    name,

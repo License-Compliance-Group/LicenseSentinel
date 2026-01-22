@@ -1,6 +1,6 @@
 import logging
 import pytest
-from src.license_sentinel.infrastructure.logger_formatter import LoggerFormatter
+from license_sentinel.infrastructure.logger_formatter import LoggerFormatter
 
 
 class TestLoggerFormatterClass:

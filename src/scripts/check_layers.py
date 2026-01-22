@@ -138,7 +138,7 @@ def extract_imports(file_path: Path) -> list[tuple[str, int, str]]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                # alias.name può essere "src.license_sentinel.entities.user" ecc.
+                # alias.name può essere "src.entities.user" ecc.
                 module_name = alias.name
                 imports.append((module_name, node.lineno,
                                 f"import {alias.name}"))
@@ -158,7 +158,7 @@ def classify_import(module: str) -> str | None:
     Cerca di capire se un import appartiene a un layer del progetto.
 
     Regole:
-    - Se il modulo inizia con "src.license_sentinel.<layer>...", prende <layer>.
+    - Se il modulo inizia con "src.<layer>...", prende <layer>.
     - Altrimenti prende la prima parte prima del punto.
     - Restituisce il nome del layer in minuscolo se è uno dei layer
         noti, altrimenti None.

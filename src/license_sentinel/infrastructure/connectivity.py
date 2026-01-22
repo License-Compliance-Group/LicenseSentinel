@@ -3,7 +3,8 @@
 import zipfile
 from pathlib import Path
 import requests
-from src.license_sentinel.infrastructure.logger_formatter import LoggerFormatter
+
+from .logger_formatter import LoggerFormatter
 logger = LoggerFormatter.initialize(__name__)
 
 
