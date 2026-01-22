@@ -78,9 +78,9 @@ class LicenseComparator(AbstractLicenseComparator):
                 logger.debug('More than one license declared for %s'
                              'in alternative tree, proceeding with caution.', name)
                 # handle the rare ' or ' clause
-                pypi_names = set(pypi_name.split(' or '))
+                pypi_names = pypi_name.split(' or ')
                 if any(pypi_name in scan_names for pypi_name in pypi_names):
-                    doubts.append((name, pypi_names, scan_names))
+                    doubts.append((name, pypi_name, scan_names))
                     continue
                 discrepancies.append((name, pypi_names, scan_names))
                 continue

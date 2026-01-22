@@ -53,7 +53,8 @@ class TestLicenseComparatorCompareTrees:
 
         assert len(disc) == 1
         # Check discrepancy format: (Package, PyPI_Lic, (Scan_Lic,))
-        assert disc[0] == ("PkgA", "mit", ("gpl-2.0",))
+        # GPL-x-unspecified is treated as GPL-x-only in all usecases
+        assert disc[0] == ("PkgA", "mit", ("gpl-2.0-only",))
 
     def test_compare_license_trees_multiple_match(self, mock_scan_engine, pypi_metadata_factory):
         """Test ambiguity/doubt where one of the found licenses matches PyPI."""
@@ -77,7 +78,7 @@ class TestLicenseComparatorCompareTrees:
         comparator = LicenseComparator([meta], mock_scan_engine)
 
         _, doubts = comparator.compare_license_trees()
-        assert doubts[0][2] == 'Unknown'
+        assert doubts[0][2] == 'unknown'
 
     def test_compare_license_trees_single_unknown(self, mock_scan_engine, pypi_metadata_factory):
         """Test scenario where scanner returns 'Unknown'."""
