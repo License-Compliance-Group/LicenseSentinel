@@ -14,7 +14,7 @@ authors = [
 ]
 keywords = ["license", "dependencies"]
 classifiers = [
-    "TODO"
+    "Development Status :: 3 - Alpha"
 ]
 
 dependencies = [
