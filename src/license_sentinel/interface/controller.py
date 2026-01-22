@@ -6,19 +6,19 @@ import logging
 import json
 import copy
 
-from src.entities.pypi_metadata import PyPIMetadata
-from src.analyzer.package_metadata_fetcher import PackageMetadataFetcher
-from src.analyzer.matrix_manager import LicenseCompatibilityAnalyzer
-from src.analyzer.tree_license_analyzer import TreeAnalyzer
-from src.analyzer import license_name_normalizer as normalizer
-from src.analyzer.license_comparator import LicenseComparator
-
-from src.infrastructure.pypi_client import PyPiHandler
-from src.infrastructure.repo_downloader import RepoDownloader
-from src.infrastructure.dep_tree_builder import DepTreeBuilder
-from src.infrastructure.logger_formatter import LoggerFormatter
-from src.infrastructure.scancode_runner import ScanCodeRunner
-from src.interface.ui_state import CommandResult
+from src.license_sentinel.entities.pypi_metadata import PyPIMetadata
+from src.license_sentinel.analyzer.package_metadata_fetcher import PackageMetadataFetcher
+from src.license_sentinel.analyzer.matrix_manager import LicenseCompatibilityAnalyzer
+from src.license_sentinel.analyzer.tree_license_analyzer import TreeAnalyzer
+from src.license_sentinel.analyzer.license_comparator import LicenseComparator
+from src.license_sentinel.infrastructure.pypi_client import PyPiHandler
+from src.license_sentinel.infrastructure.repo_downloader import RepoDownloader
+from src.license_sentinel.infrastructure.dep_tree_builder import DepTreeBuilder
+from src.license_sentinel.infrastructure.logger_formatter import LoggerFormatter
+from src.license_sentinel.infrastructure.scancode_runner import ScanCodeRunner
+from src.license_sentinel.infrastructure.license_name_normalizer \
+    import normalize
+from src.license_sentinel.interface.ui_state import CommandResult
 
 logger = LoggerFormatter.initialize(__name__, logging.DEBUG)
 
@@ -193,7 +193,7 @@ class Controller:
 
             metadata = self.get_package_metadata(pkg)
             if metadata and metadata.license_type:
-                normalized_license = normalizer.normalize(metadata.license_type)  # noqa
+                normalized_license = normalize(metadata.license_type)  # noqa
                 license_suffix = f" ({normalized_license})" if normalized_license else f" ({metadata.license_type})"  # pylint: disable=line-too-long
             else:
                 license_suffix = " (Unknown)"

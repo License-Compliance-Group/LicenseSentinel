@@ -3,11 +3,12 @@
 Wrapper to launch the textual GUI located in `interface/gui.py`.
 Run this from the `src` folder (project root for imports).
 """
-from src.interface import gui
+
+from interface import gui
+
 
 
 def main():
-    """Launch the License Sentinel GUI application."""
     gui.LicenseSentinelUI().run()
 
 

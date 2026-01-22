@@ -1,19 +1,21 @@
 import logging
 import pytest
-from src.infrastructure.logger_formatter import LoggerFormatter
+from src.license_sentinel.infrastructure.logger_formatter import LoggerFormatter
 
 
-def test_formatter_builds():
-    """Ensure default config of LoggerFormatter works."""
-    formatter = LoggerFormatter.initialize(__name__)
-    assert formatter is not None
-    assert formatter.getEffectiveLevel() == LoggerFormatter.DEFAULT
+class TestLoggerFormatterClass:
+    """Unit tests for LoggerFormatter class."""
 
+    def test_formatter_builds(self):
+        """Ensure default config of LoggerFormatter works."""
+        formatter = LoggerFormatter.initialize(__name__)
+        assert formatter is not None
+        assert formatter.getEffectiveLevel() == LoggerFormatter.DEFAULT
 
-def test_formatter_builds_custom_level():
-    """Ensure passing a custom intended level works."""
-    formatter = LoggerFormatter.initialize(__name__, LoggerFormatter.CRITICAL)
-    assert formatter.getEffectiveLevel() == LoggerFormatter.CRITICAL
+    def test_formatter_builds_custom_level(self):
+        """Ensure passing a custom intended level works."""
+        formatter = LoggerFormatter.initialize(__name__, LoggerFormatter.CRITICAL)
+        assert formatter.getEffectiveLevel() == LoggerFormatter.CRITICAL
 
 
 def test_formatter_not_builds_wrong_level():
@@ -56,15 +58,14 @@ def test_logger_has_handler():
     assert isinstance(handler, logging.StreamHandler)
     assert isinstance(handler.formatter, LoggerFormatter)
 
-
-def test_logger_survives_multiple_inits():
-    """Multiple initialize() calls should not affect functionality."""
-    logger = LoggerFormatter.initialize("test_logger_handler",
-                                        LoggerFormatter.INFO)
-    logger = LoggerFormatter.initialize("test_logger_handler",
-                                        LoggerFormatter.DEBUG)
-    logger = LoggerFormatter.initialize("test_logger_handler",
-                                        LoggerFormatter.INFO)
-    logger = LoggerFormatter.initialize("test_logger_handler",
-                                        LoggerFormatter.CRITICAL)
-    assert logger.getEffectiveLevel() == LoggerFormatter.CRITICAL
+    def test_logger_survives_multiple_inits(self):
+        """Multiple initialize() calls should not affect functionality."""
+        logger = LoggerFormatter.initialize("test_logger_handler",
+        LoggerFormatter.INFO)
+        logger = LoggerFormatter.initialize("test_logger_handler",
+        LoggerFormatter.DEBUG)
+        logger = LoggerFormatter.initialize("test_logger_handler",
+        LoggerFormatter.INFO)
+        logger = LoggerFormatter.initialize("test_logger_handler",
+        LoggerFormatter.CRITICAL)
+        assert logger.getEffectiveLevel() == LoggerFormatter.CRITICAL

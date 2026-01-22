@@ -1,8 +1,8 @@
 """Unit tests for the TreeAnalyzer class."""
 
 import pytest
-from src.analyzer.tree_license_analyzer import TreeAnalyzer
-from src.entities.pypi_metadata import PyPIMetadata
+from src.license_sentinel.analyzer.tree_license_analyzer import TreeAnalyzer
+from src.license_sentinel.entities.pypi_metadata import PyPIMetadata
 
 
 class TestTreeAnalyzer:
@@ -11,7 +11,7 @@ class TestTreeAnalyzer:
     @pytest.fixture
     def mock_lca_cls(self, mocker):
         """Mock the LicenseCompatibilityAnalyzer class internally used by TreeAnalyzer."""
-        return mocker.patch('src.analyzer.tree_license_analyzer.LicenseCompatibilityAnalyzer')
+        return mocker.patch('src.license_sentinel.analyzer.tree_license_analyzer.LicenseCompatibilityAnalyzer')
 
     def test_run_tree_compatibility_check_empty_metadata(self, mock_lca_cls):
         """Test that empty metadata returns None."""
@@ -49,7 +49,7 @@ class TestTreeAnalyzer:
         edges = TreeAnalyzer.detect_incompatible_edges(
             graph, license_by_pkg, mock_lca_instance
         )
-        
+
         assert len(edges) == 1
         edge = edges[0]
         assert edge[0] == "PkgA"
@@ -66,7 +66,7 @@ class TestTreeAnalyzer:
         pkg_a = mocker.MagicMock(spec=PyPIMetadata)
         pkg_a.package = "PkgA"
         pkg_a.license_type = "GPL-2.0"
-        
+
         pkg_b = mocker.MagicMock(spec=PyPIMetadata)
         pkg_b.package = "PkgB"
         pkg_b.license_type = "MIT"
@@ -75,11 +75,11 @@ class TestTreeAnalyzer:
         graph = {"PkgA": ["PkgB"]}
 
         result = TreeAnalyzer.run_tree_compatibility_check(metadata, graph)
-        
+
         mock_lca_cls.assert_called()
-        
+
         mock_lca_instance.update_license_matrix.assert_called_once()
-        
+
         assert result is not None
         assert len(result) == 1
         assert result[0][1] == "gpl-2.0-only"

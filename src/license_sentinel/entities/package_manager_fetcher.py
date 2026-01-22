@@ -21,7 +21,7 @@ class AbstractPackageManagerFetcher(ABC):
         timeout: int = 10
     ) -> Dict[str, Dict[str, Optional[str]]]:
         """
-        Restituisce per ogni package una mappa 
+        Restituisce per ogni package una mappa
         {'license': str|None, 'link': str|None}.
         """
         raise NotImplementedError

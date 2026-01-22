@@ -12,8 +12,10 @@ import sys
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Set
-from src.entities.abstract_dep_tree_builder import AbstractDepTreeBuilder
-from src.infrastructure.logger_formatter import LoggerFormatter
+
+from src.license_sentinel.entities.abstract_dep_tree_builder \
+    import AbstractDepTreeBuilder
+from src.license_sentinel.infrastructure.logger_formatter import LoggerFormatter
 
 logger = LoggerFormatter.initialize("Dependency tree builder", logging.INFO)
 

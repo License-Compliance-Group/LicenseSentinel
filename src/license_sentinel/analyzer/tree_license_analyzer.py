@@ -2,11 +2,11 @@ import itertools
 from pathlib import Path
 
 import logging
-from src.entities.pypi_metadata import PyPIMetadata
-from src.infrastructure.logger_formatter import LoggerFormatter
-from src.analyzer import license_name_normalizer
+from src.license_sentinel.entities.pypi_metadata import PyPIMetadata
+from src.license_sentinel.infrastructure.logger_formatter import LoggerFormatter
+from src.license_sentinel.infrastructure import license_name_normalizer
 
-from src.analyzer.matrix_manager import LicenseCompatibilityAnalyzer
+from .matrix_manager import LicenseCompatibilityAnalyzer
 
 logger = LoggerFormatter.initialize(__name__, logging.DEBUG)
 
@@ -25,7 +25,7 @@ class TreeAnalyzer:
         """Explains comparison errors in an user-friendly way.
 
         Args:
-            discrepancies: A list of discrepancies obtained from 
+            discrepancies: A list of discrepancies obtained from
                 comparing license trees
         """
         error_str = 'Lacking compatibility report:\n'
@@ -48,7 +48,7 @@ class TreeAnalyzer:
         """Explains comparison errors in an user-friendly way.
 
         Args:
-            discrepancies: A list of unclear decisions obtained from 
+            discrepancies: A list of unclear decisions obtained from
                 comparing license trees
         """
         multi_licensing = False
@@ -78,14 +78,14 @@ class TreeAnalyzer:
 
     @classmethod
     def run_tree_compatibility_check(cls, packages_metadata: list[PyPIMetadata], graph) -> list[tuple[str, str, str, str, tuple[str, str]]] | None:
-        """  
+        """
         Run compatibility check along dependency edges instead of flat union
 
-        Args:  
+        Args:
             packages_metadata (list): List of package metadata objects,
-                each representing a package and its license information.  
+                each representing a package and its license information.
             graph (dict): Dictionary mapping package names to a list of
-                their dependency package names.  
+                their dependency package names.
         """
         if not packages_metadata:
             cls.logger.warning("No package metadata available, skipping"
@@ -138,7 +138,7 @@ class TreeAnalyzer:
             license_by_pkg (dict[str, str]): A packagename-license relation
             dict.
             lca (optional, LicenseCompatibilityAnalyzer): A customized
-            instance of LCA. If not present, a sensible default 
+            instance of LCA. If not present, a sensible default
             will be created.
         """
         incompatible_edges = []
@@ -193,24 +193,24 @@ class TreeAnalyzer:
     def find_first_incompatibility(cls, lca: LicenseCompatibilityAnalyzer,
                                    pkg_licenses: list[tuple[str, str]])\
             -> tuple[str, str, str, str, tuple | None] | None:
-        """  
+        """
         Planned for future use.
-        Return the first incompatible pair of packages/licenses with 
-        the notice from the matrix.  
+        Return the first incompatible pair of packages/licenses with
+        the notice from the matrix.
 
-        Args:  
+        Args:
             lca (LicenseCompatibilityAnalyzer): The license compatibility
-            analyzer instance used to compare licenses.  
+            analyzer instance used to compare licenses.
             pkg_licenses (list[tuple[str, str]]): A list of (package name,
-            license key) tuples to check for incompatibilities.  
+            license key) tuples to check for incompatibilities.
 
-        Returns:  
-            tuple[str, str, str, str, tuple | None] or None:  
-                If an incompatibility is found, returns a 5-tuple:  
-                    (package_a, license_a, package_b, license_b, notice)  
-                where 'notice' is the result from lca.compare_licenses 
-                    (typically a tuple or None).  
-                Returns None if all pairs are compatible.  
+        Returns:
+            tuple[str, str, str, str, tuple | None] or None:
+                If an incompatibility is found, returns a 5-tuple:
+                    (package_a, license_a, package_b, license_b, notice)
+                where 'notice' is the result from lca.compare_licenses
+                    (typically a tuple or None).
+                Returns None if all pairs are compatible.
         """
         for (pkg_a, lic_a), (pkg_b, lic_b) in itertools.combinations(
                 pkg_licenses, 2):

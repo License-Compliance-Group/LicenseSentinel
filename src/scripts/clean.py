@@ -58,7 +58,7 @@ def clean() -> None:
 
 def remove_venv(venv_dir: Path) -> None:
     """Removes the virtual environment.
-    Warns the user if they're attempting to remove a currently 
+    Warns the user if they're attempting to remove a currently
     active one.
 
     Args:

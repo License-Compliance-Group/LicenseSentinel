@@ -73,11 +73,11 @@
     max-height: 8;
     margin: 0;
     padding: 1;
-    
+
     /* Visuals - no borders for seamless integration */
     border: none;
     background: $surface;
-    
+
     /* Scrolling */
     overflow-y: auto;
 }
@@ -86,7 +86,7 @@
     /* Spacing */
     padding: 0 1;
     height: 1;
-    
+
     /* Visuals */
     background: transparent;
     color: $text;
@@ -156,22 +156,22 @@ ListView:focus > ListItem.--highlight,
 /* ========================================= */
 
 .dependency {
-    
+
     width: 33%;
     height: 1fr;
     padding: 1;
-    
-    border-title-style: bold; 
+
+    border-title-style: bold;
     border-title-color: $surface-lighten-3;
     border: heavy round $surface-lighten-3;
-    
+
 }
 
 .dependency:focus-within {
- 
+
     border: heavy round $primary;
     border-title-color: $primary;
-    
+
 
 }
 

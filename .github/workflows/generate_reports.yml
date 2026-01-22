@@ -135,8 +135,8 @@ jobs:
     - uses: actions/checkout@v4
     - name: Check coverage file exists
       run: |
-        if [ ! -f test/reports/coverage-report-${{ matrix.python-version }}/coverage-${{ matrix.python-version }}.xml ]; 
-        then echo "Coverage file not found"; exit 1; 
+        if [ ! -f test/reports/coverage-report-${{ matrix.python-version }}/coverage-${{ matrix.python-version }}.xml ];
+        then echo "Coverage file not found"; exit 1;
         fi
     - name: 'Append coverage report'
       # Upload reports, even if failed.
@@ -159,7 +159,7 @@ jobs:
         path: '*.xml' # The version granularity is guaranteed by the artifact
         reporter: python-xunit
         report-title: Python (${{ matrix.python-version }}) Test Report
-        
+
     - name: Post pytest comment
       run: |
         echo "Adding test report as a comment"

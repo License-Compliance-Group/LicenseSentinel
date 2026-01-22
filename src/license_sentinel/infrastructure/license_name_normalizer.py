@@ -5,14 +5,14 @@ may be created, handling different kinds of normalization.
 
 
 def normalize(name: str) -> str | None:
-    """Map common license strings to OSADL/SPDX-like keys used 
+    """Map common license strings to OSADL/SPDX-like keys used
         by the matrix.
-    Args:  
-        name (str): The input license string to normalize.  
+    Args:
+        name (str): The input license string to normalize.
 
-    Returns:  
-        str | None: The normalized OSADL/SPDX-compatible license 
-            identifier, or None if not recognized.  
+    Returns:
+        str | None: The normalized OSADL/SPDX-compatible license
+            identifier, or None if not recognized.
 
     """
     if name is None:

@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "license-sentinel"
+version = "1.0"
+description = "A tool for analyzing Python project dependencies and verifying license compatibility"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Antonello Maddalena", email = "a.maddalena2@studenti.unisannio.it"},
+    {name = "Gianluca Fasano", email = "g.fasano@studenti.unisannio.it"},
+    {name = "Kamil Bublij", email = "k.bublij@studenti.unisannio.it"},
+    {name = "Loris Umberto Pennucci", email = "l.pennucci@studenti.unisannio.it"},
+    {name = "Niccolò Mauriello", email = "c.mauriello1@studenti.unisannio.it"}
+]
+keywords = ["license", "dependencies"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable"
+]
+
+dependencies = [
+    "requests",
+    "textual",
+    "rich",
+    "pipdeptree",
+    "scancode-toolkit",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "behave",
+]
+
+[project.scripts]
+license-sentinel = "license_sentinel.licensesentinel:main"
+
+[project.urls]
+Homepage = "https://github.com/License-Compliance-Group/LicenseSentinel"
+Repository = "https://github.com/License-Compliance-Group/LicenseSentinel"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["license_sentinel*"]
+
+[tool.setuptools.package-data]
+# Ensure non-code assets ship inside the wheel
+"license_sentinel.data" = ["*.json"]
+"license_sentinel.interface" = ["*.css"]

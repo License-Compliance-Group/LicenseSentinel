@@ -4,23 +4,24 @@ import itertools
 from pathlib import Path
 
 import logging
-from src.infrastructure import pypi_client
-from src.infrastructure import repo_downloader
-from src.infrastructure import dep_tree_builder
-from src.infrastructure import scancode_runner
-from src.infrastructure.logger_formatter import LoggerFormatter
-from src.analyzer import license_name_normalizer
+from src.license_sentinel.infrastructure import pypi_client
+from src.license_sentinel.infrastructure import repo_downloader
+from src.license_sentinel.infrastructure import dep_tree_builder
+from src.license_sentinel.infrastructure import scancode_runner
+from src.license_sentinel.infrastructure.logger_formatter import LoggerFormatter
+from src.license_sentinel.infrastructure import license_name_normalizer
 
-from src.analyzer import package_metadata_fetcher
-from src.analyzer.matrix_manager import LicenseCompatibilityAnalyzer
-from src.analyzer.license_comparator import LicenseComparator
+from src.license_sentinel.analyzer import package_metadata_fetcher
+from src.license_sentinel.analyzer.matrix_manager import\
+    LicenseCompatibilityAnalyzer
+from src.license_sentinel.analyzer.license_comparator import LicenseComparator
 
 logger = LoggerFormatter.initialize(__name__, logging.DEBUG)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 MATRIX_PATH = DATA_DIR / "matrix.json"
-DEFAULT_REQUIREMENTS = PROJECT_ROOT / "requirements.txt"
+DEFAULT_REQUIREMENTS = PROJECT_ROOT / "requirements-dev.txt"
 
 
 def main() -> None:
@@ -56,12 +57,20 @@ def main() -> None:
     metadata_items, graph = package_metadata_fetcher_instance\
         .build_package_metadata(
             file_path,
-            # ignore_cache
+            "0BSD",
+            ignore_cache,
         )
+
 
     if not metadata_items:
         logger.warning("No package metadata found for %s", file_path)
         return
+
+
+    package_metadata_fetcher_instance.download_sources(
+        {pkg.package: pkg.link for pkg in metadata_items},
+                override_cache=ignore_cache
+            )
 
     header = f"{' PACKAGE':<20} {' LICENSE':<40} {' LINK'}"
     print("-" * (len(header) + 40))
@@ -97,7 +106,7 @@ def explain_discrepancies(discrepancies):
     """Explains comparison errors in an user-friendly way.
 
     Args:
-        discrepancies: A list of discrepancies obtained from 
+        discrepancies: A list of discrepancies obtained from
             comparing license trees
     """
     error_str = 'Lacking compatibility report:\n'
@@ -120,7 +129,7 @@ def explain_doubts(doubts):
     """Explains comparison errors in an user-friendly way.
 
     Args:
-        discrepancies: A list of unclear decisions obtained from 
+        discrepancies: A list of unclear decisions obtained from
             comparing license trees
     """
     multi_licensing = False
@@ -150,14 +159,14 @@ def explain_doubts(doubts):
 
 
 def run_tree_compatibility_check(packages_metadata, graph) -> None:
-    """  
+    """
     Run compatibility check along dependency edges instead of flat union
 
-    Args:  
+    Args:
         packages_metadata (list): List of package metadata objects,
-            each representing a package and its license information.  
+            each representing a package and its license information.
         graph (dict): Dictionary mapping package names to a list of
-            their dependency package names.  
+            their dependency package names.
     """
     if not packages_metadata:
         logger.warning("No package metadata available, skipping"
@@ -170,7 +179,11 @@ def run_tree_compatibility_check(packages_metadata, graph) -> None:
 
     license_by_pkg: dict[str, str] = {}
     for pkg in packages_metadata:
-        lic = (pkg.license_type or "").strip()
+        if not isinstance(pkg.license_type, str):
+            logger.error('Package %s has a non-string license, skipping.',
+                         pkg.package)
+            continue
+        lic = pkg.license_type.strip()
         if not lic:
             logger.warning("Package %s has unknown license, skipping in\
                 compatibility check.", pkg.package)
@@ -204,7 +217,7 @@ def detect_incompatible_edges(graph, license_by_pkg, lca=None):
         license_by_pkg (dict[str, str]): A packagename-license relation
         dict.
         lca (optional, LicenseCompatibilityAnalyzer): A customized
-        instance of LCA. If not present, a sensible default 
+        instance of LCA. If not present, a sensible default
         will be created.
     """
     incompatible_edges = []
@@ -257,24 +270,24 @@ def compile_compatibility_report(incompatible_edges):
 def find_first_incompatibility(lca: LicenseCompatibilityAnalyzer,
                                pkg_licenses: list[tuple[str, str]])\
         -> tuple[str, str, str, str, tuple | None] | None:
-    """  
+    """
     Planned for future use.
-    Return the first incompatible pair of packages/licenses with 
-    the notice from the matrix.  
+    Return the first incompatible pair of packages/licenses with
+    the notice from the matrix.
 
-    Args:  
+    Args:
         lca (LicenseCompatibilityAnalyzer): The license compatibility
-        analyzer instance used to compare licenses.  
+        analyzer instance used to compare licenses.
         pkg_licenses (list[tuple[str, str]]): A list of (package name,
-        license key) tuples to check for incompatibilities.  
+        license key) tuples to check for incompatibilities.
 
-    Returns:  
-        tuple[str, str, str, str, tuple | None] or None:  
-            If an incompatibility is found, returns a 5-tuple:  
-                (package_a, license_a, package_b, license_b, notice)  
-            where 'notice' is the result from lca.compare_licenses 
-                (typically a tuple or None).  
-            Returns None if all pairs are compatible.  
+    Returns:
+        tuple[str, str, str, str, tuple | None] or None:
+            If an incompatibility is found, returns a 5-tuple:
+                (package_a, license_a, package_b, license_b, notice)
+            where 'notice' is the result from lca.compare_licenses
+                (typically a tuple or None).
+            Returns None if all pairs are compatible.
     """
     for (pkg_a, lic_a), (pkg_b, lic_b) in itertools.combinations(
             pkg_licenses, 2):
@@ -287,20 +300,20 @@ def find_first_incompatibility(lca: LicenseCompatibilityAnalyzer,
 def print_dependency_forest(graph: dict[str, list[str]],
                             license_by_pkg: dict[str, str],
                             incompatible_edges: list[tuple[str, str, str, str, tuple | None]]):
-    """  
-    Print dependency trees and highlight incompatible edges in red.  
+    """
+    Print dependency trees and highlight incompatible edges in red.
 
-    Args:  
-        graph (dict[str, list[str]]): The dependency graph, mapping 
-            package names to lists of their dependencies.  
-        license_by_pkg (dict[str, str]): Mapping of package names 
-            (lowercase) to their license names.  
+    Args:
+        graph (dict[str, list[str]]): The dependency graph, mapping
+            package names to lists of their dependencies.
+        license_by_pkg (dict[str, str]): Mapping of package names
+            (lowercase) to their license names.
         incompatible_edges (list[tuple[
             str, str, str, str, tuple | None
-            ]]): 
-            List of tuples representing incompatible dependency 
-            relationships. Each tuple contains  
-            (parent_pkg, parent_license, dep_pkg, dep_license, notice).  
+            ]]):
+            List of tuples representing incompatible dependency
+            relationships. Each tuple contains
+            (parent_pkg, parent_license, dep_pkg, dep_license, notice).
     """
     red = "\x1b[31m"
     reset = "\x1b[0m"
