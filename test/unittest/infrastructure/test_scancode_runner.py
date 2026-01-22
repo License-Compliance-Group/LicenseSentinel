@@ -257,8 +257,8 @@ class TestScanCodeRunnerScanForLicense:
     def test_scan_for_license_normalization(self, mocker):
         """Test that licenses are normalized."""
         mock_normalize = mocker.patch(
-            "src.license_sentinel.infrastructure.scancode_runner."
-            "normalizer.normalize", side_effect=lambda x: x.upper())
+            "src.license_sentinel.infrastructure.scancode_runner.normalize",
+            side_effect=lambda x: x.upper())
         mocker.patch.object(ScanCodeRunner, "run_scan", return_value={
             "tallies": {
                 "detected_license_expression": [

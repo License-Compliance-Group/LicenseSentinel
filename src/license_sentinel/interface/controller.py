@@ -16,6 +16,8 @@ from src.license_sentinel.infrastructure.repo_downloader import RepoDownloader
 from src.license_sentinel.infrastructure.dep_tree_builder import DepTreeBuilder
 from src.license_sentinel.infrastructure.logger_formatter import LoggerFormatter
 from src.license_sentinel.infrastructure.scancode_runner import ScanCodeRunner
+from src.license_sentinel.infrastructure.license_name_normalizer \
+    import normalize
 from .ui_state import CommandResult
 
 logger = LoggerFormatter.initialize(__name__, logging.DEBUG)
@@ -191,7 +193,7 @@ class Controller:
 
             metadata = self.get_package_metadata(pkg)
             if metadata and metadata.license_type:
-                normalized_license = normalizer.normalize(metadata.license_type)  # noqa
+                normalized_license = normalize(metadata.license_type)  # noqa
                 license_suffix = f" ({normalized_license})" if normalized_license else f" ({metadata.license_type})"  # pylint: disable=line-too-long
             else:
                 license_suffix = " (Unknown)"
