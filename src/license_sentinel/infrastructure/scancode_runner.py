@@ -139,7 +139,7 @@ class ScanCodeRunner(ScanEngine):
         Args:
             scan_path (Path): The path to seek source file in.
             pkg (str): The package name
-            override_cache (bool, optional): True if scanning should 
+            override_cache (bool, optional): True if scanning should
                 be done unconditionally. Defaults to False.
 
         Returns:

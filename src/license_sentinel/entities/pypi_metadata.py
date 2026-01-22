@@ -20,7 +20,7 @@ class PyPIMetadata:
     Container for PyPI package metadata.
 
     Responsibilities:
-    - Hold the package name, license type and a relevant link 
+    - Hold the package name, license type and a relevant link
     (e.g. repository or homepage).
     - Provide simple validation for the package name.
     - Expose read/write properties while keeping internal attributes private.
@@ -63,7 +63,7 @@ class PyPIMetadata:
 
     @property
     def link(self) -> Optional[str]:
-        """Optional[str]: URL to the package's source/homepage/repository 
+        """Optional[str]: URL to the package's source/homepage/repository
         (may be None)."""
         return self._link
 

@@ -5,7 +5,7 @@ rich
 pipdeptree
 
 # Testing requirements
-pylint 
+pylint
 behave
 coverage
 pytest

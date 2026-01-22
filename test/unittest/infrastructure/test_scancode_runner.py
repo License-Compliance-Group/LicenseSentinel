@@ -24,14 +24,14 @@ class TestScanCodeRunnerRunScan:
         })
         mock_result.returncode = 0
         mocker.patch("subprocess.run", return_value=mock_result)
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "test.zip"
             zip_path.touch()
-            
+
             runner = ScanCodeRunner()
             result = runner.run_scan(zip_path, "test-package")
-        
+
         assert result is not None
         assert "tallies" in result
 
@@ -39,14 +39,14 @@ class TestScanCodeRunnerRunScan:
         """Test run_scan when ZIP extraction fails."""
         mocker.patch("license_sentinel.infrastructure.scancode_runner.io.extract_zip_contents", return_value=False)
         mock_run = mocker.patch("subprocess.run")
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "test.zip"
             zip_path.touch()
-            
+
             runner = ScanCodeRunner()
             result = runner.run_scan(zip_path, "test-package")
-        
+
         assert result is None
         mock_run.assert_not_called()
 
@@ -54,14 +54,14 @@ class TestScanCodeRunnerRunScan:
         """Test run_scan when ScanCode subprocess fails."""
         mocker.patch("license_sentinel.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
         mocker.patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "scancode"))
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "test.zip"
             zip_path.touch()
-            
+
             runner = ScanCodeRunner()
             result = runner.run_scan(zip_path, "test-package")
-        
+
         assert result is None
 
     def test_run_scan_invalid_json_output(self, mocker):
@@ -71,14 +71,14 @@ class TestScanCodeRunnerRunScan:
         mock_result.stdout = "invalid json output"
         mock_result.returncode = 0
         mocker.patch("subprocess.run", return_value=mock_result)
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "test.zip"
             zip_path.touch()
-            
+
             runner = ScanCodeRunner()
             result = runner.run_scan(zip_path, "test-package")
-        
+
         assert result is None
 
     def test_run_scan_caching(self, mocker):
@@ -88,22 +88,22 @@ class TestScanCodeRunnerRunScan:
         mock_result.stdout = json.dumps({"tallies": {"detected_license_expression": []}})
         mock_result.returncode = 0
         mocker.patch("subprocess.run", return_value=mock_result)
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "test.zip"
             zip_path.touch()
-            
+
             # Create cache directory and cache file
             cache_dir = Path("/data/scancode-results")
             cache_path = cache_dir / "test-package-scancode-result.json"
-            
+
             runner = ScanCodeRunner()
-            
+
             mocker.patch("pathlib.Path.exists", return_value=True)
             mocker.patch("builtins.open", mocker.mock_open(read_data=json.dumps({"cached": True})))
-            
+
             result = runner.run_scan(zip_path, "test-package", override_cache=False)
-        
+
         # Should use cached result when available
         assert result is not None
 
@@ -114,14 +114,14 @@ class TestScanCodeRunnerRunScan:
         mock_result.stdout = json.dumps({"tallies": {"detected_license_expression": []}})
         mock_result.returncode = 0
         mock_run = mocker.patch("subprocess.run", return_value=mock_result)
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "test.zip"
             zip_path.touch()
-            
+
             runner = ScanCodeRunner()
             result = runner.run_scan(zip_path, "test-package", override_cache=True)
-        
+
         # Should call subprocess even if cache exists
         assert mock_run.called or result is not None
 
@@ -138,12 +138,12 @@ class TestScanCodeRunnerScanForLicense:
                 ]
             }
         })
-        
+
         runner = ScanCodeRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "test.zip"
             result = runner.scan_for_license(zip_path, "test-package")
-        
+
         assert len(result) == 1
         assert "MIT" in result
 
@@ -157,12 +157,12 @@ class TestScanCodeRunnerScanForLicense:
                 ]
             }
         })
-        
+
         runner = ScanCodeRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "test.zip"
             result = runner.scan_for_license(zip_path, "test-package")
-        
+
         assert len(result) > 1
 
     def test_scan_for_license_combined_licenses(self, mocker):
@@ -174,35 +174,35 @@ class TestScanCodeRunnerScanForLicense:
                 ]
             }
         })
-        
+
         runner = ScanCodeRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "test.zip"
             result = runner.scan_for_license(zip_path, "test-package")
-        
+
         # Should split AND-combined licenses
         assert len(result) >= 1
 
     def test_scan_for_license_scan_returns_none(self, mocker):
         """Test scan_for_license when run_scan returns None."""
         mocker.patch.object(ScanCodeRunner, "run_scan", return_value=None)
-        
+
         runner = ScanCodeRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "test.zip"
             result = runner.scan_for_license(zip_path, "test-package")
-        
+
         assert result == ("Unknown",)
 
     def test_scan_for_license_no_tallies(self, mocker):
         """Test scan_for_license when tallies are missing."""
         mocker.patch.object(ScanCodeRunner, "run_scan", return_value={"no_tallies": "here"})
-        
+
         runner = ScanCodeRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "test.zip"
             result = runner.scan_for_license(zip_path, "test-package")
-        
+
         assert result == ("Unknown",)
 
     def test_scan_for_license_empty_tallies(self, mocker):
@@ -212,12 +212,12 @@ class TestScanCodeRunnerScanForLicense:
                 "detected_license_expression": []
             }
         })
-        
+
         runner = ScanCodeRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "test.zip"
             result = runner.scan_for_license(zip_path, "test-package")
-        
+
         assert result == ("Unknown",)
 
     def test_scan_for_license_none_license_value(self, mocker):
@@ -229,12 +229,12 @@ class TestScanCodeRunnerScanForLicense:
                 ]
             }
         })
-        
+
         runner = ScanCodeRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "test.zip"
             result = runner.scan_for_license(zip_path, "test-package")
-        
+
         assert result == ("Unknown",)
 
     def test_scan_for_license_with_override_cache(self, mocker):
@@ -246,12 +246,12 @@ class TestScanCodeRunnerScanForLicense:
                 ]
             }
         })
-        
+
         runner = ScanCodeRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "test.zip"
             result = runner.scan_for_license(zip_path, "test-package", override_cache=True)
-        
+
         assert "GPL" in str(result) or len(result) > 0
 
     def test_scan_for_license_normalization(self, mocker):
@@ -266,12 +266,12 @@ class TestScanCodeRunnerScanForLicense:
                 ]
             }
         })
-        
+
         runner = ScanCodeRunner()
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "test.zip"
             result = runner.scan_for_license(zip_path, "test-package")
-        
+
         # Normalization should have been called
         assert mock_normalize.called is True
 
@@ -292,16 +292,16 @@ class TestScanCodeRunnerIntegration:
         })
         mock_result.returncode = 0
         mocker.patch("subprocess.run", return_value=mock_result)
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "package.zip"
             zip_path.touch()
-            
+
             runner = ScanCodeRunner()
-            
+
             # First run the scan
             scan_result = runner.run_scan(zip_path, "test-package")
-            
+
             # Then extract license
             if scan_result:
                 licenses = runner.scan_for_license(zip_path, "test-package")
@@ -320,14 +320,14 @@ class TestScanCodeRunnerIntegration:
         })
         mock_result.returncode = 0
         mocker.patch("subprocess.run", return_value=mock_result)
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "complex.zip"
             zip_path.touch()
-            
+
             runner = ScanCodeRunner()
             licenses = runner.scan_for_license(zip_path, "complex-package")
-        
+
         # Should handle complex expressions
         assert len(licenses) > 0
 
@@ -339,28 +339,28 @@ class TestScanCodeRunnerErrorHandling:
         """Test handling when ScanCode is not installed."""
         mocker.patch("license_sentinel.infrastructure.scancode_runner.io.extract_zip_contents", return_value=True)
         mocker.patch("subprocess.run", side_effect=FileNotFoundError("scancode not found"))
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "test.zip"
             zip_path.touch()
-            
+
             runner = ScanCodeRunner()
             result = runner.run_scan(zip_path, "test-package")
-        
+
         assert result is None
 
     def test_scan_handles_permission_error(self, mocker):
         """Test handling of permission errors."""
         mocker.patch("license_sentinel.infrastructure.scancode_runner.io.extract_zip_contents", return_value=False)
         mocker.patch("subprocess.run")
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "test.zip"
             zip_path.touch()
-            
+
             runner = ScanCodeRunner()
             result = runner.run_scan(zip_path, "test-package")
-        
+
         assert result is None
 
 
@@ -380,14 +380,14 @@ class TestScanCodeRunnerCaching:
         })
         mock_result.returncode = 0
         mocker.patch("subprocess.run", return_value=mock_result)
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "test.zip"
             zip_path.touch()
-            
+
             runner = ScanCodeRunner()
             result = runner.run_scan(zip_path, "test-package")
-        
+
         # Should complete successfully even if cache directory doesn't exist
         assert result is not None
 
@@ -404,16 +404,16 @@ class TestScanCodeRunnerCaching:
         })
         mock_result.returncode = 0
         mock_run = mocker.patch("subprocess.run", return_value=mock_result)
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "test.zip"
             zip_path.touch()
-            
+
             mocker.patch("builtins.open", mocker.mock_open(read_data="invalid"))
-            
+
             runner = ScanCodeRunner()
             result = runner.run_scan(zip_path, "test-package")
-        
+
         # Should handle invalid cache and re-scan
         assert mock_run.called or result is not None
 

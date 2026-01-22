@@ -28,7 +28,7 @@ class TestLicenseComparatorCompareTrees:
         """Test initialization and automatic license normalization."""
         meta = pypi_metadata_factory("PkgA", "MIT License")
         comparator = LicenseComparator([meta], mock_scan_engine)
-        
+
         assert "PkgA" in comparator.tree_a
         assert comparator.tree_a["PkgA"] == "mit"
 
@@ -36,10 +36,10 @@ class TestLicenseComparatorCompareTrees:
         """Test scenario where PyPI and ScanCode licenses match."""
         meta = pypi_metadata_factory("PkgA", "MIT")
         mock_scan_engine.scan_for_license.return_value = ["mit"]
-        
+
         comparator = LicenseComparator([meta], mock_scan_engine)
         disc, doubts = comparator.compare_license_trees()
-        
+
         assert len(disc) == 0
         assert len(doubts) == 0
 
@@ -47,10 +47,10 @@ class TestLicenseComparatorCompareTrees:
         """Test discrepancy: PyPI says one thing, ScanCode finds another."""
         meta = pypi_metadata_factory("PkgA", "MIT")
         mock_scan_engine.scan_for_license.return_value = ["gpl-2.0"]
-        
+
         comparator = LicenseComparator([meta], mock_scan_engine)
         disc, doubts = comparator.compare_license_trees(override_cache=True)
-        
+
         assert len(disc) == 1
         # Check discrepancy format: (Package, PyPI_Lic, (Scan_Lic,))
         assert disc[0] == ("PkgA", "mit", ("gpl-2.0",))
@@ -59,10 +59,10 @@ class TestLicenseComparatorCompareTrees:
         """Test ambiguity/doubt where one of the found licenses matches PyPI."""
         meta = pypi_metadata_factory("PkgA", "MIT")
         mock_scan_engine.scan_for_license.return_value = ["apache-2.0", "mit"]
-        
+
         comparator = LicenseComparator([meta], mock_scan_engine)
         disc, doubts = comparator.compare_license_trees(override_cache=True)
-        
+
         assert len(disc) == 0
         assert len(doubts) == 1
         assert doubts[0][0] == "PkgA"
@@ -73,9 +73,9 @@ class TestLicenseComparatorCompareTrees:
         """Test error handling when scan returns empty list."""
         meta = pypi_metadata_factory("PkgA", "MIT")
         mock_scan_engine.scan_for_license.return_value = []
-        
+
         comparator = LicenseComparator([meta], mock_scan_engine)
-        
+
         _, doubts = comparator.compare_license_trees()
         assert doubts[0][2] == 'Unknown'
 
@@ -83,9 +83,9 @@ class TestLicenseComparatorCompareTrees:
         """Test scenario where scanner returns 'Unknown'."""
         meta = pypi_metadata_factory("PkgA", "MIT")
         mock_scan_engine.scan_for_license.return_value = ["Unknown"]
-        
+
         comparator = LicenseComparator([meta], mock_scan_engine)
         disc, doubts = comparator.compare_license_trees()
-        
+
         assert len(doubts) == 1
         assert doubts[0][0] == "PkgA"

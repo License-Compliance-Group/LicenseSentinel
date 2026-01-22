@@ -1,7 +1,7 @@
 """Abstract class for future potential tree-building mechanisms.
 
     Raises:
-        NotImplementedError: This is an abstract class. 
+        NotImplementedError: This is an abstract class.
         You are not intended to call it directly.
 """
 from __future__ import annotations

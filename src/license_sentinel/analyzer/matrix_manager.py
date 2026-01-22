@@ -54,7 +54,7 @@ class FullCompatibilityCalc(CompatibilityCalcStrategy):  # pylint: disable=too-f
         # - None
         # - 1 license
         # - 2 licenses
-        
+
         if not licenses or len(licenses) <= 1:
             return('None', 'Not enough licenses to analyze.')
         if len(licenses) == 2:
@@ -62,7 +62,7 @@ class FullCompatibilityCalc(CompatibilityCalcStrategy):  # pylint: disable=too-f
                 licenses[0],
                 licenses[1]
             )
-        
+
         # don't check dupes
         licenses = set(licenses)
         for (license_a, license_b) in itertools.combinations(licenses, 2):
@@ -308,7 +308,7 @@ class LicenseCompatibilityAnalyzer:
 
     def update_license_matrix(self):
         """Updates classes' license matrix field, getting the data from offline
-             or the web. 
+             or the web.
             Note: this function will perform I/O - avoid when possible.
 
         Returns:

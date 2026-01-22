@@ -5,7 +5,7 @@ from src.license_sentinel.infrastructure.logger_formatter import LoggerFormatter
 
 class TestLoggerFormatterClass:
     """Unit tests for LoggerFormatter class."""
-    
+
     def test_formatter_builds(self):
         """Ensure default config of LoggerFormatter works."""
         formatter = LoggerFormatter.initialize(__name__)

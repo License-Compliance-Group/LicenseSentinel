@@ -1,7 +1,7 @@
 """Package metadata fetcher module.
 
-This module parses requirements.txt files, builds a complete dependency 
-tree using a temporary virtual environment, and fetches license/link 
+This module parses requirements.txt files, builds a complete dependency
+tree using a temporary virtual environment, and fetches license/link
 metadata from PyPI for all discovered packages.
 """
 import json
@@ -57,7 +57,7 @@ class PackageMetadataFetcher:
         self.graph = {}
 
         self.cache_file.parent.mkdir(parents=True, exist_ok=True)
-        
+
 
     def _load_cache(self) -> Dict[str, Dict[str, Optional[str]]]:
         """Load metadata cache from file."""
@@ -94,8 +94,8 @@ class PackageMetadataFetcher:
             (metadata_list, dependency_graph)
             metadata_list: A list of PyPiMetadata objects containing
                 package name, license, and link.
-            dependency_graph: 
-                dicsrc/infrastructure/license_comparator.pyt pkg 
+            dependency_graph:
+                dicsrc/infrastructure/license_comparator.pyt pkg
                 -> list of direct dependencies.
             Returns ([], {}) if parsing/build fails.
         """
@@ -215,7 +215,7 @@ class PackageMetadataFetcher:
                     "No valid repository links found, skipping downloads")
 
     def _deptree_handler(self, dependencies):
-        """Private function. 
+        """Private function.
         Creates a dependency graph and lists packages used.
 
         Args:
@@ -257,7 +257,7 @@ class PackageMetadataFetcher:
 
         Args:
             packages: set(str): A set of package names.
-            override_cache (bool, optional): 
+            override_cache (bool, optional):
             If true, download unconditionally. Defaults to False.
         """
         if override_cache:
@@ -357,7 +357,7 @@ class PackageMetadataFetcher:
         """Get metadata for a specific package.
 
         Args:
-            package_name: Name of the package.  
+            package_name: Name of the package.
         Returns:
             PyPiMetadata object for the package.
         """

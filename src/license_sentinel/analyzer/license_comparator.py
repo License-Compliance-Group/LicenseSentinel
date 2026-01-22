@@ -55,7 +55,7 @@ class LicenseComparator(AbstractLicenseComparator):
                 without using cached data.
         Returns:
             (Optional[Tuple[str,str,Tuple[str]]],
-            Optional[Tuple[str,str,str]]): 
+            Optional[Tuple[str,str,str]]):
             List of dubious/incorrect entries that have been detected.
         """
         discrepancies = []
@@ -92,7 +92,7 @@ class LicenseComparator(AbstractLicenseComparator):
                     or scan_names[0] == 'unknown':
                 doubts.append((name, pypi_name, scan_names[0]))
                 continue
-            
+
             if pypi_name != scan_names[0]:
                 # Handle 'WITH' exceptions
                 if pypi_name.lower() \

@@ -1,4 +1,4 @@
-""" An abstract interface for a license analyzer toolkit used 
+""" An abstract interface for a license analyzer toolkit used
 by the orchestrator.
 
     Raises: NotImplementedError: this is an abstract class, it is not
@@ -29,7 +29,7 @@ class ScanEngine(Protocol):
         Args:
             scan_path: Path to the repository archive (zip) or extracted root.
             pkg: Package name used for logging / context.
-            override_cache: True if should run scans unconditionally 
+            override_cache: True if should run scans unconditionally
                 (n/a if no cache is implemented)
 
         Returns:
@@ -42,10 +42,10 @@ class ScanEngine(Protocol):
         """Run Scancode (or eq.) and return a plain license string.
 
         Args:
-            scan_path: Path to the repository archive (zip) 
+            scan_path: Path to the repository archive (zip)
                 or extracted root.
             pkg: Package name used for logging / context.
-            override_cache: True if should run scans unconditionally 
+            override_cache: True if should run scans unconditionally
                 (n/a if no cache is implemented)
 
         Returns:

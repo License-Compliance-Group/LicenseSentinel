@@ -76,11 +76,11 @@ class RepoDownloader(AbstractRepoDownloader):
             branch: Branch name to download for each repository (e.g., "main", "master", "develop").
 
         Returns:
-            Dict mapping package names to booleans indicating if the download 
+            Dict mapping package names to booleans indicating if the download
             succeeded (True) or failed (False).
 
         Raises:
-            RepoDownloadError: If validation fails or an unrecoverable error 
+            RepoDownloadError: If validation fails or an unrecoverable error
             occurs for any repository.
         """
         results: dict[str, bool] = {}

@@ -18,10 +18,10 @@ class TestPyPiHandlerGetSourceLinks:
         }
         mocker.patch.object(PyPiHandler, "_get_source_links_async", return_value=expected_result)
         mocker.patch("asyncio.run", return_value=expected_result)
-        
+
         handler = PyPiHandler()
         result = handler.get_source_links(["requests"])
-        
+
         assert "requests" in result
         assert result["requests"]["license"] is not None
 
@@ -33,10 +33,10 @@ class TestPyPiHandlerGetSourceLinks:
         }
         mocker.patch.object(PyPiHandler, "_get_source_links_async", return_value=expected_result)
         mocker.patch("asyncio.run", return_value=expected_result)
-        
+
         handler = PyPiHandler()
         result = handler.get_source_links(["requests", "numpy"])
-        
+
         assert len(result) == 2
 
     def test_get_source_links_empty_list(self, mocker):
@@ -44,10 +44,10 @@ class TestPyPiHandlerGetSourceLinks:
         expected_result = {}
         mocker.patch.object(PyPiHandler, "_get_source_links_async", return_value=expected_result)
         mocker.patch("asyncio.run", return_value=expected_result)
-        
+
         handler = PyPiHandler()
         result = handler.get_source_links([])
-        
+
         assert result == {}
 
     def test_get_source_links_custom_timeout(self, mocker):
@@ -55,26 +55,26 @@ class TestPyPiHandlerGetSourceLinks:
         expected_result = {}
         mocker.patch.object(PyPiHandler, "_get_source_links_async", return_value=expected_result)
         mocker.patch("asyncio.run", return_value=expected_result)
-        
+
         handler = PyPiHandler()
         result = handler.get_source_links(["requests"], timeout=20)
-        
+
         assert result == {}
 
     def test_get_source_links_runtime_error_fallback(self, mocker):
         """Test that get_source_links falls back on RuntimeError."""
         expected_result = {"requests": {"license": "Apache 2.0", "link": None}}
-        
+
         # First call raises RuntimeError, second succeeds
         mocker.patch("asyncio.run", side_effect=RuntimeError("Event loop already running"))
         mocker.patch.object(PyPiHandler, "_get_source_links_async", return_value=expected_result)
         mocker.patch("asyncio.new_event_loop")
         mocker.patch("asyncio.set_event_loop")
         mocker.patch.object(asyncio.AbstractEventLoop, "run_until_complete", return_value=expected_result)
-        
+
         handler = PyPiHandler()
         result = handler.get_source_links(["requests"])
-        
+
         assert "requests" in result
 
 
@@ -92,10 +92,10 @@ class TestPyPiHandlerProcessSinglePackage:
                 "classifiers": []
             }
         })
-        
+
         handler = PyPiHandler()
         pkg_name, data = handler._process_single_package("requests", 10)
-        
+
         assert pkg_name == "requests"
         assert data["license"] is not None
         assert data["link"] is not None
@@ -104,7 +104,7 @@ class TestPyPiHandlerProcessSinglePackage:
         """Test processing a package with invalid name."""
         handler = PyPiHandler()
         pkg_name, data = handler._process_single_package("invalid package!", 10)
-        
+
         assert pkg_name == "invalid package!"
         assert data["license"] == "Unknown"
         assert data["link"] is None
@@ -112,10 +112,10 @@ class TestPyPiHandlerProcessSinglePackage:
     def test_process_single_package_fetch_fails(self, mocker):
         """Test processing when fetch fails."""
         mocker.patch.object(PyPiHandler, "fetch_package_json", return_value=None)
-        
+
         handler = PyPiHandler()
         pkg_name, data = handler._process_single_package("nonexistent", 10)
-        
+
         assert pkg_name == "nonexistent"
         assert data["license"] == "Unknown"
         assert data["link"] is None
@@ -129,10 +129,10 @@ class TestPyPiHandlerProcessSinglePackage:
                 "classifiers": []
             }
         })
-        
+
         handler = PyPiHandler()
         pkg_name, data = handler._process_single_package("requests", 10)
-        
+
         assert pkg_name == "requests"
         assert data["link"] is None
 
@@ -147,17 +147,17 @@ class TestPyPiHandlerProcessSinglePackage:
                 "classifiers": []
             }
         })
-        
+
         handler = PyPiHandler()
         pkg_name, data = handler._process_single_package("requests", 10)
-        
+
         assert data["link"] == "https://github.com/example/repo"
 
     def test_process_single_package_non_string_input(self):
         """Test processing non-string package name."""
         handler = PyPiHandler()
         pkg_name, data = handler._process_single_package(123, 10)
-        
+
         assert data["license"] == "Unknown"
         assert data["link"] is None
 
@@ -172,10 +172,10 @@ class TestPyPiHandlerExtractLicense:
                 "License :: OSI Approved :: Apache Software License"
             ]
         }
-        
+
         handler = PyPiHandler()
         result = handler.extract_license(info)
-        
+
         assert "Apache" in result
 
     def test_extract_license_from_license_field(self):
@@ -184,10 +184,10 @@ class TestPyPiHandlerExtractLicense:
             "license": "MIT License",
             "classifiers": []
         }
-        
+
         handler = PyPiHandler()
         result = handler.extract_license(info)
-        
+
         assert result == "MIT License"
 
     def test_extract_license_from_license_expression(self):
@@ -196,10 +196,10 @@ class TestPyPiHandlerExtractLicense:
             "license_expression": "MIT OR Apache-2.0",
             "classifiers": []
         }
-        
+
         handler = PyPiHandler()
         result = handler.extract_license(info)
-        
+
         assert "MIT" in result or "Apache" in result
 
     def test_extract_license_classifier_priority(self):
@@ -210,10 +210,10 @@ class TestPyPiHandlerExtractLicense:
             ],
             "license": "Apache 2.0"
         }
-        
+
         handler = PyPiHandler()
         result = handler.extract_license(info)
-        
+
         assert "MIT" in result
 
     def test_extract_license_unknown(self):
@@ -223,10 +223,10 @@ class TestPyPiHandlerExtractLicense:
             "license": None,
             "license_expression": None
         }
-        
+
         handler = PyPiHandler()
         result = handler.extract_license(info)
-        
+
         assert result == "Unknown"
 
     def test_extract_license_empty_fields(self):
@@ -236,19 +236,19 @@ class TestPyPiHandlerExtractLicense:
             "license": "",
             "license_expression": "   "
         }
-        
+
         handler = PyPiHandler()
         result = handler.extract_license(info)
-        
+
         assert result == "Unknown"
 
     def test_extract_license_missing_fields(self):
         """Test extraction with missing fields."""
         info = {}
-        
+
         handler = PyPiHandler()
         result = handler.extract_license(info)
-        
+
         assert result == "Unknown"
 
 
@@ -265,10 +265,10 @@ class TestPyPiHandlerFetchPackageJson:
             }
         }
         mocker.patch("requests.get", return_value=mock_response)
-        
+
         handler = PyPiHandler()
         result = handler.fetch_package_json("requests", 10)
-        
+
         assert result is not None
         assert "info" in result
 
@@ -276,30 +276,30 @@ class TestPyPiHandlerFetchPackageJson:
         """Test handling of HTTP errors."""
         import requests
         mocker.patch("requests.get", side_effect=requests.HTTPError())
-        
+
         handler = PyPiHandler()
         result = handler.fetch_package_json("nonexistent", 10)
-        
+
         assert result is None
 
     def test_fetch_package_json_connection_error(self, mocker):
         """Test handling of connection errors."""
         import requests
         mocker.patch("requests.get", side_effect=requests.ConnectionError())
-        
+
         handler = PyPiHandler()
         result = handler.fetch_package_json("requests", 10)
-        
+
         assert result is None
 
     def test_fetch_package_json_timeout(self, mocker):
         """Test handling of timeout."""
         import requests
         mocker.patch("requests.get", side_effect=requests.Timeout())
-        
+
         handler = PyPiHandler()
         result = handler.fetch_package_json("requests", 1)
-        
+
         assert result is None
 
     def test_fetch_package_json_invalid_json(self, mocker):
@@ -307,10 +307,10 @@ class TestPyPiHandlerFetchPackageJson:
         mock_response = mocker.Mock()
         mock_response.json.side_effect = ValueError("Invalid JSON")
         mocker.patch("requests.get", return_value=mock_response)
-        
+
         handler = PyPiHandler()
         result = handler.fetch_package_json("requests", 10)
-        
+
         assert result is None
 
     def test_fetch_package_json_custom_timeout(self, mocker):
@@ -318,10 +318,10 @@ class TestPyPiHandlerFetchPackageJson:
         mock_response = mocker.Mock()
         mock_response.json.return_value = {"info": {}}
         mock_get = mocker.patch("requests.get", return_value=mock_response)
-        
+
         handler = PyPiHandler()
         handler.fetch_package_json("requests", 30)
-        
+
         # Verify timeout was passed
         assert mock_get.call_args[1]["timeout"] == 30
 
@@ -330,10 +330,10 @@ class TestPyPiHandlerFetchPackageJson:
         mock_response = mocker.Mock()
         mock_response.json.return_value = {}
         mock_get = mocker.patch("requests.get", return_value=mock_response)
-        
+
         handler = PyPiHandler()
         handler.fetch_package_json("requests", 10)
-        
+
         # Verify correct URL is called
         assert "pypi.org/pypi/requests" in mock_get.call_args[0][0]
 
@@ -358,10 +358,10 @@ class TestPyPiHandlerIntegration:
         }
         mock_response.raise_for_status.return_value = None
         mocker.patch("requests.get", return_value=mock_response)
-        
+
         handler = PyPiHandler()
         pkg_name, data = handler._process_single_package("requests", 10)
-        
+
         assert pkg_name == "requests"
         assert data["license"] != "Unknown"
         assert data["link"] == "https://github.com/psf/requests"
@@ -369,11 +369,11 @@ class TestPyPiHandlerIntegration:
     def test_multiple_package_names_validation(self, mocker):
         """Test processing multiple packages with validation."""
         handler = PyPiHandler()
-        
+
         # Valid name
         pkg1, data1 = handler._process_single_package("valid-package", 10)
         assert pkg1 == "valid-package"
-        
+
         # Invalid name
         pkg2, data2 = handler._process_single_package("invalid package!", 10)
         assert data2["license"] == "Unknown"
@@ -391,9 +391,9 @@ class TestPyPiHandlerIntegration:
                 "classifiers": []
             }
         })
-        
+
         handler = PyPiHandler()
         pkg_name, data = handler._process_single_package("requests", 10)
-        
+
         # Source should have priority
         assert "github.com" in data["link"]

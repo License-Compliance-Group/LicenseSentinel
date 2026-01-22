@@ -45,13 +45,13 @@ class TestDepTreeBuilderCreateVenv:
     def test_create_venv_success(self, mocker):
         """Test successful venv creation."""
         mock_run = mocker.patch("subprocess.run", return_value=mocker.Mock(returncode=0))
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_path = Path(tmpdir) / "venv"
             builder = DepTreeBuilder()
-            
+
             result = builder.create_venv(str(venv_path))
-            
+
             assert "bin" in result or "Scripts" in result
             mock_run.assert_called()
 
@@ -59,9 +59,9 @@ class TestDepTreeBuilderCreateVenv:
         """Test that create_venv raises RuntimeError on subprocess failure."""
         import subprocess
         mocker.patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "cmd"))
-        
+
         builder = DepTreeBuilder()
-        
+
         with pytest.raises(RuntimeError):
             builder.create_venv("/some/venv/path")
 
@@ -70,10 +70,10 @@ class TestDepTreeBuilderCreateVenv:
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_path = Path(tmpdir) / "venv"
             venv_path.mkdir()
-            
+
             builder = DepTreeBuilder()
             result = builder.create_venv(str(venv_path))
-            
+
             # Should not call subprocess if venv already exists
             assert result is not None
             assert venv_path.exists()
@@ -81,28 +81,28 @@ class TestDepTreeBuilderCreateVenv:
     def test_create_venv_force_recreate(self, mocker):
         """Test create_venv with force_recreate=True."""
         mock_run = mocker.patch("subprocess.run", return_value=mocker.Mock(returncode=0))
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_path = Path(tmpdir) / "venv"
             venv_path.mkdir()
-            
+
             builder = DepTreeBuilder()
             result = builder.create_venv(str(venv_path), force_recreate=True)
-            
+
             assert result is not None
             mock_run.assert_called()
 
     def test_create_venv_returns_correct_bin_path(self, mocker):
         """Test that create_venv returns the correct bin/Scripts directory."""
         mock_run = mocker.patch("subprocess.run", return_value=mocker.Mock(returncode=0))
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_path = Path(tmpdir) / "venv"
             venv_path.mkdir()
-            
+
             builder = DepTreeBuilder()
             result = builder.create_venv(str(venv_path))
-            
+
             assert isinstance(result, str)
             assert venv_path.name in result or "venv" in result
 
@@ -115,10 +115,10 @@ class TestDepTreeBuilderDeleteVenv:
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_path = Path(tmpdir) / "venv"
             venv_path.mkdir()
-            
+
             builder = DepTreeBuilder()
             builder.delete_venv(str(venv_path))
-            
+
             assert not venv_path.exists()
 
     def test_delete_venv_nonexistent(self):
@@ -131,9 +131,9 @@ class TestDepTreeBuilderDeleteVenv:
         """Test that delete_venv raises RuntimeError on OSError."""
         venv_path = tmp_path / "venv"
         venv_path.mkdir()
-        
+
         builder = DepTreeBuilder()
-        
+
         # Patch only affects the builder's shutil.rmtree, not tmp_path cleanup
         mocker.patch("license_sentinel.infrastructure.dep_tree_builder.shutil.rmtree", side_effect=OSError("Permission denied"))
         with pytest.raises(RuntimeError):
@@ -146,54 +146,54 @@ class TestDepTreeBuilderInstallPackages:
     def test_install_packages_success(self, mocker):
         """Test successful package installation."""
         mock_run = mocker.patch("subprocess.run", return_value=mocker.Mock(returncode=0))
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_bin = Path(tmpdir) / "bin"
             venv_bin.mkdir()
-            
+
             builder = DepTreeBuilder()
             builder.install_packages(str(venv_bin), ["requests"])
-            
+
             assert mock_run.call_count >= 1
 
     def test_install_packages_multiple(self, mocker):
         """Test installation of multiple packages."""
         mock_run = mocker.patch("subprocess.run", return_value=mocker.Mock(returncode=0))
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_bin = Path(tmpdir) / "bin"
             venv_bin.mkdir()
-            
+
             builder = DepTreeBuilder()
             builder.install_packages(str(venv_bin), ["requests", "numpy", "pytest"])
-            
+
             assert mock_run.call_count >= 1
 
     def test_install_packages_raises_on_failure(self, mocker):
         """Test that install_packages raises RuntimeError on failure."""
         import subprocess
         mocker.patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "cmd"))
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_bin = Path(tmpdir) / "bin"
             venv_bin.mkdir()
-            
+
             builder = DepTreeBuilder()
-            
+
             with pytest.raises(RuntimeError):
                 builder.install_packages(str(venv_bin), ["requests"])
 
     def test_install_packages_includes_pipdeptree(self, mocker):
         """Test that pipdeptree is always installed."""
         mock_run = mocker.patch("subprocess.run", return_value=mocker.Mock(returncode=0))
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_bin = Path(tmpdir) / "bin"
             venv_bin.mkdir()
-            
+
             builder = DepTreeBuilder()
             builder.install_packages(str(venv_bin), ["requests"])
-            
+
             # Should have calls for both packages and pipdeptree
             assert mock_run.call_count >= 2
 
@@ -207,31 +207,31 @@ class TestDepTreeBuilderGetTreeJson:
             {"key": "requests", "dependencies": []},
             {"key": "numpy", "dependencies": []}
         ]
-        
+
         mock_result = mocker.Mock()
         mock_result.stdout = json.dumps(expected_tree)
         mock_run = mocker.patch("subprocess.run", return_value=mock_result)
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_bin = Path(tmpdir) / "bin"
             venv_bin.mkdir()
-            
+
             builder = DepTreeBuilder()
             result = builder.get_tree_json(str(venv_bin))
-            
+
             assert result == expected_tree
 
     def test_get_tree_json_raises_on_subprocess_error(self, mocker):
         """Test that get_tree_json raises RuntimeError on subprocess failure."""
         import subprocess
         mocker.patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "pipdeptree"))
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_bin = Path(tmpdir) / "bin"
             venv_bin.mkdir()
-            
+
             builder = DepTreeBuilder()
-            
+
             with pytest.raises(RuntimeError):
                 builder.get_tree_json(str(venv_bin))
 
@@ -240,13 +240,13 @@ class TestDepTreeBuilderGetTreeJson:
         mock_result = mocker.Mock()
         mock_result.stdout = "not valid json"
         mock_run = mocker.patch("subprocess.run", return_value=mock_result)
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_bin = Path(tmpdir) / "bin"
             venv_bin.mkdir()
-            
+
             builder = DepTreeBuilder()
-            
+
             with pytest.raises(RuntimeError):
                 builder.get_tree_json(str(venv_bin))
 
@@ -264,10 +264,10 @@ class TestDepTreeBuilderBuildMap:
                 ]
             }
         ]
-        
+
         builder = DepTreeBuilder()
         result = builder.build_map(tree_json)
-        
+
         assert "requests" in result
         assert result["requests"] == ["urllib3"]
 
@@ -282,10 +282,10 @@ class TestDepTreeBuilderBuildMap:
                 ]
             }
         ]
-        
+
         builder = DepTreeBuilder()
         result = builder.build_map(tree_json)
-        
+
         assert "django" in result
         assert set(result["django"]) == {"sqlparse", "asgiref"}
 
@@ -293,7 +293,7 @@ class TestDepTreeBuilderBuildMap:
         """Test building a map from empty tree."""
         builder = DepTreeBuilder()
         result = builder.build_map([])
-        
+
         assert result == {}
 
     def test_build_map_removes_pipdeptree(self):
@@ -310,10 +310,10 @@ class TestDepTreeBuilderBuildMap:
                 "dependencies": []
             }
         ]
-        
+
         builder = DepTreeBuilder()
         result = builder.build_map(tree_json)
-        
+
         assert "pipdeptree" not in result
 
 
@@ -328,7 +328,7 @@ class TestDepTreeBuilderHasCycles:
             "c": ["d"],
             "d": []
         }
-        
+
         builder = DepTreeBuilder()
         assert builder.has_cycles(graph) is False
 
@@ -338,7 +338,7 @@ class TestDepTreeBuilderHasCycles:
             "a": ["b"],
             "b": ["a"]
         }
-        
+
         builder = DepTreeBuilder()
         assert builder.has_cycles(graph) is True
 
@@ -347,7 +347,7 @@ class TestDepTreeBuilderHasCycles:
         graph = {
             "a": ["a"]
         }
-        
+
         builder = DepTreeBuilder()
         assert builder.has_cycles(graph) is True
 
@@ -364,7 +364,7 @@ class TestDepTreeBuilderHasCycles:
             "c": ["d"],
             "d": ["b"]
         }
-        
+
         builder = DepTreeBuilder()
         assert builder.has_cycles(graph) is True
 
@@ -378,10 +378,10 @@ class TestDepTreeBuilderFindRoots:
             "requests": ["urllib3"],
             "urllib3": []
         }
-        
+
         builder = DepTreeBuilder()
         roots = builder.find_roots(graph)
-        
+
         assert roots == ["requests"]
 
     def test_find_roots_multiple_roots(self):
@@ -392,17 +392,17 @@ class TestDepTreeBuilderFindRoots:
             "sqlparse": [],
             "urllib3": []
         }
-        
+
         builder = DepTreeBuilder()
         roots = builder.find_roots(graph)
-        
+
         assert set(roots) == {"django", "requests"}
 
     def test_find_roots_empty_graph(self):
         """Test finding roots in empty graph."""
         builder = DepTreeBuilder()
         roots = builder.find_roots({})
-        
+
         assert roots == []
 
     def test_find_roots_all_independent(self):
@@ -412,10 +412,10 @@ class TestDepTreeBuilderFindRoots:
             "b": [],
             "c": []
         }
-        
+
         builder = DepTreeBuilder()
         roots = builder.find_roots(graph)
-        
+
         assert set(roots) == {"a", "b", "c"}
 
 
@@ -428,7 +428,7 @@ class TestDepTreeBuilderPrintSubtree:
             "requests": ["urllib3"],
             "urllib3": []
         }
-        
+
         builder = DepTreeBuilder()
         # Should not raise
         builder.print_subtree(graph, "requests")
@@ -439,7 +439,7 @@ class TestDepTreeBuilderPrintSubtree:
             "a": ["b"],
             "b": ["a"]
         }
-        
+
         builder = DepTreeBuilder()
         # Should not hang or raise
         builder.print_subtree(graph, "a")
@@ -449,7 +449,7 @@ class TestDepTreeBuilderPrintSubtree:
         graph = {
             "leaf": []
         }
-        
+
         builder = DepTreeBuilder()
         builder.print_subtree(graph, "leaf")
 
@@ -464,7 +464,7 @@ class TestDepTreeBuilderPrintFullTree:
             "numpy": [],
             "urllib3": []
         }
-        
+
         builder = DepTreeBuilder()
         # Should not raise
         builder.print_full_tree(graph)
