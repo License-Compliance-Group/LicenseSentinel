@@ -24,10 +24,10 @@ import json
 from typing import Optional
 from pathlib import Path
 
-from ..entities.scan_engine import ScanEngine
-from .logger_formatter import LoggerFormatter
-from .connectivity import Connectivity as io
-from ..analyzer import license_name_normalizer as normalizer
+from src.entities.scan_engine import ScanEngine
+from src.infrastructure.logger_formatter import LoggerFormatter
+from src.infrastructure.connectivity import Connectivity as io
+from src.infrastructure.analyzer import license_name_normalizer as normalizer
 
 
 LOGGER = LoggerFormatter.initialize("scancode_runner", logging.INFO)
