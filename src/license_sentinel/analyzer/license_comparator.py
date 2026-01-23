@@ -2,10 +2,10 @@
 """
 from pathlib import Path
 
-from src.license_sentinel.entities.scan_engine import ScanEngine
-from src.license_sentinel.entities.abstract_license_comparator import AbstractLicenseComparator
-from src.license_sentinel.infrastructure.logger_formatter import LoggerFormatter
-from src.license_sentinel.infrastructure import license_name_normalizer as normalizer
+from ..entities.scan_engine import ScanEngine
+from ..entities.abstract_license_comparator import AbstractLicenseComparator
+from ..infrastructure.logger_formatter import LoggerFormatter
+from ..infrastructure import license_name_normalizer as normalizer
 
 logger = LoggerFormatter.initialize(__name__,
                                     LoggerFormatter.DEBUG)

@@ -2,9 +2,9 @@ import itertools
 from pathlib import Path
 
 import logging
-from src.license_sentinel.entities.pypi_metadata import PyPIMetadata
-from src.license_sentinel.infrastructure.logger_formatter import LoggerFormatter
-from src.license_sentinel.infrastructure import license_name_normalizer
+from ..entities.pypi_metadata import PyPIMetadata
+from ..infrastructure.logger_formatter import LoggerFormatter
+from ..infrastructure import license_name_normalizer
 
 from .matrix_manager import LicenseCompatibilityAnalyzer
 
