@@ -24,9 +24,8 @@ import json
 from typing import Optional
 from pathlib import Path
 
-from src.license_sentinel.infrastructure.license_name_normalizer\
-    import normalize
-from src.license_sentinel.entities.scan_engine import ScanEngine
+from ..infrastructure.license_name_normalizer import normalize
+from ..entities.scan_engine import ScanEngine
 from .logger_formatter import LoggerFormatter
 from .connectivity import Connectivity as io
 

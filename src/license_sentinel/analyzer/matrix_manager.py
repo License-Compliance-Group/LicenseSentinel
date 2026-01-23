@@ -9,9 +9,9 @@ from abc import abstractmethod, ABC
 from datetime import datetime
 from time import time
 
-from src.license_sentinel.infrastructure.connectivity import Connectivity as io
-from src.license_sentinel.infrastructure.logger_formatter import LoggerFormatter
-from src.license_sentinel.infrastructure.license_name_normalizer import normalize
+from ..infrastructure.connectivity import Connectivity as io
+from ..infrastructure.logger_formatter import LoggerFormatter
+from ..infrastructure.license_name_normalizer import normalize
 logger = LoggerFormatter.initialize(__name__,
                                     LoggerFormatter.INFO)
 
