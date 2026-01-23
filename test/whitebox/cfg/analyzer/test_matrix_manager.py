@@ -22,7 +22,7 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 import json
-from src.analyzer.matrix_manager import LicenseCompatibilityAnalyzer, FullCompatibilityCalc
+from src.license_sentinel.analyzer.matrix_manager import LicenseCompatibilityAnalyzer, FullCompatibilityCalc
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
@@ -67,14 +67,14 @@ class TestMatrixManager(unittest.TestCase):
     def test_block_coverage_import(self):
         """Test Block 1 coverage - import and class definition"""
         # Importing the module executes Block 1
-        from src.analyzer import matrix_manager
+        from src.license_sentinel.analyzer import matrix_manager
 
         # Verify the class is available (Block 1 executed)
         self.assertTrue(hasattr(matrix_manager, 'LicenseCompatibilityAnalyzer'))
         self.assertTrue(hasattr(matrix_manager, 'FullCompatibilityCalc'))
 
-    @patch('src.analyzer.matrix_manager.io.verify_internet_access')
-    @patch('src.analyzer.matrix_manager.io.safe_read')
+    @patch('src.license_sentinel.analyzer.matrix_manager.io.verify_internet_access')
+    @patch('src.license_sentinel.analyzer.matrix_manager.io.safe_read')
     def test_script_execution_path(self, mock_safe_read, mock_verify_internet):
         """Test path: Block 1 -> 268 (true) -> 269 (script execution)"""
         # Mock internet access and file reading
@@ -82,11 +82,11 @@ class TestMatrixManager(unittest.TestCase):
         mock_safe_read.return_value = '{"files": []}'
 
         # Mock __name__ to simulate script execution
-        with patch('src.analyzer.matrix_manager.__name__', '__main__'):
+        with patch('src.license_sentinel.analyzer.matrix_manager.__name__', '__main__'):
             # Re-import to trigger __main__ block
             import importlib
-            import src.analyzer.matrix_manager
-            importlib.reload(src.analyzer.matrix_manager)
+            import src.license_sentinel.analyzer.matrix_manager
+            importlib.reload(src.license_sentinel.analyzer.matrix_manager)
 
             # Block 269 should have executed (the main body)
             # We can't directly verify, but ensure no exceptions occurred
@@ -105,7 +105,7 @@ class TestMatrixManager(unittest.TestCase):
         # So Block 269 should not execute
         self.assertNotEqual(__name__, '__main__')
 
-    @patch('src.analyzer.matrix_manager.io.verify_internet_access')
+    @patch('src.license_sentinel.analyzer.matrix_manager.io.verify_internet_access')
     def test_calculate_license_compatibility_path_coverage(self, mock_verify):
         """Test path coverage for calculate_license_compatibility method"""
         mock_verify.return_value = True
@@ -125,7 +125,7 @@ class TestMatrixManager(unittest.TestCase):
             lca.calculate_license_compatibility(['MIT', 'GPL-3.0'])
             self.assertEqual(lca.last_comparison_result[0], 'No')
 
-    @patch('src.analyzer.matrix_manager.io.verify_internet_access')
+    @patch('src.license_sentinel.analyzer.matrix_manager.io.verify_internet_access')
     def test_compare_licenses_path_coverage(self, mock_verify):
         """Test path coverage for compare_licenses method"""
         mock_verify.return_value = True
