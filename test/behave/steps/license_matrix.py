@@ -17,9 +17,9 @@ import datetime
 
 from behave import given, when, then
 
-from analyzer.matrix_manager\
+from src.license_sentinel.analyzer.matrix_manager\
     import LicenseCompatibilityAnalyzer as LCA
-from src.infrastructure.connectivity import Connectivity
+from src.license_sentinel.infrastructure.connectivity import Connectivity
 
 
 @given('internet access is present')

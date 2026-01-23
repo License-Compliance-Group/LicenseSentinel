@@ -1,10 +1,10 @@
 """The default Behave implementation. Will run all hooks defined here."""
 
-from src.analyzer.license_compatibility_analyzer \
+from src.license_sentinel.analyzer.matrix_manager \
     import LicenseCompatibilityAnalyzer as LCA
 
 def before_feature(context, feature):
-    """Ensure a one-time setup is performed against every feature 
+    """Ensure a one-time setup is performed against every feature
     that needs it.
 
     Args:
