@@ -54,7 +54,6 @@ class FullCompatibilityCalc(CompatibilityCalcStrategy):  # pylint: disable=too-f
         # - None
         # - 1 license
         # - 2 licenses
-
         if not licenses or len(licenses) <= 1:
             return('None', 'Not enough licenses to analyze.')
         if len(licenses) == 2:
@@ -62,7 +61,6 @@ class FullCompatibilityCalc(CompatibilityCalcStrategy):  # pylint: disable=too-f
                 licenses[0],
                 licenses[1]
             )
-
         # don't check dupes
         licenses = set(licenses)
         for (license_a, license_b) in itertools.combinations(licenses, 2):

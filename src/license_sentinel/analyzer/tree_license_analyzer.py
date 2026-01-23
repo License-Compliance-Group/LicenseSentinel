@@ -180,8 +180,7 @@ class TreeAnalyzer:
             incompatible_edges (List): List of incompatible edges.
         """
         if not incompatible_edges:
-            logger.info("Dependency-tree compatibility result:\
-                Yes (all edges compatible).")
+            logger.info("Dependency-tree compatibility result: Yes (all edges compatible).")
             return
         logger.warning("Dependency-tree compatibility check negative.")
         logger.info('Listing problems.')

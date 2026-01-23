@@ -66,6 +66,10 @@ class DepTreeBuilder(AbstractDepTreeBuilder):
         if not venv_path.exists():
             logger.info("Creating virtual environment at %s…", path)
             try:
+                out = subprocess.run([sys.executable, '--version'], 
+                                     capture_output=True,
+                                     check = True)
+                logger.debug('Using Python %s', out.stdout)
                 subprocess.run(
                     [sys.executable, "-m", "venv", path], check=True)
                 logger.info("Virtual environment ready at %s", path)
@@ -110,7 +114,7 @@ class DepTreeBuilder(AbstractDepTreeBuilder):
             RuntimeError: If any pip install command fails.
         """
         python_exe = "python.exe" if os.name == "nt" else "python"
-        python = Path(venv_bin) / python_exe
+        python = Path.absolute(Path(venv_bin) / python_exe)
         # TO-DO: pipdeptree should not be downloaded but shipped with this tool
         logger.info("Installing packages: %s", ", ".join(packages))
         try:

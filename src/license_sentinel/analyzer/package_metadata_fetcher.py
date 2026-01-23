@@ -276,8 +276,7 @@ class PackageMetadataFetcher:
                     (cached: %d)",
                             len(missing_packages),
                             len(packages) - len(missing_packages))
-                results: Dict[str, Dict[str, Optional[str]]
-                              ] = self.pypi_client.get_source_links(missing_packages)
+                results = self.pypi_client.get_source_links(missing_packages)
                 # Update cache with new data
                 cache.update(results)
                 self._save_cache(cache)
