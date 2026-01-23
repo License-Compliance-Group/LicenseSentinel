@@ -5,6 +5,7 @@ from pathlib import Path
 import logging
 import json
 import copy
+from typing import Optional
 
 from ..entities.pypi_metadata import PyPIMetadata
 from ..analyzer.package_metadata_fetcher import PackageMetadataFetcher
@@ -64,7 +65,7 @@ class Controller:
         incompatible_edges: List of detected license incompatibilities between packages.
     """
 
-    _license_names: list[str] | None = None
+    _license_names: Optional[list[str]] = None
     _license_lookup: dict[str, str] = {}
 
     def __init__(self):
@@ -495,14 +496,15 @@ class Controller:
                 data = json.load(file)
 
             print("JSON loaded, extracting licenses...")
-            cls._license_names = sorted(
+            license_names: list[str] = sorted(
                 {lic.get("name")
                  for lic in data.get("licenses", []) if lic.get("name")}
             )
+            cls._license_names = license_names
             cls._license_lookup = {
-                name.lower(): name for name in cls._license_names}
+                name.lower(): name for name in license_names}
 
-            return cls._license_names
+            return license_names
         except (FileNotFoundError, json.JSONDecodeError) as e:
             logger.error("Failed to load license names from %s: %s",
                          MATRIX_PATH, str(e))
