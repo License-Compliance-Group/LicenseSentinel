@@ -84,7 +84,7 @@ class TextualLogHandler(logging.Handler):
             print(f"[DEBUG] Exception in call_from_thread: {e}")
 
 
-class LicenseSentinelUI(App):
+class LicenseSentinelUI(App):  # pylint: disable=too-many-public-methods
     """Main GUI application for license compatibility analysis.
 
     A Textual-based TUI application that provides an interactive interface for

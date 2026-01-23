@@ -1,5 +1,6 @@
-import itertools
+"""Tree-based license compatibility analyzer for dependency graphs."""
 from pathlib import Path
+import itertools
 
 import logging
 from ..entities.pypi_metadata import PyPIMetadata
@@ -17,6 +18,7 @@ DEFAULT_REQUIREMENTS = PROJECT_ROOT / "requirements.txt"
 
 
 class TreeAnalyzer:
+    """Analyzes dependency trees for license compatibility issues."""
 
     logger = LoggerFormatter.initialize(__name__, logging.DEBUG)
 
@@ -77,7 +79,8 @@ class TreeAnalyzer:
     #
 
     @classmethod
-    def run_tree_compatibility_check(cls, packages_metadata: list[PyPIMetadata], graph) -> list[tuple[str, str, str, str, tuple[str, str]]] | None:
+    def run_tree_compatibility_check(cls, packages_metadata: list[PyPIMetadata], graph) \
+            -> list[tuple[str, str, str, str, tuple[str, str]]] | None:
         """
         Run compatibility check along dependency edges instead of flat union
 
