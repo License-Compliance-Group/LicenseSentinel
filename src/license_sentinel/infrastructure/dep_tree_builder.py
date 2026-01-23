@@ -66,9 +66,9 @@ class DepTreeBuilder(AbstractDepTreeBuilder):
         if not venv_path.exists():
             logger.info("Creating virtual environment at %s…", path)
             try:
-                out = subprocess.run([sys.executable, '--version'], 
+                out = subprocess.run([sys.executable, '--version'],
                                      capture_output=True,
-                                     check = True)
+                                     check=True)
                 logger.debug('Using Python %s', out.stdout)
                 subprocess.run(
                     [sys.executable, "-m", "venv", path], check=True)
@@ -119,16 +119,16 @@ class DepTreeBuilder(AbstractDepTreeBuilder):
         logger.info("Installing packages: %s", ", ".join(packages))
         try:
             subprocess.run([str(python), "-m", "pip", "install",
-                            "--quiet"] + packages, check=True)
+                            "--quiet"] + packages,
+                           check=True, capture_output=True, text=True)
             subprocess.run([str(python), "-m", "pip", "install",
-                            "--quiet", "pipdeptree"], check=True)
-            # For hiding the output of pip install
-            # stdout=subprocess.DEVNULL,
-            # stderr=subprocess.DEVNULL,
+                            "--quiet", "pipdeptree"],
+                           check=True, capture_output=True, text=True)
 
         except subprocess.CalledProcessError as exc:
             logger.critical(
-                "Failed to install packages with exit code %s", exc.returncode)
+                "Failed to install packages with exit code %s\nSTDOUT: %s\nSTDERR: %s",
+                exc.returncode, exc.stdout, exc.stderr)
             raise RuntimeError(f"Failed to install packages: {exc}") from exc
 
     def get_tree_json(self, venv_bin: str) -> List[Dict]:

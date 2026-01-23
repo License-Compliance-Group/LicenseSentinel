@@ -16,8 +16,7 @@ from ..infrastructure.repo_downloader import RepoDownloader
 from ..infrastructure.dep_tree_builder import DepTreeBuilder
 from ..infrastructure.logger_formatter import LoggerFormatter
 from ..infrastructure.scancode_runner import ScanCodeRunner
-from ..infrastructure.license_name_normalizer \
-    import normalize
+from ..infrastructure.license_name_normalizer import normalize
 from .ui_state import CommandResult
 
 logger = LoggerFormatter.initialize(__name__, logging.DEBUG)

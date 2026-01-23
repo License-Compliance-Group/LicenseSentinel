@@ -157,7 +157,8 @@ class LicenseSentinelUI(App):
     def _scancode_table(self) -> DataTable:
         """Create and configure the ScanCode results table.
         Returns:
-            DataTable: Configured table with columns for package name, PyPI license, and detected licenses.
+            DataTable: Configured table with columns for package name,
+            PyPI license, and detected licenses.
         """
         table = DataTable(id=self.ID_SCANCODE_TABLE)
         table.add_columns("Package Name", "PyPI License", "Detected Licenses")
@@ -172,8 +173,17 @@ class LicenseSentinelUI(App):
         with Vertical(id="top-section", classes="top-section"):
             with Horizontal(classes="path-container"):
                 with Vertical(id="input-section", classes="input-section"):
-                    yield Input(placeholder=PATH_PLACEHOLDER, id=self.ID_PATH_INPUT, classes="path-input")
-                yield Button("Next ->", variant="primary", id=self.ID_SEND_BUTTON, classes="analyze-button")
+                    yield Input(
+                        placeholder=PATH_PLACEHOLDER,
+                        id=self.ID_PATH_INPUT,
+                        classes="path-input"
+                    )
+                yield Button(
+                    "Next ->",
+                    variant="primary",
+                    id=self.ID_SEND_BUTTON,
+                    classes="analyze-button"
+                )
             yield self.input_spinner
 
         with Vertical(classes="main-container", id="main-container"):
@@ -1033,8 +1043,14 @@ class LicenseSentinelUI(App):
         if not incompatibilities:
             return
         for parent, parent_license, child, child_license, compatibility_info in incompatibilities:
-            parent_str = f"{parent} ({parent_license})" if parent and parent_license else parent or "N/A"
-            child_str = f"{child} ({child_license})" if child and child_license else child or "N/A"
+            parent_str = (
+                f"{parent} ({parent_license})" if parent and parent_license
+                else parent or "N/A"
+            )
+            child_str = (
+                f"{child} ({child_license})" if child and child_license
+                else child or "N/A"
+            )
         # compatibility_info is a tuple like ('No', 'explanation message')
             verdict = (
                 compatibility_info[0] if compatibility_info else "Unknown") or "Unknown"
