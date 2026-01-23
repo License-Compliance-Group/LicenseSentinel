@@ -52,13 +52,13 @@ class GraphGenerator():
                 graph_data = self.serialize_graph(graph)
                 print(f'{f}: {json.dumps(graph_data, indent=2)}', file=log_file)
                 graph.build_visual(self.out_path/'cfg_graphs'/pf, 'png', show=False)
-                print(f'Wrote {str(pf)}.png')
+                print(f'Wrote {self.out_path}/cfg_graphs/{str(pf)}.png')
 
 if __name__ == "__main__":
     # You should be running this from the project root
     # (the folder which contains src/ and test/)
     # outputs to test/whitebox/{cfg,dfg,prog}
-    if not Path.exists('src') or not Path.exists('test'):
+    if not Path.exists(Path('src')) or not Path.exists(Path('test')):
         print('You chose the wrong root path, not proceeding')
         exit(1)
     gg = GraphGenerator('src',str(Path('test/whitebox')))
