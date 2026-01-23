@@ -120,9 +120,6 @@ class TreeAnalyzer:
         incompatible_edges = cls.detect_incompatible_edges(
             graph, license_by_pkg, lca)
         return incompatible_edges
-        # print_dependency_forest(graph, license_by_pkg, incompatible_edges)
-
-        # compile_compatibility_report(incompatible_edges)
 
     @classmethod
     def detect_incompatible_edges(
@@ -158,7 +155,7 @@ class TreeAnalyzer:
                     # even if matrix has no self-entry
                     continue
                 notice = lca.compare_licenses(
-                    lic_parent, lic_dep)  # TODO INVERT HERE FOR TESTING
+                    lic_dep, lic_parent)  # TODO INVERT HERE FOR TESTING
 
                 if not notice or notice[0] != "Yes":
                     if notice[0] == 'Same':
@@ -180,7 +177,8 @@ class TreeAnalyzer:
             incompatible_edges (List): List of incompatible edges.
         """
         if not incompatible_edges:
-            logger.info("Dependency-tree compatibility result: Yes (all edges compatible).")
+            logger.info(
+                "Dependency-tree compatibility result: Yes (all edges compatible).")
             return
         logger.warning("Dependency-tree compatibility check negative.")
         logger.info('Listing problems.')

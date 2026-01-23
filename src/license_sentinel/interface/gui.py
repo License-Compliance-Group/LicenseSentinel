@@ -1157,8 +1157,8 @@ class LicenseSentinelUI(App):
                         break
 
             if not found:
-                pypi_license = self.controller.get_package_metadata(
-                    package_name).license_type
+                metadata = self.controller.get_package_metadata(package_name)
+                pypi_license = metadata.license_type if metadata else "N/A"
                 table.add_row(package_name, pypi_license,
                               "No doubts or discrepancies found", height=None)
 

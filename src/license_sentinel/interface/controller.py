@@ -356,6 +356,8 @@ class Controller:
         Returns:
             Tuple of (discrepancies, doubts) lists, or (None, None) if package not found.
         """
+        assert self.orchestrator is not None  # Checked in start_scancode_analysis
+
         pkg_metadata = self.get_package_metadata(package_name)
         if pkg_metadata is None or pkg_metadata.link is None:
             logger.warning(

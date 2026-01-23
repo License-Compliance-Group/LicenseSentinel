@@ -38,7 +38,7 @@ class ScanEngine(Protocol):
         raise NotImplementedError
 
     def scan_for_license(self, scan_path: Path, pkg:str,
-                         override_cache: Optional[bool]) -> tuple(str):
+                         override_cache: Optional[bool]) -> tuple[str, ...]:
         """Run Scancode (or eq.) and return a plain license string.
 
         Args:
@@ -49,6 +49,6 @@ class ScanEngine(Protocol):
                 (n/a if no cache is implemented)
 
         Returns:
-            The license name(s), ("Unknown") if not detected.
+            The license name(s), ("Unknown",) if not detected.
         """
         raise NotImplementedError

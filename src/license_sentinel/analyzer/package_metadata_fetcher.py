@@ -58,7 +58,6 @@ class PackageMetadataFetcher:
 
         self.cache_file.parent.mkdir(parents=True, exist_ok=True)
 
-
     def _load_cache(self) -> Dict[str, Dict[str, Optional[str]]]:
         """Load metadata cache from file."""
         if self.cache_file.exists():
@@ -144,28 +143,6 @@ class PackageMetadataFetcher:
         LOGGER.info("Successfully fetched metadata for %d packages",
                     len(self.packages_metadata))
 
-        # TODO: Ripulire i commenti
-        # Step 5: download sources (only for packages with valid repo links)
-        # self.download_sources(package_urls, override_cache)
-
-        # Step 6: compare against scancode
-        # This is a separate concern and has been moved to
-        # LicenseComparator
-
-        # Step 7: create for each package objects package_metadata
-        #        containing both pypi and scancode license info and check results
-        # We had to think more about how to structure this part. From the GUI the user
-        # could select a single package (from the tree view) and see all its details like:
-        #  - PyPI license
-        #  - Scancode detected license
-        #  - License compatibility check result
-        #  - Incompatibility with other packages in the tree (if any)
-        # I think that we should avoid the massive I/O (PyPI jsons + repo download + scancode)
-        # at once for all packages # and let this option be on-
-        # when the user selects a package.
-        # Possibly let the option "scan all packages" be a separate button that the user
-        # can press if he wants to scan everything at once.
-
         return copy.deepcopy(self.packages_metadata), copy.deepcopy(self.graph)
 
     def download_sources(self, package_urls: Dict[str, str | None], override_cache=False):
@@ -184,7 +161,6 @@ class PackageMetadataFetcher:
             filtered_repo_urls = {pkg: url for pkg,
                                   url in package_urls.items() if url}
         else:
-            print(package_urls, "inner")
             filtered_repo_urls: Dict[str, str | None] = {}
             for pkg, url in package_urls.items():
                 zip_path = Path.joinpath(
@@ -239,16 +215,6 @@ class PackageMetadataFetcher:
         all_packages = set(graph.keys())
         for deps in graph.values():
             all_packages.update(deps)
-
-        # self.graph = graph
-        # HACK: add root dependencies and remove pipdeptree entry if present
-        # This should be handled by dep_builder, but for now we do it here
-        # self.graph["Root"] = self.dependencies
-        # Used by pipdeptree internally, remove from graph
-        # If used by other packages well...
-        # self.graph.pop("pipdeptree", None)
-        # self.graph.pop("setuptools", None)
-        # self.graph.pop("packaging", None)
 
         return graph, all_packages
 
