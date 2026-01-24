@@ -1,4 +1,4 @@
-# LicenseSentinel
+# LicenseHierarchy
 
 A toolchain for building and analyzing the dependency tree of a Python project from its requirements. Includes software license analysis (scancode), license compatibility verification.
 
@@ -16,50 +16,36 @@ A toolchain for building and analyzing the dependency tree of a Python project f
 
 ### Python Dependencies
 
-Install the project dependencies:
+The projects' dependencies are reported in `src/requirements-dev.txt`; these will be downloaded automatically during the installation process
 
+To install, head to the **[Release Tab](https://github.com/License-Compliance-Group/LicenseSentinel/releases)** and follow the steps reported in the release you wish for.
+
+Alternatively, you may download the latest version released on PyPi with the following command:  
 ```bash
-pip install -r src/requirements-dev.txt
+python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple license-hierarchy
 ```
-
-### External Tool: ScanCode Toolkit
-
-> ⚠️ **Important:** This project depends on **[ScanCode Toolkit](https://github.com/nexB/scancode-toolkit)** for source code license detection.
-
-Install ScanCode separately:
-
-```bash
-pip install scancode-toolkit
-```
-
-Or download the pre-built binary from the [official releases](https://github.com/nexB/scancode-toolkit/releases) (⚠️ reccomaned).
 
 ## Usage
 
-### For Users
-
-If installed from PyPI:
+Once installed, you can run LicenseHierarchy by typing the following command:
 
 ```bash
-licensesentinel
-```
+license-hierarchy
+```  
 
-### For Developers
+To use the tool, provide the path of the `requirements.txt` file containing the dependencies of your project in the text box.  
+Select the license under which your project will be released, and wait for the dependencies specified in `requirements.txt` in the venv.
 
-Run the TUI in development mode from the `src/` directory:
-
-```bash
-textual run --dev licensesentinel.py
-```
 
 ## Project Structure
 
 ```
-src/
-├── entities/        # Domain layer: models & abstract interfaces
-├── analyzer/        # Business logic layer
-├── infrastructure/  # I/O layer: HTTP, filesystem, processes
-└── interface/       # UI layer: GUI & controller
+src/license_sentinel
+├── entities/           # Domain layer: models & abstract interfaces
+├── analyzer/           # Business logic layer
+├── infrastructure/     # I/O layer: HTTP, filesystem, processes
+├── interface/          # UI layer: GUI & controller
+└── licensesentinel.py  # Entrypoint
 ```
 
 ## License
