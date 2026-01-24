@@ -1,0 +1,13 @@
+name: Enforce PR strategy
+
+on:
+  pull_request:
+    branches: [ "main", "develop", "automate-coverage-testing" ]
+jobs:
+  enforce-pr-strategy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Copy the config file
+      run: |
+        cp .gitconfig .git/config

@@ -1,0 +1,167 @@
+# This workflow will install Python dependencies, run unit tests and create coverage and unit test reports
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Generate reports
+
+on:
+  push:
+    branches: [ "main", "develop", "automate-coverage-testing"]
+  pull_request:
+    types: [opened, synchronize, reopened]
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  generate-coverage:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ${{ fromJSON(vars.PYTHON_VERSIONS) }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/cache@v4
+      id: cache-venv
+      with:
+        path: ./.venv/
+        key: ${{ runner.os }}-venv-${{ matrix.python-version }}-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: ${{ runner.os }}-venv-${{ matrix.python-version }}-
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install venv on cache miss
+      run: python src/scripts/venv_setup.py --recreate
+      if: steps.cache-venv.outputs.cache-hit != 'true'
+    - name: Measure coverage with coverage
+      run: |
+        . ./.venv/bin/activate
+        coverage run -m pytest test/
+    - name: Create a report for further analysis
+      run: |
+        . ./.venv/bin/activate
+        coverage xml -o test/reports/coverage-${{ matrix.python-version }}.xml
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report-${{ matrix.python-version }}
+        path: test/reports/coverage-${{ matrix.python-version }}.xml
+
+  generate-pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ${{ fromJSON(vars.PYTHON_VERSIONS) }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/cache@v4
+      id: cache-venv
+      with:
+        path: ./.venv/
+        key: ${{ runner.os }}-venv-${{ matrix.python-version }}-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: ${{ runner.os }}-venv-${{ matrix.python-version }}-
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install venv on cache miss
+      run: python src/scripts/venv_setup.py --recreate
+      if: steps.cache-venv.outputs.cache-hit != 'true'
+    - name: Generate pytest XML
+      run: |
+        . ./.venv/bin/activate
+        python -m pytest --junitxml=test/reports/pytest-${{ matrix.python-version }}.xml test/
+    - name: Upload pytest report
+      uses: actions/upload-artifact@v4
+      with:
+        name: pytest-report-${{ matrix.python-version }}
+        path: test/reports/pytest-${{ matrix.python-version }}.xml
+
+  archive-reports:
+    runs-on: ubuntu-latest
+    needs:
+      - generate-coverage
+      - generate-pytest
+    steps:
+    - name: Download coverage reports
+      uses: actions/download-artifact@v4
+      with:
+        pattern: coverage-report-*
+        path: reports
+    - name: Download pytest reports
+      uses: actions/download-artifact@v4
+      with:
+        pattern: pytest-report-*
+        path: reports
+    - name: Create archive
+      run: tar -czf all-reports.tar.gz reports/
+    - name: Upload reports archive
+      uses: actions/upload-artifact@v4
+      with:
+        name: all-reports
+        path: all-reports.tar.gz
+
+  comment:
+    # Share the reports as comments.
+    runs-on: ubuntu-latest
+    needs: archive-reports
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ${{ fromJSON(vars.PYTHON_VERSIONS) }}
+    steps:
+    - name: Download reports archive
+      uses: actions/download-artifact@v4
+      with:
+        name: all-reports
+    - name: Extract reports
+      run: tar -xzf all-reports.tar.gz
+    - name: Check coverage file exists
+      run: |
+        if [ ! -f reports/coverage-report-${{ matrix.python-version }}/coverage-${{ matrix.python-version }}.xml ];
+        then echo "Coverage file not found"; exit 1;
+        fi
+    - name: 'Append coverage report'
+      # Upload reports, even if failed.
+      continue-on-error: true
+      uses: kamilok04/coverage-with-title@main
+      with:
+        coverageFile: reports/coverage-report-${{ matrix.python-version }}/coverage-${{ matrix.python-version }}.xml
+        token: ${{ secrets.GITHUB_TOKEN }}
+        title: 'Python (${{ matrix.python-version }}) Coverage Report'
+        include-all-files: 'true'
+        thresholdAll: 0.8
+    - name: 'Append pytest report'
+      id: append-pytest
+      # Upload reports, even if failed.
+      continue-on-error: true
+      uses: kamilok04/test-reporter-body-hijack@main
+      with:
+        artifact: 'pytest-report-${{ matrix.python-version }}'
+        name: 'Python (${{ matrix.python-version }}) Test Report'
+        path: '*.xml' # The version granularity is guaranteed by the artifact
+        reporter: python-xunit
+        report-title: Python (${{ matrix.python-version }}) Test Report
+
+    - name: Post pytest comment
+      run: |
+        echo "Adding test report as a comment"
+        sanitized_content=$(cat << 'EOF' | sed -E 's/([|`*_{}\[\]\(\)#+\-!])/\\\1/g'
+        ${{ steps.append-pytest.outputs.body }}
+        EOF
+        )
+        echo "$sanitized_content" > body-comment.md
+        if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+          PR_NUMBER=$(jq -r .number $GITHUB_EVENT_PATH)
+          TITLE="Python (${{ matrix.python-version }}) Unit Test Report"
+          EXISTING_COMMENT_ID=$(gh api repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments | jq -r ".[] | select(.body | startswith(\"### $TITLE\")) | {id: .id, created_at: .created_at} | sort_by(.created_at) | reverse | first | .id")
+          if [ -n "$EXISTING_COMMENT_ID" ]; then
+            gh api repos/$GITHUB_REPOSITORY/issues/comments/$EXISTING_COMMENT_ID -X PATCH -F body=@body-comment.md
+          else
+            gh api repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments -F body=@body-comment.md
+          fi
+        else
+          gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -F body=@body-comment.md
+        fi
+

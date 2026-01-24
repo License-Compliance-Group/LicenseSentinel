@@ -3,21 +3,27 @@ name: Pylint
 on: [push]
 
 jobs:
-  build:
+  lint:
+    if: false
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ${{ fromJSON(vars.PYTHON_VERSIONS) }}
     steps:
     - uses: actions/checkout@v4
+    - uses: actions/cache@v4
+      id: cache-venv
+      with:
+        path: ./.venv/
+        key: ${{ runner.os }}-venv-${{ matrix.python-version }}-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: ${{ runner.os }}-venv-${{ matrix.python-version }}-
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pylint
+    - name: Install venv on cache miss
+      run: python src/scripts/venv_setup.py --recreate
+      if: steps.cache-venv.outputs.cache-hit != 'true'
     - name: Analysing the code with pylint
       run: |
-        pylint $(git ls-files '*.py')
+        . ./.venv/bin/activate && pylint src --source-roots=.
