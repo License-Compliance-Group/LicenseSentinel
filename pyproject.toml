@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "license-sentinel"
-version = "1.0"
+name = "license-hierarchy"
+version = "1.0.1"
 description = "A tool for analyzing Python project dependencies and verifying license compatibility"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -36,7 +36,7 @@ dev = [
 ]
 
 [project.scripts]
-license-sentinel = "license_sentinel.licensesentinel:main"
+license-hierarchy = "license_sentinel.licensesentinel:main"
 
 [project.urls]
 Homepage = "https://github.com/License-Compliance-Group/LicenseSentinel"

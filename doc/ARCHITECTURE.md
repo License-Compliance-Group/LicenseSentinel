@@ -1,4 +1,4 @@
-# LicenseSentinel - Documentazione Architettura
+# LicenseHierarchy - Documentazione Architettura
 
 Toolchain per la costruzione e analisi dell'albero delle dipendenze di un progetto python a partire dai suoi requirements. Include l'analisi delle licenze software, la verifica della compatibilità tra licenze e l'ispezione automatica del codice sorgente. Quest'ultima consiste nel verificare che la licenza su PyPI corrisponda a quella del repository originale
 
@@ -10,12 +10,12 @@ rich
 pipdeptree
 scancode-toolkit (se non funziona provate il bianrio)
 ```
-per runnare il programma, momentaneamente
+gli import relativi funzionano solo quando viene eseguito come modulo, per runnarlo senza installarlo tramite il wheel fate
 
 ```
-textual run --dev temp.py
+python -m license_sentinel.licensesentinel
 ```
-dalla cartella LicenseChecker/src (src è la root)
+Non mi ricordo mai se sta cosa dovete farla dalla root oppure da src, vedete voi
 
 ## Architettura a Strati (Onion Architecture)
 
@@ -54,7 +54,7 @@ Tale architettura segue quindi le seguenti regole di dipendenza
 ## Struttura di packages e moduli
 
 ```
-src/
+src/license_sentinel
 ├── entities/                           # Strato 1: Dominio e Astrazioni
 │   ├── pypi_metadata.py                # Contenitore metadati PyPI
 │   ├── scan_engine.py                  # Interfaccia per scanner di licenze
@@ -78,12 +78,13 @@ src/
 │   ├── connectivity.py                 # Gestisce I/O (download, cache)
 │   └── logger_formatter.py             # Configurazione logging
 │
-└── interface/                           # Strato 4: Interfaccia Utente
-    ├── gui.py                           # Interfaccia grafica (Textual)
-    ├── controller.py                    # Controller principale UI
-    ├── ui_state.py                      # Gestione stato UI
-    └── style.css                        # Stili UI
-
+├── interface/                          # Strato 4: Interfaccia Utente
+│   ├── gui.py                          # Interfaccia grafica (Textual)
+│   ├── controller.py                   # Controller principale UI
+│   ├── ui_state.py                     # Gestione stato UI
+│   └── style.css                       # Stili UI
+│
+└────── licensesentinel.py              # Entrypoint
 ```
 
 ## Flusso di Esecuzione Principale
@@ -151,7 +152,6 @@ START
       - Report grafico
 ```
 
-### "LA COSA STRANA" DEI METODI ASTRATTI E' DEPENDENCY INEJCTION - LA UI USA UNA SPECIE DI MACCHINA A STATI (TRAMITE SWITCH/MATCH) PER DISTINGUERE LE VARIE SCHERMATE ADFESSO INIZIA CHAGPT POI AGGIUSTO.
 
 ## Descrizione Dettagliata dei Moduli. 
 ### 4️⃣ ENTITIES (Strato di Dominio)
@@ -627,10 +627,10 @@ scancode-toolkit        # Scansione licenze (opzionale, WIP)
 
 ### Requisiti di Sistema
 
-- Python 3.8+
-- pip
+- Python 3.10+
 - git (per download repository)
 - virtualenv (generalmente bundled con Python)
+- pip (generalmente bundled con Python)
 
 ---
 
@@ -707,18 +707,16 @@ for meta in metadata:
 - [x] Matrice compatibilità licenze
 - [x] GUI Textual (struttura base)
 - [x] Normalizzazione nomi licenze
+- [x] Parsing completo output ScanCode
+- [x] Completamento UI
+
 
 ### 🔄 Work in Progress
 
-- [ ] Parsing completo output ScanCode
-- [ ] Classe `ScanCodeResult` (attualmente stub)
 - [ ] Report esportabili (CSV, PDF)
-- [ ] Completamento UI
 
-### ⚠️ Note Importanti
+### ⚠️ Nota Importante
 
-- `ScanCodeResult` e classi correlate non sono ancora implementate
-- Alcuni widget UI sono placeholder
 - La matrice di compatibilità potrebbe essere offline o richiedere download
 
 ---
