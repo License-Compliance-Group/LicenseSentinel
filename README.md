@@ -20,7 +20,7 @@ The projects' dependencies are reported in `src/requirements-dev.txt`; these wil
 
 To install, head to the **[Release Tab](https://github.com/License-Compliance-Group/LicenseSentinel/releases)** and follow the steps reported in the release you wish for.
 
-Alteratively, you may download the latest version released on PyPi with the following command:  
+Alternatively, you may download the latest version released on PyPi with the following command:  
 ```bash
 python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple license-hierarchy
 ```
