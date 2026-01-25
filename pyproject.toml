@@ -36,7 +36,7 @@ dev = [
 ]
 
 [project.scripts]
-license-hierarchy = "license_sentinel.licensesentinel:main"
+license-hierarchy = "license_hierarchy.licensehierarchy:main"
 
 [project.urls]
 Homepage = "https://github.com/License-Compliance-Group/LicenseSentinel"
