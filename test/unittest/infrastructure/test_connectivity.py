@@ -5,7 +5,7 @@ from pathlib import Path
 import zipfile
 import tempfile
 
-from src.license_sentinel.infrastructure.connectivity import Connectivity
+from src.license_hierarchy.infrastructure.connectivity import Connectivity
 
 
 class TestConnectivityCheckFileExists:
@@ -195,7 +195,7 @@ class TestConnectivityDownloadFile:
 
     def test_download_file_success(self, mocker):
         """Test that download_file successfully downloads a file."""
-        mock_internet = mocker.patch("license_sentinel.infrastructure.connectivity.Connectivity.verify_internet_access")
+        mock_internet = mocker.patch("license_hierarchy.infrastructure.connectivity.Connectivity.verify_internet_access")
         mock_internet.return_value = True
         mock_response = mocker.Mock()
         mock_response.headers.get.return_value = "1000"
@@ -207,7 +207,7 @@ class TestConnectivityDownloadFile:
 
     def test_download_file_no_internet(self, mocker):
         """Test that download_file returns None when offline."""
-        mock_internet = mocker.patch("license_sentinel.infrastructure.connectivity.Connectivity.verify_internet_access")
+        mock_internet = mocker.patch("license_hierarchy.infrastructure.connectivity.Connectivity.verify_internet_access")
         mock_internet.return_value = False
 
         result = Connectivity.download_file("http://example.com/file.txt")
@@ -216,7 +216,7 @@ class TestConnectivityDownloadFile:
     def test_download_file_timeout(self, mocker):
         """Test that download_file handles timeout."""
         import requests
-        mock_internet = mocker.patch("license_sentinel.infrastructure.connectivity.Connectivity.verify_internet_access")
+        mock_internet = mocker.patch("license_hierarchy.infrastructure.connectivity.Connectivity.verify_internet_access")
         mock_get = mocker.patch("requests.get")
         mock_internet.return_value = True
         mock_get.side_effect = requests.Timeout()
@@ -226,7 +226,7 @@ class TestConnectivityDownloadFile:
 
     def test_download_file_too_large(self, mocker):
         """Test that download_file rejects files that are too large."""
-        mock_internet = mocker.patch("license_sentinel.infrastructure.connectivity.Connectivity.verify_internet_access")
+        mock_internet = mocker.patch("license_hierarchy.infrastructure.connectivity.Connectivity.verify_internet_access")
         mock_internet.return_value = True
         mock_response = mocker.Mock()
         mock_response.headers.get.return_value = "10000000"  # 10MB
@@ -238,7 +238,7 @@ class TestConnectivityDownloadFile:
     def test_download_file_http_error(self, mocker):
         """Test that download_file handles HTTP errors."""
         import requests
-        mock_internet = mocker.patch("license_sentinel.infrastructure.connectivity.Connectivity.verify_internet_access")
+        mock_internet = mocker.patch("license_hierarchy.infrastructure.connectivity.Connectivity.verify_internet_access")
         mock_get = mocker.patch("requests.get")
         mock_internet.return_value = True
         mock_get.side_effect = requests.HTTPError()
@@ -248,7 +248,7 @@ class TestConnectivityDownloadFile:
 
     def test_download_file_custom_timeout(self, mocker):
         """Test download_file with custom timeout."""
-        mock_internet = mocker.patch("license_sentinel.infrastructure.connectivity.Connectivity.verify_internet_access")
+        mock_internet = mocker.patch("license_hierarchy.infrastructure.connectivity.Connectivity.verify_internet_access")
         mock_internet.return_value = True
         mock_response = mocker.Mock()
         mock_response.headers.get.return_value = "1000"

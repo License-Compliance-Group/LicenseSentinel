@@ -5,7 +5,7 @@ import tempfile
 import json
 from pathlib import Path
 
-from src.license_sentinel.infrastructure.dep_tree_builder import DepTreeBuilder
+from src.license_hierarchy.infrastructure.dep_tree_builder import DepTreeBuilder
 
 
 class TestDepTreeBuilderVenvExists:
@@ -135,7 +135,7 @@ class TestDepTreeBuilderDeleteVenv:
         builder = DepTreeBuilder()
 
         # Patch only affects the builder's shutil.rmtree, not tmp_path cleanup
-        mocker.patch("license_sentinel.infrastructure.dep_tree_builder.shutil.rmtree", side_effect=OSError("Permission denied"))
+        mocker.patch("license_hierarchy.infrastructure.dep_tree_builder.shutil.rmtree", side_effect=OSError("Permission denied"))
         with pytest.raises(RuntimeError):
             builder.delete_venv(str(venv_path))
 

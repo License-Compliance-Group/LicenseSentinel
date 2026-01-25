@@ -2,7 +2,7 @@
 
 import asyncio
 
-from src.license_sentinel.infrastructure.pypi_client import PyPiHandler
+from src.license_hierarchy.infrastructure.pypi_client import PyPiHandler
 
 
 class TestPyPiHandlerGetSourceLinks:

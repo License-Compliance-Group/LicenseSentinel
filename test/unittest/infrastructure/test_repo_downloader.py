@@ -3,7 +3,7 @@
 import pytest
 import tempfile
 from pathlib import Path
-from src.license_sentinel.infrastructure.repo_downloader import RepoDownloader
+from src.license_hierarchy.infrastructure.repo_downloader import RepoDownloader
 
 
 class TestRepoDownloaderInit:
