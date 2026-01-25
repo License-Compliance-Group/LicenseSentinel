@@ -19,7 +19,7 @@ import json
 from pathlib import Path
 import unittest
 from unittest.mock import patch, MagicMock
-from src.license_sentinel.analyzer.tree_license_analyzer import TreeAnalyzer
+from src.license_hierarchy.analyzer.tree_license_analyzer import TreeAnalyzer
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
@@ -55,7 +55,7 @@ class TestTreeLicenseAnalyzer(unittest.TestCase):
     def test_import_path(self):
         """Test import path - verify module loads and classes are available"""
         # Importing the module executes the import path
-        from src.license_sentinel.analyzer import tree_license_analyzer
+        from src.license_hierarchy.analyzer import tree_license_analyzer
 
         # Verify the class is available
         self.assertTrue(hasattr(tree_license_analyzer, 'TreeAnalyzer'))
@@ -68,7 +68,7 @@ class TestTreeLicenseAnalyzer(unittest.TestCase):
         self.assertTrue(hasattr(TreeAnalyzer, 'compile_compatibility_report'))
         self.assertTrue(hasattr(TreeAnalyzer, 'find_first_incompatibility'))
 
-    @patch('src.license_sentinel.analyzer.tree_license_analyzer.TreeAnalyzer.logger')
+    @patch('src.license_hierarchy.analyzer.tree_license_analyzer.TreeAnalyzer.logger')
     def test_explain_discrepancies_method(self, mock_logger):
         """Test explain_discrepancies class method"""
         discrepancies = [
@@ -83,7 +83,7 @@ class TestTreeLicenseAnalyzer(unittest.TestCase):
         error_msg = mock_logger.error.call_args[0][0]
         self.assertIn('Lacking compatibility report', error_msg)
 
-    @patch('src.license_sentinel.analyzer.tree_license_analyzer.TreeAnalyzer.logger')
+    @patch('src.license_hierarchy.analyzer.tree_license_analyzer.TreeAnalyzer.logger')
     def test_explain_doubts_method(self, mock_logger):
         """Test explain_doubts class method"""
         # Test single doubt
@@ -99,10 +99,10 @@ class TestTreeLicenseAnalyzer(unittest.TestCase):
         TreeAnalyzer.explain_doubts(doubts)
         mock_logger.warning.assert_called()
 
-    @patch('src.license_sentinel.analyzer.tree_license_analyzer.LicenseCompatibilityAnalyzer')
+    @patch('src.license_hierarchy.analyzer.tree_license_analyzer.LicenseCompatibilityAnalyzer')
     def test_run_tree_compatibility_check_method(self, mock_lca_class):
         """Test run_tree_compatibility_check class method"""
-        from src.license_sentinel.entities.pypi_metadata import PyPIMetadata
+        from src.license_hierarchy.entities.pypi_metadata import PyPIMetadata
 
         # Mock LCA
         mock_lca = MagicMock()
@@ -128,7 +128,7 @@ class TestTreeLicenseAnalyzer(unittest.TestCase):
         result = TreeAnalyzer.run_tree_compatibility_check(packages_metadata, {})
         self.assertIsNone(result)
 
-    @patch('src.license_sentinel.analyzer.tree_license_analyzer.LicenseCompatibilityAnalyzer')
+    @patch('src.license_hierarchy.analyzer.tree_license_analyzer.LicenseCompatibilityAnalyzer')
     def test_detect_incompatible_edges_method(self, mock_lca_class):
         """Test detect_incompatible_edges class method"""
         # Mock LCA
@@ -152,7 +152,7 @@ class TestTreeLicenseAnalyzer(unittest.TestCase):
         self.assertEqual(result[0][0], 'parent')  # parent package
         self.assertEqual(result[0][2], 'child')   # child package
 
-    @patch('src.license_sentinel.analyzer.tree_license_analyzer.logger')
+    @patch('src.license_hierarchy.analyzer.tree_license_analyzer.logger')
     def test_compile_compatibility_report_method(self, mock_logger):
         """Test compile_compatibility_report class method"""
         # Test with no incompatible edges

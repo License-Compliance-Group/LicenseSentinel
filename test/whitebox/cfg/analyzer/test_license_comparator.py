@@ -22,7 +22,7 @@ import os
 from pathlib import Path
 import unittest
 from unittest.mock import MagicMock
-from src.license_sentinel.analyzer.license_comparator import LicenseComparator
+from src.license_hierarchy.analyzer.license_comparator import LicenseComparator
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
@@ -42,7 +42,7 @@ class TestLicenseComparator(unittest.TestCase):
     def test_block_coverage_import(self):
         """Test Block 1 coverage - import and class definition"""
         # Importing the module executes Block 1
-        from src.license_sentinel.analyzer import license_comparator
+        from src.license_hierarchy.analyzer import license_comparator
 
         # Verify the class is available (Block 1 executed)
         self.assertTrue(hasattr(license_comparator, 'LicenseComparator'))
