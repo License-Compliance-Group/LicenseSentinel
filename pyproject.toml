@@ -36,7 +36,7 @@ dev = [
 ]
 
 [project.scripts]
-license-hierarchy = "license_sentinel.licensesentinel:main"
+license-hierarchy = "license_hierarchy.licensehierarchy:main"
 
 [project.urls]
 Homepage = "https://github.com/License-Compliance-Group/LicenseSentinel"
@@ -48,9 +48,9 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["license_sentinel*"]
+include = ["license_hierarchy*"]
 
 [tool.setuptools.package-data]
 # Ensure non-code assets ship inside the wheel
-"license_sentinel.data" = ["*.json"]
-"license_sentinel.interface" = ["*.css"]
+"license_hierarchy.data" = ["*.json"]
+"license_hierarchy.interface" = ["*.css"]

@@ -1,9 +1,9 @@
 """Unit tests for LicenseComparator class."""
 
 import pytest
-from src.license_sentinel.analyzer.license_comparator import LicenseComparator
-from src.license_sentinel.entities.scan_engine import ScanEngine
-from src.license_sentinel.entities.pypi_metadata import PyPIMetadata
+from src.license_hierarchy.analyzer.license_comparator import LicenseComparator
+from src.license_hierarchy.entities.scan_engine import ScanEngine
+from src.license_hierarchy.entities.pypi_metadata import PyPIMetadata
 
 
 class TestLicenseComparatorCompareTrees:

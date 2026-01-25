@@ -25,8 +25,8 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch, MagicMock, mock_open
 import tempfile
-from src.license_sentinel.analyzer.package_metadata_fetcher import PackageMetadataFetcher
-from src.license_sentinel.entities.pypi_metadata import PyPIMetadata
+from src.license_hierarchy.analyzer.package_metadata_fetcher import PackageMetadataFetcher
+from src.license_hierarchy.entities.pypi_metadata import PyPIMetadata
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
@@ -71,7 +71,7 @@ class TestPackageMetadataFetcher(unittest.TestCase):
     def test_block_coverage_import(self):
         """Test Block 1 coverage - import and class definition"""
         # Importing the module executes Block 1
-        from src.license_sentinel.analyzer import package_metadata_fetcher
+        from src.license_hierarchy.analyzer import package_metadata_fetcher
 
         # Verify the class is available (Block 1 executed)
         self.assertTrue(hasattr(package_metadata_fetcher, 'PackageMetadataFetcher'))
@@ -143,7 +143,7 @@ class TestPackageMetadataFetcher(unittest.TestCase):
         finally:
             temp_file.unlink()
 
-    @patch('src.license_sentinel.analyzer.package_metadata_fetcher.PackageMetadataFetcher.cache_file')
+    @patch('src.license_hierarchy.analyzer.package_metadata_fetcher.PackageMetadataFetcher.cache_file')
     def test_load_cache_path_coverage(self, mock_cache_file):
         """Test path coverage for _load_cache method"""
         # Mock cache file property
@@ -174,7 +174,7 @@ class TestPackageMetadataFetcher(unittest.TestCase):
             result = self.fetcher._load_cache()
             self.assertEqual(result, {})
 
-    @patch('src.license_sentinel.analyzer.package_metadata_fetcher.PackageMetadataFetcher.cache_file')
+    @patch('src.license_hierarchy.analyzer.package_metadata_fetcher.PackageMetadataFetcher.cache_file')
     def test_save_cache_path_coverage(self, mock_cache_file):
         """Test path coverage for _save_cache method"""
         # Mock cache file property
@@ -315,7 +315,7 @@ class TestPackageMetadataFetcher(unittest.TestCase):
         }
 
         # Mock DOWNLOAD_DIRECTORY to use temp dir
-        with patch('src.license_sentinel.analyzer.package_metadata_fetcher.DOWNLOAD_DIRECTORY', Path('/tmp')):
+        with patch('src.license_hierarchy.analyzer.package_metadata_fetcher.DOWNLOAD_DIRECTORY', Path('/tmp')):
             # Path 1: Override cache = True
             fresh_fetcher.download_sources(package_urls, override_cache=True)
             # Should call download_repos with all valid URLs

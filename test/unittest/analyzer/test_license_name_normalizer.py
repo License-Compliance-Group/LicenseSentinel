@@ -1,7 +1,7 @@
 """Unit tests for license_name_normalizer module."""
 
 import pytest
-from src.license_sentinel.infrastructure import license_name_normalizer
+from src.license_hierarchy.infrastructure import license_name_normalizer
 
 
 class TestLicenseNameNormalizerNormalize:

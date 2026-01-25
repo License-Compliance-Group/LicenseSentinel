@@ -5,7 +5,7 @@ from typing import Optional, Dict, Any
 
 import pytest
 
-from src.license_sentinel.entities.scan_engine import ScanEngine
+from src.license_hierarchy.entities.scan_engine import ScanEngine
 
 
 def test_protocol_cannot_be_instantiated():

@@ -40,7 +40,7 @@ Select the license under which your project will be released, and wait for the d
 ## Project Structure
 
 ```
-src/license_sentinel
+src/license_hierarchy
 ├── entities/           # Domain layer: models & abstract interfaces
 ├── analyzer/           # Business logic layer
 ├── infrastructure/     # I/O layer: HTTP, filesystem, processes
