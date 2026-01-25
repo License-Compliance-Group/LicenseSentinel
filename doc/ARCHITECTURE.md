@@ -13,9 +13,8 @@ scancode-toolkit (se non funziona provate il bianrio)
 gli import relativi funzionano solo quando viene eseguito come modulo, per runnarlo senza installarlo tramite il wheel fate
 
 ```
-python -m license_sentinel.licensesentinel
+python -m license_hierarchy.hierarchy
 ```
-Non mi ricordo mai se sta cosa dovete farla dalla root oppure da src, vedete voi
 
 ## Architettura a Strati (Onion Architecture)
 
@@ -54,7 +53,7 @@ Tale architettura segue quindi le seguenti regole di dipendenza
 ## Struttura di packages e moduli
 
 ```
-src/license_sentinel
+src/license_hierarchy
 ├── entities/                           # Strato 1: Dominio e Astrazioni
 │   ├── pypi_metadata.py                # Contenitore metadati PyPI
 │   ├── scan_engine.py                  # Interfaccia per scanner di licenze
@@ -84,12 +83,12 @@ src/license_sentinel
 │   ├── ui_state.py                     # Gestione stato UI
 │   └── style.css                       # Stili UI
 │
-└────── licensesentinel.py              # Entrypoint
+└────── licensehierarchy.py              # Entrypoint
 ```
 
 ## Flusso di Esecuzione Principale
 
-LicenseSentinel è uno strumento che analizza le dipendenze Python di un progetto e verifica la compatibilità delle loro licenze. Il programma:
+LicenseHierarchy è uno strumento che analizza le dipendenze Python di un progetto e verifica la compatibilità delle loro licenze. Il programma:
 
 1. **Legge** un file `requirements.txt`
 2. **Costruisce** un albero completo delle dipendenze (incluse le sub-dipendenze)
@@ -456,39 +455,11 @@ def initialize(name: str, level: int) → Logger:
 
 ### 1️⃣ INTERFACE (Strato di Presentazione)
 
-#### `gui.py` - Interfaccia Grafica
+#### `gui.py` - Viewer
 
 Costruita con **Textual** (TUI framework).
 
-**Struttura UI:**
 
-```
-┌─────────────────────────────────────────┐
-│        LicenseSentinel Dashboard        │
-├─────────────────────────────────────────┤
-│                                         │
-│  [1] Path to requirements.txt           │
-│      [input field] [analyze button]     │
-│                                         │
-│  [2] Main Repository License            │
-│      [dropdown select]                  │
-│                                         │
-│  [3] Results Tabs                       │
-│      ┌──────────┬──────────┬──────────┐ │
-│      │Dependency│Compatibility│Issues │ │
-│      └──────────┴──────────┴──────────┘ │
-│      │                                │ │
-│      │ [Tree View / Data Table]       │ │
-│      │                                │ │
-│                                         │
-│  [4] Logging Console                    │
-│      [live log output]                  │
-│                                         │
-│  [5] Command Input                      │
-│      > [command input]                  │
-│                                         │
-└─────────────────────────────────────────┘
-```
 
 **Widget principali:**
 - `Input` - Path requirements.txt
@@ -542,19 +513,8 @@ class SuggestionState(Enum):
     SCANNING, CACHED, DOWNLOADED
 ```
 
----
 
-#### `suggestion_system.py`
 
-Sistema di suggerimenti per comandi disponibili.
-
----
-
-#### `tree_presenter.py`
-
-Formattazione presentazione albero dipendenze in UI.
-
----
 
 ## Componenti di Infrastruttura
 
@@ -612,188 +572,3 @@ data/
 
 ---
 
-## Dipendenze e Requisiti
-
-### Requisiti Principali
-
-```txt
-requests==2.31.0        # HTTP client per PyPI
-numpy>=1.24.0           # Calcoli numerici
-pandas<=2.1.0           # Gestione dati
-pipdeptree              # Costruzione albero dipendenze
-textual                 # GUI framework
-scancode-toolkit        # Scansione licenze (opzionale, WIP)
-```
-
-### Requisiti di Sistema
-
-- Python 3.10+
-- git (per download repository)
-- virtualenv (generalmente bundled con Python)
-- pip (generalmente bundled con Python)
-
----
-
-## Utilizzo
-
-### 1. Setup Iniziale
-
-```bash
-# Clona repo
-git clone <repo_url>
-cd LicensesChecker
-
-# Crea venv
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# o
-venv\Scripts\activate  # Windows
-
-# Installa dipendenze
-pip install -r requirements.txt
-```
-
-### 2. Esecuzione GUI
-
-```bash
-python -m src.analyzer.main
-```
-
-### 3. Analisi da CLI
-
-```python
-from src.analyzer.main import main
-main()
-```
-
-### 4. Utilizzo Programmatico
-
-```python
-from src.infrastructure.pypi_client import PyPiHandler
-from src.infrastructure.dep_tree_builder import DepTreeBuilder
-from src.infrastructure.repo_downloader import RepoDownloader
-from src.analyzer.package_metadata_fetcher import PackageMetadataFetcher
-
-# Setup
-pypi = PyPiHandler()
-builder = DepTreeBuilder()
-downloader = RepoDownloader()
-
-# Orchestrazione
-orchestrator = PackageMetadataFetcher(pypi, builder, downloader)
-metadata, graph = orchestrator.build_package_metadata(
-    "path/to/requirements.txt",
-    override_cache=False
-)
-
-# Risultati
-for meta in metadata:
-    print(f"{meta.package}: {meta.license_type}")
-```
-
----
-
-## Stato Attuale del Progetto
-
-### ✅ Completato
-
-- [x] Parsing requirements.txt
-- [x] Costruzione albero dipendenze (dep_tree_builder)
-- [x] Client PyPI asincrono
-- [x] Caching metadati
-- [x] Download repository e estrazione ZIP
-- [x] Esecuzione ScanCode (output JSON)
-- [x] Confronto licenze PyPI vs ScanCode
-- [x] Matrice compatibilità licenze
-- [x] GUI Textual (struttura base)
-- [x] Normalizzazione nomi licenze
-- [x] Parsing completo output ScanCode
-- [x] Completamento UI
-
-
-### 🔄 Work in Progress
-
-- [ ] Report esportabili (CSV, PDF)
-
-### ⚠️ Nota Importante
-
-- La matrice di compatibilità potrebbe essere offline o richiedere download
-
----
-
-## Architettura Visuale: Flusso dei Dati
-
-```
-User Input (requirements.txt)
-         │
-         ▼
-┌──────────────────────────┐
-│ PackageMetadataFetcher   │ ◄── Orchestrator principale (Analyzer)
-│ (Analyzer)               │
-│ ├─ parse_requirements()  │
-│ ├─ build_dep_tree()      │
-│ └─ fetch_metadata()      │
-└──────────────────────────┘
-         │
-         ├──────────────┬──────────────┬──────────────┐
-         │              │              │              │
-         ▼              ▼              ▼              ▼
-    ┌────────┐   ┌─────────┐   ┌──────────┐   ┌──────────┐
-    │DepTree │   │PyPI API │   │RepoDown  │   │ScanCode  │
-    │Builder │   │ Client   │   │loader    │   │Runner    │
-    │(Infra) │   │(Infra)   │   │(Infra)   │   │(Infra)   │
-    └────────┘   └─────────┘   └──────────┘   └──────────┘
-         │              │              │              │
-         └──────────────┴──────────────┴──────────────┘
-         │
-         ▼
-    ┌─────────────────────┐
-    │ PyPIMetadata List   │
-    │ + Dependency Graph  │
-    └─────────────────────┘
-         │
-         ├─────────────┬─────────────┐
-         │             │             │
-         ▼             ▼             ▼
-    ┌──────────┐  ┌───────────┐  ┌──────────────┐
-    │License   │  │License    │  │Compatibility │
-    │Comparator│  │Tree       │  │Matrix        │
-    │(Analyzer)│  │Analyzer   │  │Manager       │
-    │          │  │(Analyzer) │  │(Analyzer)    │
-    └──────────┘  └───────────┘  └──────────────┘
-         │             │             │
-         └─────────────┴─────────────┘
-         │
-         ▼
-    ┌─────────────────────┐
-    │ Analysis Results    │
-    │ - Discrepancies     │
-    │ - Incompatibilities │
-    │ - Report Data       │
-    └─────────────────────┘
-         │
-         ▼
-    ┌─────────────────────┐
-    │ GUI (Interface)     │
-    │ - Display results   │
-    │ - Interazione user  │
-    └─────────────────────┘
-```
-
----
-
-## Conclusioni
-
-LicenseSentinel implementa un'architettura a cipolla ben strutturata dove:
-
-- **ENTITIES** definisce il dominio
-- **ANALYZER** contiene la logica di business
-- **INFRASTRUCTURE** fornisce implementazioni concrete
-- **INTERFACE** espone funzionalità agli utenti
-
-Il flusso è lineare e prevedibile, con orchestrazione centralizzata in `PackageMetadataFetcher` e dipendenze iniettate per rispettare le regole architetturali.
-
-La struttura consente facilmente di:
-- Sostituire implementazioni (es. client PyPI con altro package manager)
-- Testare componenti in isolamento
-- Aggiungere nuove funzionalità mantenendo separazione dei layer
