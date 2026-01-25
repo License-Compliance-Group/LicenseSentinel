@@ -17,12 +17,11 @@ Paths to cover:
 """
 
 import sys
-import os
 from pathlib import Path
 import unittest
 from unittest.mock import patch
 import json
-from src.license_hierarchy.analyzer.matrix_manager import LicenseCompatibilityAnalyzer, FullCompatibilityCalc
+from src.license_hierarchy.analyzer.matrix_manager import LicenseCompatibilityAnalyzer
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))

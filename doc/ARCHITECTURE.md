@@ -13,7 +13,7 @@ scancode-toolkit (se non funziona provate il bianrio)
 gli import relativi funzionano solo quando viene eseguito come modulo, per runnarlo senza installarlo tramite il wheel fate
 
 ```
-python -m license_hierarchy.hierarchy
+python -m license_hierarchy.licensehierarchy
 ```
 
 ## Architettura a Strati (Onion Architecture)
